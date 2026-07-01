@@ -1,0 +1,23 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# production
+/.next
+/out
+
+# env files — never commit
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# vercel
+.vercel
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
