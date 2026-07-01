@@ -66,7 +66,7 @@ export default function HeroSection({ settings = {} }) {
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(28,25,23,0.28) 0%, rgba(28,25,23,0) 30%, rgba(28,25,23,0.05) 55%, rgba(28,25,23,0.82) 100%)' }} />
 
       {/* Slide dots */}
-      <div style={{ position: 'absolute', bottom: 'clamp(90px,14vw,160px)', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 8, zIndex: 2 }}>
+      <div style={{ position: 'absolute', bottom: 'clamp(16px,3vw,28px)', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 8, zIndex: 2 }}>
         {SLIDES.map((_, i) => (
           <span
             key={i}

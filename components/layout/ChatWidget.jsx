@@ -25,6 +25,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
   const [guestInfo,   setGuestInfo]   = useState({ name: null, phone: null })
   const [unread,      setUnread]      = useState(0)
   const [toolResults, setToolResults] = useState({}) // {messageIndex: toolResult}
+  const [clearStickyBar, setClearStickyBar] = useState(false)
 
   const messagesEndRef = useRef(null)
   const inputRef       = useRef(null)
@@ -35,6 +36,18 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     if (!chatbotEnabled) return
     initSession()
   }, [chatbotEnabled]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Shift up above the mobile sticky booking bar once it appears ──
+  useEffect(() => {
+    const update = () => setClearStickyBar(window.scrollY > 300 && window.innerWidth < 860)
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    update()
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
 
   // ── Scroll to bottom on new messages ──────────────────────
   useEffect(() => {
@@ -289,12 +302,12 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           onClick={handleOpen}
           aria-label="Open chat"
           style={{
-            position: 'fixed', bottom: '24px', right: '24px', zIndex: 999,
+            position: 'fixed', bottom: clearStickyBar ? '92px' : '24px', right: '24px', zIndex: 999,
             width: '56px', height: '56px', borderRadius: '9999px',
             background: '#3B5249', border: 'none', cursor: 'pointer',
             boxShadow: '0 4px 20px rgba(28,25,23,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background 150ms ease-out',
+            transition: 'background 150ms ease-out, bottom 200ms ease-out',
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -316,7 +329,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
       {/* Chat window */}
       {isOpen && (
         <div style={{
-          position: 'fixed', bottom: '24px', right: '24px', zIndex: 999,
+          position: 'fixed', bottom: clearStickyBar ? '92px' : '24px', right: '24px', zIndex: 999,
           width: 'clamp(320px, 90vw, 390px)',
           height: isMinimised ? 'auto' : 'clamp(480px, 70vh, 600px)',
           background: '#FAF6F0', borderRadius: '12px',

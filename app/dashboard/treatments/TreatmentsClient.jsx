@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { TREATMENT_CATEGORIES } from '@/lib/display'
 
-const CATEGORIES = ['massage', 'body', 'facial', 'specialty', 'package']
+const CATEGORIES = Object.keys(TREATMENT_CATEGORIES)
 const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true }
 
 export default function TreatmentsClient({ initialTreatments }) {
@@ -73,7 +74,7 @@ export default function TreatmentsClient({ initialTreatments }) {
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, padding: 20, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 500 }}>
           <input className="input" placeholder="Treatment name" value={newForm.name} onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))} />
           <select className="input" value={newForm.category} onChange={e => setNewForm(f => ({ ...f, category: e.target.value }))}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIES.map(c => <option key={c} value={c}>{TREATMENT_CATEGORIES[c]}</option>)}
           </select>
           <input className="input" placeholder="Description" value={newForm.description} onChange={e => setNewForm(f => ({ ...f, description: e.target.value }))} />
           <input className="input" placeholder="Badge (optional, e.g. Signature)" value={newForm.badge} onChange={e => setNewForm(f => ({ ...f, badge: e.target.value }))} />
@@ -95,7 +96,7 @@ export default function TreatmentsClient({ initialTreatments }) {
                 <div style={{ font: '600 14px Inter,sans-serif' }}>
                   {t.name} {t.badge && <span style={{ background: '#E8EDE9', color: '#3B5249', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', marginLeft: 6 }}>{t.badge}</span>}
                 </div>
-                <div style={{ font: '400 12px Inter,sans-serif', color: '#9B9390', marginTop: 2, textTransform: 'capitalize' }}>{t.category}</div>
+                <div style={{ font: '400 12px Inter,sans-serif', color: '#9B9390', marginTop: 2 }}>{TREATMENT_CATEGORIES[t.category] ?? t.category}</div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setEditingId(editingId === t.id ? null : t.id)} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 4, padding: '6px 12px', font: '500 11px Inter,sans-serif', cursor: 'pointer' }}>
@@ -149,7 +150,7 @@ function EditForm({ treatment, onSave }) {
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F0ECE6', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 500 }}>
       <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Name" />
       <select className="input" value={category} onChange={e => setCategory(e.target.value)}>
-        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        {CATEGORIES.map(c => <option key={c} value={c}>{TREATMENT_CATEGORIES[c]}</option>)}
       </select>
       <input className="input" value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" />
       <input className="input" value={badge} onChange={e => setBadge(e.target.value)} placeholder="Badge (optional)" />

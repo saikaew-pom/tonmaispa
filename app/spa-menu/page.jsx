@@ -2,6 +2,7 @@ import Nav         from '@/components/layout/Nav'
 import Footer      from '@/components/layout/Footer'
 import TrackedLink from '@/components/ui/TrackedLink'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { TREATMENT_CATEGORIES } from '@/lib/display'
 
 export const revalidate = 60
 
@@ -16,13 +17,7 @@ export const metadata = {
   },
 }
 
-const CATEGORY_LABELS = {
-  massage:   'Massage',
-  specialty: 'Specialty Treatments',
-  body:      'Body Treatments',
-  facial:    'Facials',
-  package:   'Packages',
-}
+const CATEGORY_LABELS = TREATMENT_CATEGORIES
 
 async function getData() {
   const admin = createSupabaseAdminClient()
