@@ -21,3 +21,6 @@
 .DS_Store
 *.pem
 npm-debug.log*
+
+# raw source photo library — not a build asset, huge, never commit
+/site-main-photos
