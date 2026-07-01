@@ -13,7 +13,8 @@ import DashNav from './DashNav'
 export const metadata = { robots: { index: false, follow: false } }
 
 export default async function DashboardLayout({ children }) {
-  const supabase = createServerComponentClient({ cookies })
+  const cookieStore = await cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
