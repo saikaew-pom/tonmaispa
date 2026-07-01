@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getMiniMax, MINIMAX_MODEL }  from '@/lib/minimax'
 import { checkRateLimit }             from '@/lib/ratelimit'
 import { buildSystemPrompt, TOOLS_SIMPLE, TOOLS_FULL } from '@/lib/chatbot'
-import { sendEmail, enquiryOwnerHtml, bookingGuestHtml, bookingOwnerHtml } from '@/lib/resend'
+import { sendEmail, enquiryOwnerHtml, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
 
 export const maxDuration = 60
 

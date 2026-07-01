@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { enquirySchema }    from '@/lib/schemas'
-import { sendEmail, enquiryGuestHtml, enquiryOwnerHtml } from '@/lib/resend'
+import { sendEmail, enquiryGuestHtml, enquiryOwnerHtml } from '@/lib/brevo'
 
 export async function POST(req) {
   // 1. Rate limit — 5 enquiries per 10 min per IP

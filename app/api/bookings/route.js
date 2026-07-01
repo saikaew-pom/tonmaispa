@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
-import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/resend'
+import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
 
 export async function POST(req) {
   const rl = await checkRateLimit(req, 'booking', { limit: 5, window: 600 })
