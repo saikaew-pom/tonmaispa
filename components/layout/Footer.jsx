@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import TrackedLink from '@/components/ui/TrackedLink'
+import CookieSettingsLink from '@/components/ui/CookieSettingsLink'
 
 export default function Footer({ settings = {} }) {
   const wa   = settings['settings.whatsapp_number'] ?? '66631175211'
@@ -53,6 +54,7 @@ export default function Footer({ settings = {} }) {
         <span style={{ display: 'flex', gap: 16 }}>
           <a href="/privacy" style={{ color: 'rgba(250,246,240,0.45)' }}>Privacy</a>
           <a href="/terms"   style={{ color: 'rgba(250,246,240,0.45)' }}>Terms</a>
+          <CookieSettingsLink style={{ color: 'rgba(250,246,240,0.45)' }} />
         </span>
       </div>
     </footer>

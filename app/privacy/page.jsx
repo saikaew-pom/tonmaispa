@@ -27,14 +27,14 @@ export default function PrivacyPage() {
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
 
           <p style={prose}>
-            Ton Mai Spa (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), located at 6/11 Moo 2 Wiset Road, Rawai, Phuket 83130, Thailand, is committed to protecting the personal information of guests who visit our website or spa. This policy explains what data we collect, how we use it, and your rights.
+            Ton Mai Spa (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), located at 6/11 Moo 2 Wiset Road, Rawai, Phuket 83130, Thailand, is committed to protecting the personal information of guests who visit our website or spa. This policy explains what data we collect, how we use it, and your rights under Thailand&apos;s Personal Data Protection Act B.E. 2562 (PDPA) and, for visitors in the European Economic Area, the General Data Protection Regulation (GDPR). Ton Mai Spa is the data controller for information collected through this website.
           </p>
 
           <h2 style={h2st}>Information We Collect</h2>
           <h3 style={h3st}>Information you provide directly</h3>
           <p style={prose}>When you submit an enquiry, make a booking, or contact us via our website, we may collect: your name, phone number, email address, preferred treatment and date, and any additional notes you choose to include.</p>
           <h3 style={h3st}>Information collected automatically</h3>
-          <p style={prose}>We use Google Analytics 4 to understand how visitors use our website. This may include your IP address, browser type, pages visited and time spent on the site. This data is anonymised and aggregated — we cannot identify you individually from it. You can opt out via Google&apos;s opt-out browser add-on or by adjusting your browser&apos;s cookie settings.</p>
+          <p style={prose}>With your consent (see &ldquo;Cookies&rdquo; below), we use Google Analytics 4 to understand how visitors use our website. This may include your IP address, browser type, pages visited and time spent on the site. This data is anonymised and aggregated — we cannot identify you individually from it. Analytics cookies are only set after you accept them in our cookie banner; you can withdraw consent at any time via the &ldquo;Cookie Settings&rdquo; link in the footer.</p>
 
           <h2 style={h2st}>How We Use Your Information</h2>
           <p style={prose}>We use the information you provide to:</p>
@@ -49,11 +49,11 @@ export default function PrivacyPage() {
           <h2 style={h2st}>Third-Party Services</h2>
           <p style={prose}>Our website uses the following third-party services that may process your data:</p>
           <ul style={{ ...prose, paddingLeft: 22 }}>
-            <li style={{ marginBottom: 8 }}><strong>Google Analytics</strong> — website usage analytics (opt-out available)</li>
+            <li style={{ marginBottom: 8 }}><strong>Google Analytics</strong> — website usage analytics, only active if you consent (see &ldquo;Cookies&rdquo;)</li>
             <li style={{ marginBottom: 8 }}><strong>WhatsApp / Line</strong> — messaging platforms you use to contact us (subject to their own privacy policies)</li>
-            <li style={{ marginBottom: 8 }}><strong>Supabase</strong> — secure cloud database for storing booking and enquiry data</li>
+            <li style={{ marginBottom: 8 }}><strong>Supabase</strong> — secure cloud database for storing booking, enquiry, and cookie-consent records</li>
             <li style={{ marginBottom: 8 }}><strong>Cloudflare Turnstile</strong> — bot protection on our contact forms</li>
-            <li style={{ marginBottom: 8 }}><strong>Resend</strong> — email delivery service for booking confirmations</li>
+            <li style={{ marginBottom: 8 }}><strong>Brevo</strong> — email delivery service for booking confirmations</li>
           </ul>
 
           <h2 style={h2st}>Data Retention</h2>
@@ -69,7 +69,12 @@ export default function PrivacyPage() {
           </ul>
 
           <h2 style={h2st}>Cookies</h2>
-          <p style={prose}>We use only essential cookies required for the website to function and analytics cookies (Google Analytics). No advertising or tracking cookies are set. You can control cookies through your browser settings.</p>
+          <p style={prose}>When you first visit our site, a banner asks you to choose which cookies to allow. We use two categories:</p>
+          <ul style={{ ...prose, paddingLeft: 22 }}>
+            <li style={{ marginBottom: 8 }}><strong>Necessary</strong> — required for the site to work (remembering your cookie choice, session security). These are always on and don&apos;t require consent, as they&apos;re strictly necessary to provide the service you&apos;ve requested.</li>
+            <li style={{ marginBottom: 8 }}><strong>Analytics</strong> (Google Analytics) — only set if you click &ldquo;Accept All&rdquo; or enable it under &ldquo;Customize.&rdquo; Nothing is set if you click &ldquo;Reject Non-Essential.&rdquo;</li>
+          </ul>
+          <p style={prose}>We do not use advertising or marketing cookies. You can change your choice at any time via the &ldquo;Cookie Settings&rdquo; link in the footer of every page, or by clearing your browser&apos;s site data. We keep a record of each consent decision (your choice, a randomly generated ID, timestamp, and the policy version) for up to 24 months, as required to demonstrate compliance under PDPA Section 19 and GDPR Article 7(1) — we do not log your name or contact details alongside this record.</p>
 
           <h2 style={h2st}>Contact</h2>
           <p style={prose}>For any privacy-related questions or requests, contact us at:</p>

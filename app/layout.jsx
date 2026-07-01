@@ -7,6 +7,8 @@ import './globals.css'
 import { Analytics }      from '@vercel/analytics/react'
 import { SpeedInsights }  from '@vercel/speed-insights/next'
 import ChatWidget         from '@/components/layout/ChatWidget'
+import GoogleAnalytics    from '@/components/layout/GoogleAnalytics'
+import CookieConsentBanner from '@/components/layout/CookieConsentBanner'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.tonmaispa.com'
@@ -56,29 +58,13 @@ export default async function RootLayout({ children }) {
         />
         {/* Preconnect to Cloudinary for gallery/treatment images */}
         <link rel="preconnect" href="https://res.cloudinary.com" />
-        {/* GA4 — loads only when measurement ID is set */}
-        {GA4_ID && (
-          <>
-            <script
-              async
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`}
-            />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag(){dataLayer.push(arguments);}
-                  gtag('js', new Date());
-                  gtag('config', '${GA4_ID}', { page_path: window.location.pathname });
-                `,
-              }}
-            />
-          </>
-        )}
       </head>
       <body>
         {children}
         <ChatWidget chatbotEnabled={chatbotEnabled} />
+        {/* GA4 — only injects the script + sets cookies after the visitor consents */}
+        {GA4_ID && <GoogleAnalytics gaId={GA4_ID} />}
+        <CookieConsentBanner />
         <Analytics />
         <SpeedInsights />
       </body>
