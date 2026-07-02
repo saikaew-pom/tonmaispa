@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { TREATMENT_CATEGORIES } from '@/lib/display'
 
 const CATEGORIES = Object.keys(TREATMENT_CATEGORIES)
-const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true, photos: [] }
+const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true, photos: [], sort_order: 0 }
 const CLOUD_NAME    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
@@ -87,6 +87,10 @@ export default function TreatmentsClient({ initialTreatments }) {
             <input className="input" placeholder="Durations (mins, comma-sep) e.g. 60,90,120" value={newForm.durationsCsv} onChange={e => setNewForm(f => ({ ...f, durationsCsv: e.target.value }))} />
             <input className="input" placeholder="Prices (THB, matching order) e.g. 600,850,1100" value={newForm.pricesCsv} onChange={e => setNewForm(f => ({ ...f, pricesCsv: e.target.value }))} />
           </div>
+          <div>
+            <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Homepage / menu order (lower shows first)</label>
+            <input className="input" type="number" value={newForm.sort_order} onChange={e => setNewForm(f => ({ ...f, sort_order: parseInt(e.target.value, 10) || 0 }))} style={{ maxWidth: 100 }} />
+          </div>
           <PhotoManager photos={newForm.photos} onChange={photos => setNewForm(f => ({ ...f, photos }))} />
           <button onClick={handleCreate} disabled={saving || !newForm.name} style={{ background: '#C4924A', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 18px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
             {saving ? 'Saving…' : 'Create Treatment'}
@@ -103,7 +107,7 @@ export default function TreatmentsClient({ initialTreatments }) {
                   {t.name} {t.badge && <span style={{ background: '#E8EDE9', color: '#3B5249', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', marginLeft: 6 }}>{t.badge}</span>}
                   {t.photos?.length > 0 && <span style={{ color: '#9B9390', font: '400 11px Inter,sans-serif', marginLeft: 8 }}>📷 {t.photos.length}</span>}
                 </div>
-                <div style={{ font: '400 12px Inter,sans-serif', color: '#9B9390', marginTop: 2 }}>{TREATMENT_CATEGORIES[t.category] ?? t.category}</div>
+                <div style={{ font: '400 12px Inter,sans-serif', color: '#9B9390', marginTop: 2 }}>{TREATMENT_CATEGORIES[t.category] ?? t.category} · order {t.sort_order ?? 0}</div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setEditingId(editingId === t.id ? null : t.id)} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 4, padding: '6px 12px', font: '500 11px Inter,sans-serif', cursor: 'pointer' }}>
@@ -142,6 +146,7 @@ function EditForm({ treatment, onSave }) {
   const [durationsCsv, setDurationsCsv] = useState((treatment.duration_options ?? []).join(','))
   const [pricesCsv, setPricesCsv] = useState((treatment.duration_options ?? []).map(d => treatment.prices?.[String(d)] ?? '').join(','))
   const [photos, setPhotos] = useState(treatment.photos ?? [])
+  const [sortOrder, setSortOrder] = useState(treatment.sort_order ?? 0)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -150,7 +155,7 @@ function EditForm({ treatment, onSave }) {
     const priceList = pricesCsv.split(',').map(s => parseInt(s.trim(), 10))
     const prices = {}
     durations.forEach((d, i) => { if (priceList[i]) prices[String(d)] = priceList[i] })
-    await onSave({ name, description, badge: badge || null, category, duration_options: durations, prices, photos })
+    await onSave({ name, description, badge: badge || null, category, duration_options: durations, prices, photos, sort_order: sortOrder })
     setSaving(false)
   }
 
@@ -165,6 +170,10 @@ function EditForm({ treatment, onSave }) {
       <div style={{ display: 'flex', gap: 10 }}>
         <input className="input" value={durationsCsv} onChange={e => setDurationsCsv(e.target.value)} placeholder="Durations e.g. 60,90,120" />
         <input className="input" value={pricesCsv} onChange={e => setPricesCsv(e.target.value)} placeholder="Prices e.g. 600,850,1100" />
+      </div>
+      <div>
+        <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Homepage / menu order (lower shows first)</label>
+        <input className="input" type="number" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value, 10) || 0)} style={{ maxWidth: 100 }} />
       </div>
       <PhotoManager photos={photos} onChange={setPhotos} />
       <button onClick={handleSave} disabled={saving} style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 18px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>

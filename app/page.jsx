@@ -39,7 +39,7 @@ async function getData() {
       .select('id, name, slug, description, category, duration_options, prices, badge, photos')
       .eq('is_active', true)
       .order('sort_order')
-      .limit(6),
+      .limit(9),
 
     admin.from('site_content')
       .select('key, value_text')
@@ -85,7 +85,7 @@ export default async function HomePage() {
       <main id="top">
         <HeroSection settings={settings} />
         <AboutSection />
-        <TreatmentsSection treatments={treatments} />
+        <TreatmentsSection treatments={treatments} settings={settings} />
         <ThermoSection />
         <FacilitiesSection />
         <PricingSection settings={settings} />

@@ -9,6 +9,9 @@ const BOOLEAN_KEYS = [
   'settings.maintenance_mode',
 ]
 
+const TEXTAREA_KEYS = ['settings.homepage_services_subheading']
+const NUMBER_KEYS   = ['settings.homepage_services_count']
+
 const GROUPS = [
   {
     title: 'Contact & Social',
@@ -19,26 +22,33 @@ const GROUPS = [
     keys: ['settings.opening_hours', 'settings.day_pass_price', 'settings.google_rating', 'settings.google_review_count'],
   },
   {
+    title: 'Homepage — Services Section',
+    keys: ['settings.homepage_services_heading', 'settings.homepage_services_subheading', 'settings.homepage_services_count'],
+  },
+  {
     title: 'Feature Toggles',
     keys: ['settings.booking_engine_enabled', 'settings.chatbot_enabled', 'settings.chatbot_booking_mode', 'settings.announcement_enabled', 'settings.maintenance_mode'],
   },
 ]
 
 const LABELS = {
-  'settings.whatsapp_number':        'WhatsApp number (no +)',
-  'settings.line_id':                'Line ID',
-  'settings.instagram_url':          'Instagram URL',
-  'settings.facebook_url':           'Facebook URL',
-  'settings.google_maps_url':        'Google Maps URL',
-  'settings.opening_hours':          'Opening hours',
-  'settings.day_pass_price':         'Day pass price (THB)',
-  'settings.google_rating':          'Google rating',
-  'settings.google_review_count':    'Google review count',
-  'settings.booking_engine_enabled': 'Booking engine enabled',
-  'settings.chatbot_enabled':        'Chatbot enabled',
-  'settings.chatbot_booking_mode':   'Chatbot booking mode (simple / full)',
-  'settings.announcement_enabled':   'Announcement banner enabled',
-  'settings.maintenance_mode':       'Maintenance mode',
+  'settings.whatsapp_number':             'WhatsApp number (no +)',
+  'settings.line_id':                     'Line ID',
+  'settings.instagram_url':               'Instagram URL',
+  'settings.facebook_url':                'Facebook URL',
+  'settings.google_maps_url':             'Google Maps URL',
+  'settings.opening_hours':               'Opening hours',
+  'settings.day_pass_price':              'Day pass price (THB)',
+  'settings.google_rating':               'Google rating',
+  'settings.google_review_count':         'Google review count',
+  'settings.homepage_services_heading':    'Section heading',
+  'settings.homepage_services_subheading': 'Section subheading',
+  'settings.homepage_services_count':      'How many treatments to show (1–9)',
+  'settings.booking_engine_enabled':      'Booking engine enabled',
+  'settings.chatbot_enabled':             'Chatbot enabled',
+  'settings.chatbot_booking_mode':        'Chatbot booking mode (simple / full)',
+  'settings.announcement_enabled':        'Announcement banner enabled',
+  'settings.maintenance_mode':            'Maintenance mode',
 }
 
 export default function SettingsClient({ initialSettings }) {
@@ -78,6 +88,10 @@ export default function SettingsClient({ initialSettings }) {
                     onChange={e => setValue(key, e.target.checked ? 'true' : 'false')}
                     style={{ width: 18, height: 18 }}
                   />
+                ) : TEXTAREA_KEYS.includes(key) ? (
+                  <textarea className="input" rows={3} style={{ resize: 'vertical', minHeight: 70, fontFamily: 'inherit' }} value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
+                ) : NUMBER_KEYS.includes(key) ? (
+                  <input className="input" type="number" min={1} max={9} value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
                 ) : (
                   <input className="input" value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
                 )}

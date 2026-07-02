@@ -4,8 +4,27 @@ import TrackedLink from '@/components/ui/TrackedLink'
 import TreatmentPhotosButton from '@/components/ui/TreatmentPhotosButton'
 import { TREATMENT_CATEGORIES } from '@/lib/display'
 
-export default function TreatmentsSection({ treatments = [] }) {
-  const featured = treatments.slice(0, 3)
+const DEFAULT_HEADING    = 'Every treatment, unhurried.'
+const DEFAULT_SUBHEADING = 'Choose from traditional Thai massage, facials, scrubs and specialty treatments — all performed by skilled Thai therapists in an open garden setting.'
+const DEFAULT_COUNT      = 3
+const FALLBACK_IMAGE     = '/assets/massage-2.jpg' // the one local asset guaranteed to exist
+
+// Real treatments store prices as {"60": 600, "90": 850}; the placeholder
+// set below (used only when no real treatments exist yet) stores them as
+// [{duration, thb}]. Support both so a real DB row always shows its price.
+function getStartingPrice(t) {
+  if (Array.isArray(t.prices)) return t.prices[0]?.thb ?? null
+  const firstDuration = t.duration_options?.[0]
+  return firstDuration ? t.prices?.[String(firstDuration)] ?? null : null
+}
+
+export default function TreatmentsSection({ treatments = [], settings = {} }) {
+  const heading    = settings['settings.homepage_services_heading']    || DEFAULT_HEADING
+  const subheading = settings['settings.homepage_services_subheading'] || DEFAULT_SUBHEADING
+  const rawCount   = parseInt(settings['settings.homepage_services_count'], 10)
+  const count      = Number.isFinite(rawCount) ? Math.min(9, Math.max(1, rawCount)) : DEFAULT_COUNT
+
+  const featured = treatments.slice(0, count)
 
   const placeholders = [
     { name: 'Traditional Thai Massage', category: 'massage', description: 'Deep rhythmic pressure along energy lines, releasing tension from feet to crown.', prices: [{ duration: 60, thb: 600 }, { duration: 90, thb: 850 }, { duration: 120, thb: 1100 }], badge: 'Most Popular', img: '/assets/massage-2.jpg' },
@@ -23,10 +42,10 @@ export default function TreatmentsSection({ treatments = [] }) {
         <div data-reveal style={{ opacity: 0, transform: 'translateY(24px)', transition: 'opacity .8s ease, transform .8s ease', textAlign: 'center', marginBottom: 'clamp(40px,5vw,64px)' }}>
           <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#3B5249' }}>Services</div>
           <h2 style={{ font: '400 clamp(30px,4.5vw,52px)/1.08 Cormorant Garamond,serif', color: '#1C1917', margin: '12px 0 0' }}>
-            Every treatment, unhurried.
+            {heading}
           </h2>
           <p style={{ font: '400 clamp(14px,1.1vw,16px)/1.7 Inter,sans-serif', color: '#6B6663', marginTop: 14, maxWidth: '52ch', marginLeft: 'auto', marginRight: 'auto' }}>
-            Choose from traditional Thai massage, facials, scrubs and specialty treatments — all performed by skilled Thai therapists in an open garden setting.
+            {subheading}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 20 }}>
             {tags.map(t => (
@@ -35,13 +54,13 @@ export default function TreatmentsSection({ treatments = [] }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
+        <div className="treatments-grid" style={{ display: 'grid', gap: 24 }}>
           {items.map((t, i) => {
-            const img   = t.cloudinary_url ?? t.photos?.[0] ?? t.img ?? `/assets/massage-${i+1}.jpg`
-            const price = Array.isArray(t.prices) ? t.prices[0]?.thb : null
+            const img   = t.cloudinary_url ?? t.photos?.[0] ?? t.img ?? FALLBACK_IMAGE
+            const price = getStartingPrice(t)
             const badge = t.badge
             return (
-              <div key={t.id ?? t.name} data-reveal style={{ opacity: 0, transform: 'translateY(28px)', transition: `opacity .8s ${i*0.12}s ease, transform .8s ${i*0.12}s ease`, background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(28,25,23,0.07)' }}>
+              <div key={t.id ?? t.name} data-reveal style={{ opacity: 0, transform: 'translateY(28px)', transition: `opacity .8s ${Math.min(i,5)*0.1}s ease, transform .8s ${Math.min(i,5)*0.1}s ease`, background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(28,25,23,0.07)' }}>
                 <div style={{ position: 'relative', height: 220 }}>
                   <Image src={img} alt={t.name} fill sizes="(max-width: 768px) 100vw, 33vw" style={{ objectFit: 'cover' }} />
                   {badge && <div style={{ position: 'absolute', top: 14, left: 14, background: '#C4924A', color: '#fff', padding: '5px 12px', borderRadius: 999, font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{badge}</div>}
@@ -76,6 +95,14 @@ export default function TreatmentsSection({ treatments = [] }) {
           </Link>
         </div>
       </div>
+
+      {/* Fixed column counts (rather than auto-fit) so any admin-chosen count
+          wraps predictably — 3 per row is the sweet spot for 3/6/9 treatments. */}
+      <style>{`
+        .treatments-grid { grid-template-columns: repeat(3, 1fr); }
+        @media (max-width: 900px) { .treatments-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 560px) { .treatments-grid { grid-template-columns: 1fr; } }
+      `}</style>
     </section>
   )
 }
