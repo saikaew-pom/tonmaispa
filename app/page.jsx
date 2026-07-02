@@ -49,7 +49,7 @@ async function getData() {
       .select('id, cloudinary_url, alt_text, category')
       .eq('featured', true)
       .order('sort_order')
-      .limit(9),
+      .limit(48),
   ])
 
   const settings = Object.fromEntries(
