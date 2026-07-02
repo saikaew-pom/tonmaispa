@@ -28,10 +28,11 @@ export default function GalleryLightbox({ photos, activeIndex, onClose, onNaviga
   }, [goNext, goPrev, onClose])
 
   useEffect(() => {
+    if (activeIndex < 0) return // not open — leave scrolling alone
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = prevOverflow }
-  }, [])
+  }, [activeIndex])
 
   if (activeIndex < 0) return null
   const photo = photos[activeIndex]
