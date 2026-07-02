@@ -23,7 +23,10 @@ const LOCAL_GALLERY = [
 ]
 
 export default function GallerySection({ gallery = [] }) {
-  const photos = gallery.length >= 9
+  // Real photos uploaded via the dashboard always take priority, no matter
+  // how few there are. The local placeholder set only shows until the first
+  // real upload exists.
+  const photos = gallery.length > 0
     ? gallery.map(p => ({ src: p.cloudinary_url, alt: p.alt_text ?? 'Ton Mai Spa photo' }))
     : LOCAL_GALLERY
 
