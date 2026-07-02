@@ -20,13 +20,12 @@ export default async function sitemap() {
     .select('slug, updated_at')
     .eq('status', 'published')
 
-  // Homepage, spa-menu, restaurant, and book all live under /[lang]/ now —
-  // privacy/terms haven't migrated yet (later phase) and stay unprefixed.
-  const localizedPages = ['', '/spa-menu', '/restaurant', '/book']
+  // All customer-facing pages now live under /[lang]/.
+  const localizedPages = ['', '/spa-menu', '/restaurant', '/book', '/privacy', '/terms']
   const staticPages = LOCALES.flatMap(lang =>
     localizedPages.map(page => ({
       url:             `${BASE}/${lang}${page}`,
-      priority:        page === '' ? 1.0 : 0.9,
+      priority:        page === '' ? 1.0 : page === '/privacy' || page === '/terms' ? 0.3 : 0.9,
       changeFrequency: page === '' || page === '/book' ? 'weekly' : 'monthly',
     }))
   )

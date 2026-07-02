@@ -1,9 +1,11 @@
 // One-time script — run manually (`node scripts/generate-dictionaries.mjs`)
-// whenever lib/i18n/dictionaries/en.json changes. Translates the whole
-// dictionary via MiniMax in one call per locale and writes the result.
-// Not run at request time.
+// whenever lib/i18n/dictionaries/en.json changes. Translates each top-level
+// section of the dictionary in its own MiniMax call (rather than the whole
+// file at once) since the combined dictionary is large enough that a single
+// call risks the model truncating its JSON output mid-array. Writes the
+// merged result per locale. Not run at request time.
 import Anthropic from '@anthropic-ai/sdk'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
 
@@ -21,22 +23,46 @@ if (!apiKey) {
 const client = new Anthropic({ apiKey, baseURL: 'https://api.minimax.io/anthropic' })
 const en = JSON.parse(readFileSync(path.join(DICT_DIR, 'en.json'), 'utf-8'))
 
-for (const [locale, localeName] of Object.entries(LOCALE_NAMES)) {
-  console.log(`Translating dictionary to ${localeName}...`)
+function extractJson(text) {
+  const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
+  if (!match) return null
+  try { return JSON.parse(match[0]) } catch { return null }
+}
+
+async function translateSection(sectionKey, sectionValue, localeName) {
   const resp = await client.messages.create({
     model: 'MiniMax-M3',
-    max_tokens: 4000,
-    system: `Translate every string value in this JSON object from English to ${localeName}. This is UI copy for an upscale, calm garden spa in Phuket, Thailand — preserve that tone, keep it concise (these are nav labels/buttons, not prose). Keep "Ton Mai Spa" untranslated. Return ONLY a valid JSON object with the exact same structure and keys, translated values, no other text.`,
-    messages: [{ role: 'user', content: JSON.stringify(en, null, 2) }],
+    max_tokens: 8000,
+    system: `Translate every string value in this JSON from English to ${localeName}. This is copy for an upscale, calm garden spa and restaurant in Phuket, Thailand — preserve that tone. Translate EVERY value, including short single words (e.g. "Breakfast", "Drinks") — don't leave a value in English just because it seems internationally understood. The only exception: keep the proper noun "Ton Mai Spa" untranslated. Return ONLY the translated JSON with the exact same structure and keys, no other text.`,
+    messages: [{ role: 'user', content: JSON.stringify(sectionValue, null, 2) }],
   })
   const text = resp.content?.[0]?.text ?? ''
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) {
-    console.error(`  Failed to parse response for ${locale}:`, text.slice(0, 200))
-    continue
+  const translated = extractJson(text)
+  if (!translated) {
+    console.error(`    Failed to parse response for section "${sectionKey}":`, text.slice(0, 300))
+    return sectionValue // fall back to English for this section rather than losing it
   }
-  const translated = JSON.parse(match[0])
+  return translated
+}
+
+for (const [locale, localeName] of Object.entries(LOCALE_NAMES)) {
+  console.log(`Translating dictionary to ${localeName}...`)
   const outPath = path.join(DICT_DIR, `${locale}.json`)
-  writeFileSync(outPath, JSON.stringify(translated, null, 2) + '\n')
+  // Resume-friendly: if a partial file exists from a prior failed run, keep
+  // whatever sections it already has and only (re)translate missing ones —
+  // avoids re-spending API calls on sections that already succeeded.
+  const existing = existsSync(outPath) ? JSON.parse(readFileSync(outPath, 'utf-8')) : {}
+  const result = { ...existing }
+
+  for (const [sectionKey, sectionValue] of Object.entries(en)) {
+    if (result[sectionKey]) {
+      console.log(`  Skipping "${sectionKey}" (already translated)`)
+      continue
+    }
+    console.log(`  Translating section "${sectionKey}"...`)
+    result[sectionKey] = await translateSection(sectionKey, sectionValue, localeName)
+    // Write after every section so a crash partway through doesn't lose progress.
+    writeFileSync(outPath, JSON.stringify(result, null, 2) + '\n')
+  }
   console.log(`  Wrote ${outPath}`)
 }

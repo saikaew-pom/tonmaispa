@@ -2,13 +2,11 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse }           from 'next/server'
 
 const LOCALES = ['en', 'ru', 'zh', 'th']
-// Paths that stay outside the /[lang]/ tree — dashboard, API, auth flows,
-// and anything that looks like a static file (has a dot in the last segment).
-// privacy/terms haven't migrated yet (later phase) and stay at their old
-// unprefixed, English-only paths.
+// Paths that stay outside the /[lang]/ tree — dashboard, API, and auth
+// flows — plus anything that looks like a static file (has a dot in the
+// last segment).
 const UNLOCALIZED_PREFIXES = [
   '/dashboard', '/api', '/login', '/forgot-password', '/reset-password', '/auth',
-  '/privacy', '/terms',
 ]
 
 function isLocalized(pathname) {

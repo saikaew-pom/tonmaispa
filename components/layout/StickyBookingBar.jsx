@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { t } from '@/lib/i18n/t'
 
-export default function StickyBookingBar({ settings = {} }) {
+export default function StickyBookingBar({ settings = {}, dict = {} }) {
   const [visible, setVisible] = useState(false)
   const wa   = settings['settings.whatsapp_number'] ?? '66631175211'
   const waMsg = encodeURIComponent("Hi, I'd like to book at Ton Mai Spa")
@@ -30,7 +31,7 @@ export default function StickyBookingBar({ settings = {} }) {
           style={{ flex: 1, background: '#3B5249', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 48, borderRadius: 2, font: '600 11px Inter,sans-serif', letterSpacing: '2px', textTransform: 'uppercase' }}
           onClick={(e) => { /* GA4 event */ if (window.gtag) window.gtag('event','book_now_click',{method:'sticky_bar'}) }}
         >
-          Book Now
+          {t(dict, 'home.hero.bookNow')}
         </a>
         <a
           href={`https://wa.me/${wa}?text=${waMsg}`}

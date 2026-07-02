@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import GalleryLightbox from '@/components/ui/GalleryLightbox'
+import { t } from '@/lib/i18n/t'
 
 const LOCAL_GALLERY = [
   { src: '/assets/outdoor-massage.jpg',  alt: 'Outdoor Thai massage sala in the garden' },
@@ -26,12 +27,12 @@ const DESKTOP_COLUMNS  = 4
 const DESKTOP_PAGE_SIZE = 16 // 4x4
 const MOBILE_PAGE_SIZE  = 10 // stacked
 
-export default function GallerySection({ gallery = [] }) {
+export default function GallerySection({ gallery = [], dict = {} }) {
   // Real photos uploaded via the dashboard always take priority, no matter
   // how few there are. The local placeholder set only shows until the first
   // real upload exists.
   const photos = gallery.length > 0
-    ? gallery.map(p => ({ src: p.cloudinary_url, alt: p.alt_text ?? 'Ton Mai Spa photo' }))
+    ? gallery.map(p => ({ src: p.cloudinary_url, alt: p.alt_text ?? t(dict, 'home.gallery.defaultAlt') }))
     : LOCAL_GALLERY
 
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -57,9 +58,9 @@ export default function GallerySection({ gallery = [] }) {
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         <div data-reveal style={{ opacity: 0, transform: 'translateY(24px)', transition: 'opacity .8s ease, transform .8s ease', textAlign: 'center', marginBottom: 'clamp(32px,4vw,52px)' }}>
-          <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#C4924A' }}>The Garden, by Day &amp; Night</div>
+          <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#C4924A' }}>{t(dict, 'home.gallery.eyebrow')}</div>
           <h2 style={{ font: '400 clamp(30px,4.5vw,52px)/1.08 Cormorant Garamond,serif', color: '#1C1917', margin: '12px 0 0' }}>
-            A glimpse of Ton Mai
+            {t(dict, 'home.gallery.title')}
           </h2>
         </div>
 
@@ -124,7 +125,7 @@ export default function GallerySection({ gallery = [] }) {
           <a href="https://www.instagram.com/tonmaispa" target="_blank" rel="noopener noreferrer"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '600 11px Inter,sans-serif', letterSpacing: '2.5px', textTransform: 'uppercase', color: '#3B5249', borderBottom: '1.5px solid #C4924A', paddingBottom: 6 }}
             onClick={() => { if (window.gtag) window.gtag('event','instagram_click',{source:'gallery'}) }}>
-            Follow on Instagram →
+            {t(dict, 'home.gallery.followInstagram')}
           </a>
         </div>
       </div>

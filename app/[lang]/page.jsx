@@ -118,19 +118,19 @@ export default async function HomePage({ params }) {
       <Nav lang={lang} dict={dict} />
 
       <main id="top">
-        <HeroSection settings={settings} />
-        <AboutSection />
+        <HeroSection settings={settings} dict={dict} />
+        <AboutSection dict={dict} />
         <TreatmentsSection treatments={treatments} settings={settings} lang={lang} />
-        <ThermoSection />
-        <FacilitiesSection />
-        <PricingSection settings={settings} />
-        <GallerySection gallery={gallery} />
-        <ReviewsSection settings={settings} />
-        <ContactSection settings={settings} />
+        <ThermoSection dict={dict} />
+        <FacilitiesSection dict={dict} />
+        <PricingSection settings={settings} dict={dict} />
+        <GallerySection gallery={gallery} dict={dict} />
+        <ReviewsSection settings={settings} dict={dict} />
+        <ContactSection settings={settings} dict={dict} />
       </main>
 
       <Footer settings={settings} lang={lang} dict={dict} />
-      <StickyBookingBar settings={settings} />
+      <StickyBookingBar settings={settings} dict={dict} />
     </>
   )
 }

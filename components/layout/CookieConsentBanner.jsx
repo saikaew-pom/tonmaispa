@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { getStoredConsent, saveConsent, OPEN_CONSENT_EVENT } from '@/lib/consent'
 
 export default function CookieConsentBanner() {
+  const pathname = usePathname()
+  const lang = ['en', 'ru', 'zh', 'th'].includes(pathname.split('/')[1]) ? pathname.split('/')[1] : 'en'
   const [visible, setVisible]   = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [analytics, setAnalytics] = useState(true) // pre-checked in the customize panel; nothing is set until they save
@@ -40,7 +43,7 @@ export default function CookieConsentBanner() {
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20, justifyContent: 'space-between' }}>
             <p style={{ font: '400 13px/1.65 Inter,sans-serif', color: 'rgba(250,246,240,0.85)', margin: 0, maxWidth: 620 }}>
               We use essential cookies to run this site, and — only with your permission — analytics cookies to understand how visitors use it.
-              See our <Link href="/privacy" style={{ color: '#D9AE72', textDecoration: 'underline' }}>Privacy Policy</Link> for details.
+              See our <Link href={`/${lang}/privacy`} style={{ color: '#D9AE72', textDecoration: 'underline' }}>Privacy Policy</Link> for details.
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button onClick={() => setExpanded(true)} disabled={saving} style={btnGhost}>Customize</button>
