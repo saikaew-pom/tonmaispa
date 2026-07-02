@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -31,7 +32,7 @@ export default function AvailabilityClient({ rules: initRules, blocks: initBlock
           {engineEnabled
             ? 'Guests can book live time slots online. The rules below control which slots are offered.'
             : 'The public site currently shows the simple WhatsApp enquiry form. These rules take effect when you turn the engine on in '}
-          {!engineEnabled && <a href="/dashboard/settings" style={{ color: '#3B5249', textDecoration: 'underline' }}>Settings</a>}
+          {!engineEnabled && <Link href="/dashboard/settings" style={{ color: '#3B5249', textDecoration: 'underline' }}>Settings</Link>}
           {!engineEnabled && '.'}
         </div>
       </div>

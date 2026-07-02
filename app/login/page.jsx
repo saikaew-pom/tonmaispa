@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 function LoginForm() {
@@ -83,9 +84,9 @@ function LoginForm() {
           </form>
 
           <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-            <a href="/forgot-password" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+            <Link href="/forgot-password" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
               Forgot password?
-            </a>
+            </Link>
           </div>
         </div>
       </div>

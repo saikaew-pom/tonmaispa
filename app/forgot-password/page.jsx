@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 export default function ForgotPasswordPage() {
@@ -41,7 +42,7 @@ export default function ForgotPasswordPage() {
             </form>
           )}
           <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-            <a href="/login" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Back to login</a>
+            <Link href="/login" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Back to login</Link>
           </div>
         </div>
       </div>
