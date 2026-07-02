@@ -1,13 +1,16 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { t } from '@/lib/i18n/t'
 import { LOCALES } from '@/lib/i18n/get-dictionary'
+
+// Short codes for the switcher — not translated strings, so no dictionary
+// lookup needed here.
+const LOCALE_CODES = { en: 'US', ru: 'RU', zh: 'CH', th: 'TH' }
 
 // Swaps the /[lang]/ segment of the current path, keeping the visitor on
 // the same page. Only used on pages that live under /[lang]/ — Nav itself
 // still links out to not-yet-localized pages (spa-menu, restaurant, book).
-export default function LanguageSwitcher({ lang, dict = {} }) {
+export default function LanguageSwitcher({ lang }) {
   const pathname = usePathname()
 
   const hrefFor = (target) => {
@@ -26,7 +29,7 @@ export default function LanguageSwitcher({ lang, dict = {} }) {
       }}
     >
       {LOCALES.map(l => (
-        <option key={l} value={l}>{t(dict, `language.${l}`)}</option>
+        <option key={l} value={l}>{LOCALE_CODES[l] ?? l.toUpperCase()}</option>
       ))}
     </select>
   )
