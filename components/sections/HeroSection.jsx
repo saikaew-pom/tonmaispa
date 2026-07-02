@@ -20,12 +20,19 @@ export default function HeroSection({ settings = {} }) {
   const dayPass     = settings['settings.day_pass_price']      ?? '200'
 
   const [slideIdx, setSlideIdx] = useState(0)
+  // Only the current slide + the one queued to appear next are ever mounted —
+  // loading all 8 full-size hero photos up front tanked mobile LCP.
+  const [loadedIndices, setLoadedIndices] = useState(() => new Set([0, 1 % SLIDES.length]))
   const timerRef = useRef(null)
 
   const startTimer = () => {
     clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
-      setSlideIdx(i => (i + 1) % SLIDES.length)
+      setSlideIdx(i => {
+        const next = (i + 1) % SLIDES.length
+        setLoadedIndices(prev => new Set(prev).add(next).add((next + 1) % SLIDES.length))
+        return next
+      })
     }, 6000)
   }
 
@@ -36,6 +43,7 @@ export default function HeroSection({ settings = {} }) {
 
   const goToSlide = (i) => {
     setSlideIdx(i)
+    setLoadedIndices(prev => new Set(prev).add(i).add((i + 1) % SLIDES.length))
     startTimer()
   }
 
@@ -44,8 +52,10 @@ export default function HeroSection({ settings = {} }) {
       position: 'relative', minHeight: 'clamp(680px,98svh,1000px)',
       display: 'flex', alignItems: 'flex-end', overflow: 'hidden',
     }}>
-      {/* Cross-fading hero slideshow */}
-      {SLIDES.map((slide, i) => (
+      {/* Cross-fading hero slideshow — only mount slides that have been
+          reached or are queued next, so the browser never fetches all 8
+          full-size photos on initial load. */}
+      {SLIDES.map((slide, i) => loadedIndices.has(i) && (
         <Image
           key={slide.src}
           src={slide.src}
