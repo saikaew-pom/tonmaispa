@@ -181,9 +181,15 @@ function ShiftCalendar({ therapistId }) {
   const [editDate, setEditDate] = useState(null)
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('18:00')
+  const [splitShift, setSplitShift] = useState(false)
   const [breakStart, setBreakStart] = useState('')
   const [breakEnd, setBreakEnd] = useState('')
   const [busy, setBusy] = useState(false)
+  // Multi-select: pick several dates, then apply one shift to all of them
+  // at once instead of clicking through day-by-day.
+  const [multiMode, setMultiMode] = useState(false)
+  const [selectedDates, setSelectedDates] = useState(new Set())
+  const [bulkMsg, setBulkMsg] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -206,22 +212,39 @@ function ShiftCalendar({ therapistId }) {
     setViewM(m); setViewY(y); setEditDate(null)
   }
 
+  const resetFields = (existing) => {
+    setStartTime(existing ? existing.start_time.slice(0, 5) : '09:00')
+    setEndTime(existing ? existing.end_time.slice(0, 5) : '18:00')
+    const hasBreak = !!(existing?.break_start && existing?.break_end)
+    setSplitShift(hasBreak)
+    setBreakStart(hasBreak ? existing.break_start.slice(0, 5) : '')
+    setBreakEnd(hasBreak ? existing.break_end.slice(0, 5) : '')
+  }
+
   const openDay = (day) => {
     const date = ymd(viewY, viewM, day)
     if (date < today) return
+
+    if (multiMode) {
+      setSelectedDates(prev => {
+        const next = new Set(prev)
+        next.has(date) ? next.delete(date) : next.add(date)
+        return next
+      })
+      setBulkMsg('')
+      resetFields(null)
+      return
+    }
+
     setEditDate(date)
-    const existing = shiftByDate[date]
-    setStartTime(existing ? existing.start_time.slice(0, 5) : '09:00')
-    setEndTime(existing ? existing.end_time.slice(0, 5) : '18:00')
-    setBreakStart(existing?.break_start ? existing.break_start.slice(0, 5) : '')
-    setBreakEnd(existing?.break_end ? existing.break_end.slice(0, 5) : '')
+    resetFields(shiftByDate[date])
   }
 
   const saveShift = async () => {
     setBusy(true)
     const res = await fetch(`/api/admin/therapists/${therapistId}/shifts`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: editDate, start_time: startTime, end_time: endTime, break_start: breakStart || null, break_end: breakEnd || null }),
+      body: JSON.stringify({ date: editDate, start_time: startTime, end_time: endTime, break_start: splitShift ? breakStart : null, break_end: splitShift ? breakEnd : null }),
     })
     setBusy(false)
     if (res.ok) {
@@ -241,12 +264,84 @@ function ShiftCalendar({ therapistId }) {
     }
   }
 
+  const applyBulk = async () => {
+    if (!selectedDates.size) return
+    setBusy(true)
+    setBulkMsg('')
+    const res = await fetch(`/api/admin/therapists/${therapistId}/shifts/bulk`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dates: [...selectedDates], start_time: startTime, end_time: endTime,
+        break_start: splitShift ? breakStart : null, break_end: splitShift ? breakEnd : null,
+      }),
+    })
+    setBusy(false)
+    if (res.ok) {
+      const { shifts: saved } = await res.json()
+      const savedDates = new Set(saved.map(s => s.date))
+      setShifts(ss => [...ss.filter(s => !savedDates.has(s.date)), ...saved])
+      setBulkMsg(`Applied to ${saved.length} day${saved.length === 1 ? '' : 's'} ✓`)
+      setSelectedDates(new Set())
+    } else {
+      setBulkMsg('Could not save — try again')
+    }
+  }
+
+  const exitMultiMode = () => {
+    setMultiMode(false)
+    setSelectedDates(new Set())
+    setBulkMsg('')
+  }
+
+  const enterMultiMode = () => {
+    setMultiMode(true)
+    setEditDate(null)
+  }
+
+  const scheduleFields = (
+    <>
+      <div>
+        <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Start</label>
+        <input className="input" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+      </div>
+      <div>
+        <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>End</label>
+        <input className="input" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid #F0ECE6', paddingTop: 10, marginTop: 2, font: '500 12px Inter,sans-serif', color: '#1C1917', cursor: 'pointer' }}>
+        <input type="checkbox" checked={splitShift} onChange={e => setSplitShift(e.target.checked)} />
+        Split shift (add a break)
+      </label>
+      {splitShift && (
+        <>
+          <div>
+            <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Break start</label>
+            <input className="input" type="time" value={breakStart} onChange={e => setBreakStart(e.target.value)} />
+          </div>
+          <div>
+            <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Break end</label>
+            <input className="input" type="time" value={breakEnd} onChange={e => setBreakEnd(e.target.value)} />
+          </div>
+        </>
+      )}
+    </>
+  )
+
   return (
     <div style={card}>
-      <h2 style={sectionTitle}>Working schedule</h2>
-      <p style={{ font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663', margin: '-6px 0 16px' }}>
-        Click a date to set this therapist&apos;s exact working hours, or clear it to mark them off that day. No shift set = not working.
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={sectionTitle}>Working schedule</h2>
+          <p style={{ font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663', margin: '-6px 0 16px' }}>
+            {multiMode
+              ? 'Click dates to select them, set hours on the right, then apply to all selected days at once.'
+              : "Click a date to set this therapist's exact working hours, or clear it to mark them off that day. No shift set = not working."}
+          </p>
+        </div>
+        <button onClick={multiMode ? exitMultiMode : enterMultiMode} style={multiMode ? btnPrimary : btnGhost}>
+          {multiMode ? `Exit multi-select (${selectedDates.size} selected)` : 'Select multiple days'}
+        </button>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 20 }}>
         <div style={{ border: '1px solid #F0ECE6', borderRadius: 8, padding: 14, opacity: loading ? 0.5 : 1 }}>
@@ -262,7 +357,7 @@ function ShiftCalendar({ therapistId }) {
               const date = ymd(viewY, viewM, day)
               const isPast = date < today
               const shift = shiftByDate[date]
-              const isSelected = editDate === date
+              const isSelected = multiMode ? selectedDates.has(date) : editDate === date
               return (
                 <button key={i} onClick={() => openDay(day)} disabled={isPast}
                   style={{
@@ -274,33 +369,29 @@ function ShiftCalendar({ therapistId }) {
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
                   }}>
                   <span>{day}</span>
-                  {shift && <span style={{ font: '400 8px Inter,sans-serif', color: '#3B5249' }}>{shift.start_time.slice(0,5)}</span>}
+                  {shift && <span style={{ font: '400 8px Inter,sans-serif', color: '#3B5249' }}>{shift.start_time.slice(0,5)}{shift.break_start ? ' ⁚' : ''}</span>}
                 </button>
               )
             })}
           </div>
         </div>
 
-        {editDate ? (
+        {multiMode ? (
+          <div style={{ border: '1px solid #F0ECE6', borderRadius: 8, padding: 16 }}>
+            <div style={{ font: '600 12px Inter,sans-serif', color: '#1C1917', marginBottom: 12 }}>{selectedDates.size} day{selectedDates.size === 1 ? '' : 's'} selected</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {scheduleFields}
+              <button onClick={applyBulk} disabled={busy || !selectedDates.size} style={{ ...btnPrimary, opacity: selectedDates.size ? 1 : 0.5 }}>
+                {busy ? 'Applying…' : `Apply to ${selectedDates.size} day${selectedDates.size === 1 ? '' : 's'}`}
+              </button>
+              {bulkMsg && <p style={{ font: '400 12px Inter,sans-serif', color: bulkMsg.includes('✓') ? '#3B5249' : '#DC2626', margin: 0 }}>{bulkMsg}</p>}
+            </div>
+          </div>
+        ) : editDate ? (
           <div style={{ border: '1px solid #F0ECE6', borderRadius: 8, padding: 16 }}>
             <div style={{ font: '600 12px Inter,sans-serif', color: '#1C1917', marginBottom: 12 }}>{editDate}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Start</label>
-                <input className="input" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>End</label>
-                <input className="input" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
-              </div>
-              <div style={{ borderTop: '1px solid #F0ECE6', paddingTop: 10, marginTop: 2 }}>
-                <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Break start (optional)</label>
-                <input className="input" type="time" value={breakStart} onChange={e => setBreakStart(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Break end (optional)</label>
-                <input className="input" type="time" value={breakEnd} onChange={e => setBreakEnd(e.target.value)} />
-              </div>
+              {scheduleFields}
               <button onClick={saveShift} disabled={busy} style={btnPrimary}>{busy ? 'Saving…' : 'Save shift'}</button>
               {shiftByDate[editDate] && <button onClick={clearShift} disabled={busy} style={btnDanger}>Clear (day off)</button>}
               <button onClick={() => setEditDate(null)} style={btnGhost}>Cancel</button>
