@@ -17,9 +17,21 @@ export default function SimpleEnquiryForm() {
   const widgetId     = useRef(null)
   const cbRef        = useRef(null)
   cbRef.current = setToken
+  const [nearViewport, setNearViewport] = useState(false)
+
+  // Cloudflare's Turnstile script + iframe are heavy — only fetch them once
+  // the form is about to scroll into view, not on every page load.
+  useEffect(() => {
+    if (!containerRef.current) return
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setNearViewport(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(containerRef.current)
+    return () => io.disconnect()
+  }, [])
 
   useEffect(() => {
-    if (!SITEKEY) return
+    if (!SITEKEY || !nearViewport) return
     const render = () => {
       if (window.turnstile && containerRef.current && widgetId.current == null) {
         widgetId.current = window.turnstile.render(containerRef.current, {
@@ -43,7 +55,7 @@ export default function SimpleEnquiryForm() {
         widgetId.current = null
       }
     }
-  }, [])
+  }, [nearViewport])
 
   async function handleSubmit(e) {
     e.preventDefault()

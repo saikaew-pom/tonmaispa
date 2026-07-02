@@ -12,9 +12,22 @@ function TurnstileWidget({ onToken }) {
   const widgetId     = useRef(null)
   const cbRef        = useRef(onToken)
   cbRef.current      = onToken
+  const [nearViewport, setNearViewport] = useState(false)
+
+  // Cloudflare's Turnstile script + iframe are heavy — only fetch them once
+  // this widget is about to scroll into view, not the moment the booking
+  // engine mounts (which happens on every homepage load).
+  useEffect(() => {
+    if (!containerRef.current) return
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setNearViewport(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(containerRef.current)
+    return () => io.disconnect()
+  }, [])
 
   useEffect(() => {
-    if (!SITEKEY) return
+    if (!SITEKEY || !nearViewport) return
     const render = () => {
       if (window.turnstile && containerRef.current && widgetId.current == null) {
         widgetId.current = window.turnstile.render(containerRef.current, {
@@ -38,7 +51,7 @@ function TurnstileWidget({ onToken }) {
         widgetId.current = null
       }
     }
-  }, [])
+  }, [nearViewport])
 
   if (!SITEKEY) return null
   return <div ref={containerRef} style={{ marginTop: 4 }} />
