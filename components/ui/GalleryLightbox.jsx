@@ -55,19 +55,19 @@ export default function GalleryLightbox({ photos, activeIndex, onClose, onNaviga
         </div>
       </div>
 
-      {/* Nav row */}
-      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 20, maxWidth: '100vw', width: '100%', justifyContent: 'center' }}>
-        <button onClick={goPrev} aria-label="Previous photo" style={btnStyle}>←</button>
-        <div style={{ position: 'relative', width: 'min(88vw, 1100px)', height: '76vh' }}>
+      {/* Nav row — arrows float over the image rather than sharing flex space with it, so the photo keeps nearly the full viewport width on mobile */}
+      <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ position: 'relative', width: 'min(94vw, 1100px)', height: '76vh' }}>
           <Image
             src={photo.src}
             alt={photo.alt}
             fill
-            sizes="88vw"
+            sizes="94vw"
             style={{ objectFit: 'contain', borderRadius: 4 }}
           />
         </div>
-        <button onClick={goNext} aria-label="Next photo" style={btnStyle}>→</button>
+        <button onClick={goPrev} aria-label="Previous photo" style={{ ...btnStyle, position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)' }}>←</button>
+        <button onClick={goNext} aria-label="Next photo" style={{ ...btnStyle, position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}>→</button>
       </div>
 
       {/* Caption + dot strip */}
