@@ -4,7 +4,7 @@
 // and free at that time AND a treatment room is free — see lib/scheduling.js.
 
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { getQualifiedTherapistIds, getFreeTherapistIds, getAvailableRoomCount } from '@/lib/scheduling'
+import { getQualifiedTherapistIds, getFreeTherapistIds, getAvailableRoomCount, getRequiredTherapistCount } from '@/lib/scheduling'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,7 +90,10 @@ export async function GET(req) {
   const upcoming = candidates.filter(s => !isToday || timeToMin(s) >= bufferMin)
   if (!upcoming.length) return Response.json({ slots: [] })
 
-  const qualified = await getQualifiedTherapistIds(admin, treatmentId)
+  const [qualified, required] = await Promise.all([
+    getQualifiedTherapistIds(admin, treatmentId),
+    getRequiredTherapistCount(admin, treatmentId),
+  ])
   if (!qualified.length) return Response.json({ slots: [] }) // no one can perform this treatment
 
   const slots = await Promise.all(upcoming.map(async (time) => {
@@ -99,7 +102,10 @@ export async function GET(req) {
       getFreeTherapistIds(admin, { therapistIds: qualified, date, startTime: time, endTime }),
       getAvailableRoomCount(admin, { date, startTime: time, endTime }),
     ])
-    const spotsLeft = Math.min(freeTherapists.length, roomsAvailable)
+    // How many *bookings* of this treatment could actually be made — each
+    // one consumes `required` therapists at once (e.g. 2 for a couple's
+    // treatment), not just 1.
+    const spotsLeft = Math.min(Math.floor(freeTherapists.length / required), roomsAvailable)
     return { time, available: spotsLeft > 0, spotsLeft: Math.max(0, spotsLeft) }
   }))
 

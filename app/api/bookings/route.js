@@ -6,7 +6,7 @@ import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
 import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
-import { findAvailableTherapist } from '@/lib/scheduling'
+import { findAvailableTherapists } from '@/lib/scheduling'
 
 function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
@@ -32,13 +32,14 @@ export async function POST(req) {
   const admin = createSupabaseAdminClient()
 
   // Re-check slot availability (prevents race condition from optimistic UI)
-  // and find a qualified, free therapist for this exact window — a slot
-  // isn't real availability unless someone can actually staff it.
+  // and find enough qualified, free therapists for this exact window — some
+  // treatments (e.g. a couple's massage) need 2 working simultaneously, not
+  // just 1. A slot isn't real availability unless it can actually be staffed.
   const endTime = addMinutes(d.time_slot, d.duration)
-  const therapistId = await findAvailableTherapist(admin, {
+  const therapistIds = await findAvailableTherapists(admin, {
     treatmentId: d.treatment_id, date: d.date, startTime: d.time_slot, endTime,
   })
-  if (!therapistId) {
+  if (!therapistIds) {
     return Response.json({ error: 'This slot just filled up. Please choose another time.' }, { status: 409 })
   }
 
@@ -59,7 +60,8 @@ export async function POST(req) {
       guest_email:  d.guest_email || null,
       guest_phone:  d.guest_phone,
       treatment_id: d.treatment_id,
-      therapist_id: therapistId,
+      therapist_id: therapistIds[0],
+      secondary_therapist_id: therapistIds[1] ?? null,
       date:         d.date,
       time_slot:    d.time_slot,
       duration:     d.duration,

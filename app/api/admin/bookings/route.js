@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
-import { findAvailableTherapist } from '@/lib/scheduling'
+import { findAvailableTherapists } from '@/lib/scheduling'
 
 function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
@@ -25,9 +25,9 @@ export async function POST(req) {
     return Response.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const [{ data: treatment }, autoTherapistId] = await Promise.all([
+  const [{ data: treatment }, autoTherapistIds] = await Promise.all([
     auth.admin.from('spa_treatments').select('prices').eq('id', treatment_id).maybeSingle(),
-    therapist_id ? Promise.resolve(null) : findAvailableTherapist(auth.admin, {
+    therapist_id ? Promise.resolve(null) : findAvailableTherapists(auth.admin, {
       treatmentId: treatment_id, date, startTime: time_slot, endTime: addMinutes(time_slot, duration),
     }),
   ])
@@ -40,7 +40,8 @@ export async function POST(req) {
       guest_phone,
       guest_email:  guest_email || null,
       treatment_id,
-      therapist_id: therapist_id || autoTherapistId,
+      therapist_id: therapist_id || autoTherapistIds?.[0] || null,
+      secondary_therapist_id: therapist_id ? null : (autoTherapistIds?.[1] ?? null),
       date,
       time_slot,
       duration,
