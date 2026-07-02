@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { t } from '@/lib/i18n/t'
+import LanguageSwitcher from './LanguageSwitcher'
 
-export default function Nav() {
+export default function Nav({ lang = 'en', dict = {} }) {
   const [menuOpen, setMenuOpen]   = useState(false)
   const [scrolled, setScrolled]   = useState(false)
 
@@ -20,6 +23,9 @@ export default function Nav() {
 
   const close = () => setMenuOpen(false)
 
+  // spa-menu/restaurant/book haven't moved under /[lang]/ yet (later phase),
+  // so they stay unprefixed and English-only for now. Homepage anchors are
+  // prefixed so Nav works correctly once reused on other localized pages.
   return (
     <>
       {/* ── Fixed header ─────────────────────────────────────── */}
@@ -35,25 +41,26 @@ export default function Nav() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 clamp(18px,4vw,40px)',
         }}>
-          <a href="#top" aria-label="Ton Mai Spa home">
+          <a href={`/${lang}#top`} aria-label="Ton Mai Spa home">
             <Image src="/logo-white.png" alt="Ton Mai Spa" width={180} height={60} priority style={{ height: 46, width: 'auto', filter: 'brightness(0)' }} />
           </a>
 
           {/* Desktop links — hidden on small screens via CSS */}
           <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px,2vw,28px)' }}>
             {[
-              ['/spa-menu',   'Treatments'],
-              ['/restaurant', 'Restaurant'],
-              ['/#facilities','Facilities'],
-              ['/#pricing',   'Pricing'],
+              ['/spa-menu',           t(dict, 'nav.treatments')],
+              ['/restaurant',         t(dict, 'nav.restaurant')],
+              [`/${lang}#facilities`, t(dict, 'nav.facilities')],
+              [`/${lang}#pricing`,    t(dict, 'nav.pricing')],
             ].map(([href, label]) => (
               <a key={href} href={href} style={{ font: '500 12px Inter,sans-serif', letterSpacing: '0.5px', color: '#1C1917' }}>{label}</a>
             ))}
-            <a href="/book" onClick={() => { if (window.gtag) window.gtag('event','book_now_click',{method:'nav'}) }} style={{
+            <LanguageSwitcher lang={lang} dict={dict} />
+            <Link href="/book" onClick={() => { if (window.gtag) window.gtag('event','book_now_click',{method:'nav'}) }} style={{
               background: '#3B5249', color: '#fff',
               padding: '11px 22px', borderRadius: 2,
               font: '600 11px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase',
-            }}>Book Now</a>
+            }}>{t(dict, 'nav.bookNow')}</Link>
           </div>
 
           {/* Burger */}
@@ -85,12 +92,12 @@ export default function Nav() {
 
         <nav style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: 'clamp(20px,5vw,56px) clamp(18px,4vw,40px)', display: 'flex', flexDirection: 'column', gap: 'clamp(8px,2vw,18px)', flex: 1 }}>
           {[
-            ['/#about',      'Our Garden'],
-            ['/spa-menu',    'Treatments'],
-            ['/restaurant',  'Restaurant'],
-            ['/#facilities', 'Facilities'],
-            ['/#pricing',    'Pricing'],
-            ['/book',        'Book Now'],
+            [`/${lang}#about`,      t(dict, 'nav.ourGarden')],
+            ['/spa-menu',           t(dict, 'nav.treatments')],
+            ['/restaurant',         t(dict, 'nav.restaurant')],
+            [`/${lang}#facilities`, t(dict, 'nav.facilities')],
+            [`/${lang}#pricing`,    t(dict, 'nav.pricing')],
+            ['/book',               t(dict, 'nav.bookNow')],
           ].map(([href, label], i) => (
             <a key={href} href={href} onClick={() => { close(); if (i === 5 && window.gtag) window.gtag('event','book_now_click',{method:'mobile_menu'}) }} style={{
               font: `400 clamp(34px,7vw,60px) Cormorant Garamond,serif`,
@@ -104,7 +111,7 @@ export default function Nav() {
         </nav>
 
         <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 clamp(18px,4vw,40px) 40px' }}>
-          <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(250,246,240,0.5)' }}>Open daily · 9am – 11pm</div>
+          <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(250,246,240,0.5)' }}>{t(dict, 'nav.openHours')}</div>
           <div style={{ font: '400 15px Inter,sans-serif', color: 'rgba(250,246,240,0.85)', marginTop: 8 }}>+66 63 117 5211 · Rawai, Phuket</div>
         </div>
       </div>

@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "treatments": "Treatments",
+    "restaurant": "Restaurant",
+    "facilities": "Facilities",
+    "pricing": "Pricing",
+    "bookNow": "Book Now",
+    "ourGarden": "Our Garden",
+    "openHours": "Open daily · 9am – 11pm"
+  },
+  "footer": {
+    "tagline": "A tropical garden of Thai healing in Rawai, Phuket. Steam, sauna, cold plunge, pool & massage — open every day until late.",
+    "explore": "Explore",
+    "spaMenu": "Spa Menu",
+    "restaurant": "Restaurant",
+    "bookNow": "Book Now",
+    "facilities": "Facilities",
+    "pricing": "Pricing",
+    "visit": "Visit",
+    "connect": "Connect",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "line": "Line",
+    "privacy": "Privacy",
+    "terms": "Terms"
+  },
+  "language": {
+    "en": "English",
+    "ru": "Русский",
+    "zh": "中文",
+    "th": "ไทย"
+  }
+}

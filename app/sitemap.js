@@ -19,8 +19,13 @@ export default async function sitemap() {
     .select('slug, updated_at')
     .eq('status', 'published')
 
+  // Homepage now lives under /[lang]/ — spa-menu/restaurant/book haven't
+  // migrated yet (later phase) and stay at their unprefixed English URLs.
   const staticPages = [
-    { url: `${BASE}/`,           priority: 1.0, changeFrequency: 'weekly'  },
+    { url: `${BASE}/en`,         priority: 1.0, changeFrequency: 'weekly'  },
+    { url: `${BASE}/ru`,         priority: 0.9, changeFrequency: 'weekly'  },
+    { url: `${BASE}/zh`,         priority: 0.9, changeFrequency: 'weekly'  },
+    { url: `${BASE}/th`,         priority: 0.9, changeFrequency: 'weekly'  },
     { url: `${BASE}/spa-menu`,   priority: 0.9, changeFrequency: 'monthly' },
     { url: `${BASE}/restaurant`, priority: 0.8, changeFrequency: 'monthly' },
     { url: `${BASE}/book`,       priority: 0.9, changeFrequency: 'weekly'  },

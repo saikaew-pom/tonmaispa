@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "treatments": "ทรีทเมนท์",
+    "restaurant": "ร้านอาหาร",
+    "facilities": "สิ่งอำนวยความสะดวก",
+    "pricing": "ราคา",
+    "bookNow": "จองเลย",
+    "ourGarden": "สวนของเรา",
+    "openHours": "เปิดทุกวัน · 9.00 – 23.00 น."
+  },
+  "footer": {
+    "tagline": "สวนเมืองร้อนแห่งการบำบัดแบบไทยในราไวย์ ภูเก็ต สตีม ซาวน่า อ่างน้ำเย็น สระว่ายน้ำ และนวด — เปิดทุกวันจนถึงดึก",
+    "explore": "สำรวจ",
+    "spaMenu": "เมนูสปา",
+    "restaurant": "ร้านอาหาร",
+    "bookNow": "จองเลย",
+    "facilities": "สิ่งอำนวยความสะดวก",
+    "pricing": "ราคา",
+    "visit": "เยี่ยมชม",
+    "connect": "ติดต่อเรา",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "line": "Line",
+    "privacy": "ความเป็นส่วนตัว",
+    "terms": "ข้อกำหนด"
+  },
+  "language": {
+    "en": "English",
+    "ru": "Русский",
+    "zh": "中文",
+    "th": "ไทย"
+  }
+}

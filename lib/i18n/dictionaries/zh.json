@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "treatments": "疗程",
+    "restaurant": "餐厅",
+    "facilities": "设施",
+    "pricing": "价格",
+    "bookNow": "立即预订",
+    "ourGarden": "我们的花园",
+    "openHours": "每日开放 · 上午9点 – 晚上11点"
+  },
+  "footer": {
+    "tagline": "普吉岛拉威海滩的泰式疗愈热带花园。蒸汽、桑拿、冷水浴、泳池与按摩——每日营业至深夜。",
+    "explore": "探索",
+    "spaMenu": "水疗菜单",
+    "restaurant": "餐厅",
+    "bookNow": "立即预订",
+    "facilities": "设施",
+    "pricing": "价格",
+    "visit": "到访",
+    "connect": "联系",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "line": "Line",
+    "privacy": "隐私政策",
+    "terms": "服务条款"
+  },
+  "language": {
+    "en": "English",
+    "ru": "Русский",
+    "zh": "中文",
+    "th": "ไทย"
+  }
+}
