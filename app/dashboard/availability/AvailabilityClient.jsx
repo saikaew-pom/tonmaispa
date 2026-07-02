@@ -16,10 +16,10 @@ const btnPrimary = { background: '#3B5249', color: '#fff', border: 'none', borde
 const btnGhost = { background: 'none', border: '1px solid var(--color-border)', borderRadius: 4, padding: '6px 12px', font: '500 11px Inter,sans-serif', cursor: 'pointer' }
 const btnDanger = { background: 'none', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: 4, padding: '6px 12px', font: '500 11px Inter,sans-serif', cursor: 'pointer' }
 
-export default function AvailabilityClient({ rules: initRules, blocks: initBlocks, treatments, therapists: initTherapists, engineEnabled }) {
+export default function AvailabilityClient({ rules: initRules, blocks: initBlocks, treatments, therapists, rooms: initRooms, engineEnabled }) {
   const [rules, setRules] = useState(initRules.map(r => ({ ...r, first_slot: r.first_slot.slice(0, 5), last_slot: r.last_slot.slice(0, 5), day_of_week: r.day_of_week ?? [0, 1, 2, 3, 4, 5, 6] })))
   const [blocks, setBlocks] = useState(initBlocks)
-  const [therapists, setTherapists] = useState(initTherapists)
+  const [rooms, setRooms] = useState(initRooms)
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -39,7 +39,51 @@ export default function AvailabilityClient({ rules: initRules, blocks: initBlock
 
       <SlotRules rules={rules} setRules={setRules} treatments={treatments} />
       <BlockedDates blocks={blocks} setBlocks={setBlocks} therapists={therapists} />
-      <Therapists therapists={therapists} setTherapists={setTherapists} />
+      <RoomCapacity rooms={rooms} setRooms={setRooms} />
+
+      <div style={{ ...card, marginBottom: 0 }}>
+        <h2 style={sectionTitle}>Therapists</h2>
+        <p style={{ font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663', margin: '-6px 0 14px' }}>
+          Manage which treatments each therapist can perform and their working schedule on the dedicated Therapists page.
+        </p>
+        <Link href="/dashboard/therapists" style={btnPrimary}>Manage Therapists →</Link>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────── ROOM CAPACITY ─────────────────────── */
+function RoomCapacity({ rooms, setRooms }) {
+  const [savingDay, setSavingDay] = useState(null)
+
+  const save = async (day_of_week, room_count) => {
+    setSavingDay(day_of_week)
+    const res = await fetch('/api/admin/room-capacity', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ day_of_week, room_count }),
+    })
+    setSavingDay(null)
+    if (res.ok) setRooms(rs => rs.map(r => r.day_of_week === day_of_week ? { ...r, room_count } : r))
+  }
+
+  return (
+    <div style={card}>
+      <h2 style={sectionTitle}>Room Capacity</h2>
+      <p style={{ font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663', margin: '-6px 0 16px' }}>
+        How many treatment rooms are available on each day of the week. A slot is only bookable if a room is free, on top of therapist availability.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(90px,1fr))', gap: 10 }}>
+        {rooms.map(r => (
+          <div key={r.day_of_week}>
+            <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>{DOW[r.day_of_week]}</label>
+            <input className="input" type="number" min="0" value={r.room_count}
+              onChange={e => setRooms(rs => rs.map(x => x.day_of_week === r.day_of_week ? { ...x, room_count: Number(e.target.value) } : x))}
+              onBlur={e => save(r.day_of_week, Number(e.target.value))}
+              disabled={savingDay === r.day_of_week}
+              style={{ width: '100%' }} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -288,78 +332,3 @@ function BlockedDates({ blocks, setBlocks, therapists }) {
   )
 }
 
-/* ─────────────────────── THERAPISTS ─────────────────────── */
-function Therapists({ therapists, setTherapists }) {
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
-  const [specialties, setSpecialties] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  const create = async () => {
-    setSaving(true)
-    const res = await fetch('/api/admin/therapists', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, specialties: specialties.split(',').map(s => s.trim()).filter(Boolean), sort_order: therapists.length }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      const { therapist } = await res.json()
-      setTherapists(ts => [...ts, therapist])
-      setName(''); setSpecialties(''); setAdding(false)
-    }
-  }
-
-  const toggle = async (t) => {
-    const res = await fetch(`/api/admin/therapists/${t.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: !t.is_active }),
-    })
-    if (res.ok) setTherapists(ts => ts.map(x => x.id === t.id ? { ...x, is_active: !t.is_active } : x))
-  }
-
-  const del = async (id) => {
-    if (!confirm('Delete this therapist? Their blocked days will also be removed.')) return
-    const res = await fetch(`/api/admin/therapists/${id}`, { method: 'DELETE' })
-    if (res.ok) setTherapists(ts => ts.filter(t => t.id !== id))
-  }
-
-  return (
-    <div style={card}>
-      <h2 style={sectionTitle}>Therapists</h2>
-      <p style={{ font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663', margin: '-6px 0 16px' }}>
-        Optional. Add therapists to block individual days off above. Leave empty if you manage availability at the whole-spa level.
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {therapists.map(t => (
-          <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', border: '1px solid #F0ECE6', borderRadius: 6, opacity: t.is_active ? 1 : 0.55 }}>
-            <div>
-              <div style={{ font: '600 13px Inter,sans-serif' }}>{t.name}</div>
-              {t.specialties?.length > 0 && <div style={{ font: '400 12px Inter,sans-serif', color: '#9B9390', marginTop: 2 }}>{t.specialties.join(', ')}</div>}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => toggle(t)} style={btnGhost}>{t.is_active ? 'Active' : 'Inactive'}</button>
-              <button onClick={() => del(t.id)} style={btnDanger}>Delete</button>
-            </div>
-          </div>
-        ))}
-        {therapists.length === 0 && <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No therapists added.</p>}
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        {adding ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 420 }}>
-            <input className="input" placeholder="Therapist name" value={name} onChange={e => setName(e.target.value)} />
-            <input className="input" placeholder="Specialties (comma-separated, optional)" value={specialties} onChange={e => setSpecialties(e.target.value)} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={create} disabled={saving || !name} style={btnPrimary}>{saving ? 'Saving…' : 'Add therapist'}</button>
-              <button onClick={() => setAdding(false)} style={btnGhost}>Cancel</button>
-            </div>
-          </div>
-        ) : (
-          <button onClick={() => setAdding(true)} style={btnPrimary}>+ Add therapist</button>
-        )}
-      </div>
-    </div>
-  )
-}

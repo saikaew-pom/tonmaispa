@@ -6,6 +6,13 @@ import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
 import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
+import { findAvailableTherapist } from '@/lib/scheduling'
+
+function addMinutes(time, mins) {
+  const [h, m] = time.split(':').map(Number)
+  const total = h * 60 + m + mins
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
 
 export async function POST(req) {
   const rl = await checkRateLimit(req, 'booking', { limit: 5, window: 600 })
@@ -25,12 +32,13 @@ export async function POST(req) {
   const admin = createSupabaseAdminClient()
 
   // Re-check slot availability (prevents race condition from optimistic UI)
-  const [{ data: existingBookings }, { data: slotCfg }] = await Promise.all([
-    admin.from('bookings').select('id').eq('date', d.date).eq('time_slot', d.time_slot).in('status', ['pending','confirmed']),
-    admin.from('slot_settings').select('max_concurrent').is('treatment_id', null).eq('is_active', true).maybeSingle(),
-  ])
-  const maxConc = slotCfg?.max_concurrent ?? 3
-  if ((existingBookings?.length ?? 0) >= maxConc) {
+  // and find a qualified, free therapist for this exact window — a slot
+  // isn't real availability unless someone can actually staff it.
+  const endTime = addMinutes(d.time_slot, d.duration)
+  const therapistId = await findAvailableTherapist(admin, {
+    treatmentId: d.treatment_id, date: d.date, startTime: d.time_slot, endTime,
+  })
+  if (!therapistId) {
     return Response.json({ error: 'This slot just filled up. Please choose another time.' }, { status: 409 })
   }
 
@@ -51,7 +59,7 @@ export async function POST(req) {
       guest_email:  d.guest_email || null,
       guest_phone:  d.guest_phone,
       treatment_id: d.treatment_id,
-      therapist_id: d.therapist_id || null,
+      therapist_id: therapistId,
       date:         d.date,
       time_slot:    d.time_slot,
       duration:     d.duration,
