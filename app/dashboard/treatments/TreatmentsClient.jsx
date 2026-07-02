@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { TREATMENT_CATEGORIES } from '@/lib/display'
+import { resizeImageForUpload } from '@/lib/resize-image'
 
 const CATEGORIES = Object.keys(TREATMENT_CATEGORIES)
 const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true, photos: [], sort_order: 0 }
@@ -188,29 +189,47 @@ function EditForm({ treatment, onSave }) {
 // photos live right on the treatment row.
 function PhotoManager({ photos, onChange }) {
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState('')
+  const [progress, setProgress] = useState(null) // { done, total }
+  const [errors, setErrors] = useState([])       // [{ fileName, message }]
+
+  const uploadOne = async (file) => {
+    const resized = await resizeImageForUpload(file)
+    const formData = new FormData()
+    formData.append('file', resized)
+    formData.append('upload_preset', UPLOAD_PRESET)
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: formData })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error?.message || 'Upload failed')
+    return data.secure_url
+  }
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setError('')
-    if (!CLOUD_NAME || !UPLOAD_PRESET) { setError('Cloudinary is not configured.'); return }
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setErrors([])
+    if (!CLOUD_NAME || !UPLOAD_PRESET) { setErrors([{ fileName: '', message: 'Cloudinary is not configured.' }]); return }
 
     setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('upload_preset', UPLOAD_PRESET)
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: formData })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error?.message || 'Upload failed')
-      onChange([...photos, data.secure_url])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setUploading(false)
-      e.target.value = ''
+    setProgress({ done: 0, total: files.length })
+    const newErrors = []
+    let uploaded = [...photos]
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      try {
+        const url = await uploadOne(file)
+        uploaded = [...uploaded, url]
+        onChange(uploaded)
+      } catch (err) {
+        newErrors.push({ fileName: file.name, message: err.message })
+      }
+      setProgress({ done: i + 1, total: files.length })
     }
+
+    setErrors(newErrors)
+    setUploading(false)
+    setProgress(null)
+    e.target.value = ''
   }
 
   const removePhoto = (url) => onChange(photos.filter(p => p !== url))
@@ -233,10 +252,18 @@ function PhotoManager({ photos, onChange }) {
         </div>
       )}
       <label style={{ display: 'inline-block', background: '#fff', border: '1px solid var(--color-border)', borderRadius: 4, padding: '7px 14px', font: '500 11px Inter,sans-serif', cursor: 'pointer' }}>
-        {uploading ? 'Uploading…' : '+ Add Photo'}
-        <input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} style={{ display: 'none' }} />
+        {uploading ? `Uploading ${progress?.done ?? 0} of ${progress?.total ?? 0}…` : '+ Add Photos'}
+        <input type="file" accept="image/*" multiple onChange={handleUpload} disabled={uploading} style={{ display: 'none' }} />
       </label>
-      {error && <p style={{ color: '#DC2626', font: '400 12px Inter,sans-serif', marginTop: 6 }}>{error}</p>}
+      {errors.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          {errors.map((e, i) => (
+            <p key={i} style={{ color: '#DC2626', font: '400 12px Inter,sans-serif', margin: i === 0 ? 0 : '4px 0 0' }}>
+              {e.fileName ? <strong>{e.fileName}:</strong> : null} {e.message}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
