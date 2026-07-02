@@ -5,6 +5,14 @@ const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.tonmaispa.com'
 export default async function sitemap() {
   const admin = createSupabaseAdminClient()
 
+  // Every active treatment gets its own indexable page — added here
+  // automatically, so a new treatment created in the dashboard is in the
+  // sitemap on the very next crawl with no code changes needed.
+  const { data: treatments } = await admin
+    .from('spa_treatments')
+    .select('slug, created_at')
+    .eq('is_active', true)
+
   // Blog posts (Phase 2 — empty until then)
   const { data: posts } = await admin
     .from('blog_posts')
@@ -18,6 +26,13 @@ export default async function sitemap() {
     { url: `${BASE}/book`,       priority: 0.9, changeFrequency: 'weekly'  },
   ]
 
+  const treatmentPages = (treatments ?? []).map(t => ({
+    url:             `${BASE}/spa-menu/${t.slug}`,
+    lastModified:    t.created_at,
+    priority:        0.7,
+    changeFrequency: 'monthly',
+  }))
+
   const blogPages = (posts ?? []).map(p => ({
     url:             `${BASE}/blog/${p.slug}`,
     lastModified:    p.updated_at,
@@ -25,5 +40,5 @@ export default async function sitemap() {
     changeFrequency: 'monthly',
   }))
 
-  return [...staticPages, ...blogPages]
+  return [...staticPages, ...treatmentPages, ...blogPages]
 }

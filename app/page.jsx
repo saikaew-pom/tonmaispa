@@ -36,7 +36,7 @@ async function getData() {
 
   const [treatmentsRes, settingsRes, galleryRes] = await Promise.all([
     admin.from('spa_treatments')
-      .select('id, name, slug, description, category, duration_options, prices, badge')
+      .select('id, name, slug, description, category, duration_options, prices, badge, photos')
       .eq('is_active', true)
       .order('sort_order')
       .limit(6),

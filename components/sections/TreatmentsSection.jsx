@@ -1,5 +1,7 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import TrackedLink from '@/components/ui/TrackedLink'
+import TreatmentPhotosButton from '@/components/ui/TreatmentPhotosButton'
 import { TREATMENT_CATEGORIES } from '@/lib/display'
 
 export default function TreatmentsSection({ treatments = [] }) {
@@ -35,7 +37,7 @@ export default function TreatmentsSection({ treatments = [] }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
           {items.map((t, i) => {
-            const img   = t.cloudinary_url ?? t.img ?? `/assets/massage-${i+1}.jpg`
+            const img   = t.cloudinary_url ?? t.photos?.[0] ?? t.img ?? `/assets/massage-${i+1}.jpg`
             const price = Array.isArray(t.prices) ? t.prices[0]?.thb : null
             const badge = t.badge
             return (
@@ -46,8 +48,15 @@ export default function TreatmentsSection({ treatments = [] }) {
                 </div>
                 <div style={{ padding: '24px 26px' }}>
                   <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: '#3B5249' }}>{TREATMENT_CATEGORIES[t.category] ?? t.category ?? 'Massage'}</div>
-                  <h3 style={{ font: '400 22px/1.1 Cormorant Garamond,serif', color: '#1C1917', margin: '8px 0 0' }}>{t.name}</h3>
+                  <h3 style={{ font: '400 22px/1.1 Cormorant Garamond,serif', color: '#1C1917', margin: '8px 0 0' }}>
+                    {t.slug ? <Link href={`/spa-menu/${t.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t.name}</Link> : t.name}
+                  </h3>
                   <p style={{ font: '400 14px/1.65 Inter,sans-serif', color: '#6B6663', margin: '10px 0 0' }}>{t.description}</p>
+                  {t.photos?.length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                      <TreatmentPhotosButton photos={t.photos} treatmentName={t.name} />
+                    </div>
+                  )}
                   {price && <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase', color: '#9B9390' }}>From</div>
@@ -62,9 +71,9 @@ export default function TreatmentsSection({ treatments = [] }) {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 40 }}>
-          <a href="/spa-menu" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '600 11px Inter,sans-serif', letterSpacing: '2.5px', textTransform: 'uppercase', color: '#3B5249', borderBottom: '1.5px solid #C4924A', paddingBottom: 6 }}>
+          <Link href="/spa-menu" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '600 11px Inter,sans-serif', letterSpacing: '2.5px', textTransform: 'uppercase', color: '#3B5249', borderBottom: '1.5px solid #C4924A', paddingBottom: 6 }}>
             View Full Menu →
-          </a>
+          </Link>
         </div>
       </div>
     </section>

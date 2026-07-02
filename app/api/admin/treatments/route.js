@@ -19,6 +19,7 @@ export async function POST(req) {
     duration_options: body.duration_options ?? [],
     prices:           body.prices ?? {},
     badge:            body.badge || null,
+    photos:           Array.isArray(body.photos) ? body.photos : [],
     sort_order:       body.sort_order ?? 0,
     is_active:        body.is_active ?? true,
   }

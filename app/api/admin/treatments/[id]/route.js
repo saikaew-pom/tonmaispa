@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/require-admin'
 
-const EDITABLE = ['name', 'slug', 'description', 'category', 'duration_options', 'prices', 'badge', 'sort_order', 'is_active']
+const EDITABLE = ['name', 'slug', 'description', 'category', 'duration_options', 'prices', 'badge', 'photos', 'sort_order', 'is_active']
 
 export async function PATCH(req, { params }) {
   const auth = await requireAdmin()

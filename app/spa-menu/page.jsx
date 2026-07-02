@@ -1,6 +1,8 @@
-import Nav         from '@/components/layout/Nav'
-import Footer      from '@/components/layout/Footer'
-import TrackedLink from '@/components/ui/TrackedLink'
+import Link                  from 'next/link'
+import Nav                   from '@/components/layout/Nav'
+import Footer                from '@/components/layout/Footer'
+import TrackedLink           from '@/components/ui/TrackedLink'
+import TreatmentPhotosButton from '@/components/ui/TreatmentPhotosButton'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { TREATMENT_CATEGORIES } from '@/lib/display'
 
@@ -22,7 +24,7 @@ const CATEGORY_LABELS = TREATMENT_CATEGORIES
 async function getData() {
   const admin = createSupabaseAdminClient()
   const [txRes, stRes] = await Promise.all([
-    admin.from('spa_treatments').select('id,name,slug,description,category,duration_options,prices,badge').eq('is_active', true).order('sort_order'),
+    admin.from('spa_treatments').select('id,name,slug,description,category,duration_options,prices,badge,photos').eq('is_active', true).order('sort_order'),
     admin.from('site_content').select('key,value_text').eq('page', 'settings'),
   ])
   const settings = Object.fromEntries((stRes.data ?? []).map(r => [r.key, r.value_text]))
@@ -97,13 +99,20 @@ export default async function SpaMenuPage() {
                     <div key={t.id} style={{ background: '#fff', borderRadius: 6, padding: 'clamp(20px,2.5vw,32px)', boxShadow: '0 2px 12px rgba(28,25,23,0.06)', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                          <h2 style={{ font: '400 clamp(18px,1.8vw,22px)/1.2 Cormorant Garamond,serif', color: '#1C1917', margin: 0 }}>{t.name}</h2>
+                          <h2 style={{ font: '400 clamp(18px,1.8vw,22px)/1.2 Cormorant Garamond,serif', color: '#1C1917', margin: 0 }}>
+                            <Link href={`/spa-menu/${t.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t.name}</Link>
+                          </h2>
                           {t.badge && (
                             <span style={{ flexShrink: 0, background: '#C4924A', color: '#fff', padding: '3px 10px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{t.badge}</span>
                           )}
                         </div>
                         {t.description && (
                           <p style={{ font: '400 13px/1.65 Inter,sans-serif', color: '#6B6663', margin: '10px 0 0' }}>{t.description}</p>
+                        )}
+                        {t.photos?.length > 0 && (
+                          <div style={{ marginTop: 12 }}>
+                            <TreatmentPhotosButton photos={t.photos} treatmentName={t.name} />
+                          </div>
                         )}
                       </div>
 

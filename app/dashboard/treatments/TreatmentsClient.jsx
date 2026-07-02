@@ -1,10 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { TREATMENT_CATEGORIES } from '@/lib/display'
 
 const CATEGORIES = Object.keys(TREATMENT_CATEGORIES)
-const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true }
+const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true, photos: [] }
+const CLOUD_NAME    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+
+const textareaStyle = { resize: 'vertical', minHeight: 80, fontFamily: 'inherit' }
 
 export default function TreatmentsClient({ initialTreatments }) {
   const [treatments, setTreatments] = useState(initialTreatments)
@@ -76,12 +81,13 @@ export default function TreatmentsClient({ initialTreatments }) {
           <select className="input" value={newForm.category} onChange={e => setNewForm(f => ({ ...f, category: e.target.value }))}>
             {CATEGORIES.map(c => <option key={c} value={c}>{TREATMENT_CATEGORIES[c]}</option>)}
           </select>
-          <input className="input" placeholder="Description" value={newForm.description} onChange={e => setNewForm(f => ({ ...f, description: e.target.value }))} />
+          <textarea className="input" rows={3} style={textareaStyle} placeholder="Description" value={newForm.description} onChange={e => setNewForm(f => ({ ...f, description: e.target.value }))} />
           <input className="input" placeholder="Badge (optional, e.g. Signature)" value={newForm.badge} onChange={e => setNewForm(f => ({ ...f, badge: e.target.value }))} />
           <div style={{ display: 'flex', gap: 10 }}>
             <input className="input" placeholder="Durations (mins, comma-sep) e.g. 60,90,120" value={newForm.durationsCsv} onChange={e => setNewForm(f => ({ ...f, durationsCsv: e.target.value }))} />
             <input className="input" placeholder="Prices (THB, matching order) e.g. 600,850,1100" value={newForm.pricesCsv} onChange={e => setNewForm(f => ({ ...f, pricesCsv: e.target.value }))} />
           </div>
+          <PhotoManager photos={newForm.photos} onChange={photos => setNewForm(f => ({ ...f, photos }))} />
           <button onClick={handleCreate} disabled={saving || !newForm.name} style={{ background: '#C4924A', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 18px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
             {saving ? 'Saving…' : 'Create Treatment'}
           </button>
@@ -95,6 +101,7 @@ export default function TreatmentsClient({ initialTreatments }) {
               <div>
                 <div style={{ font: '600 14px Inter,sans-serif' }}>
                   {t.name} {t.badge && <span style={{ background: '#E8EDE9', color: '#3B5249', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', marginLeft: 6 }}>{t.badge}</span>}
+                  {t.photos?.length > 0 && <span style={{ color: '#9B9390', font: '400 11px Inter,sans-serif', marginLeft: 8 }}>📷 {t.photos.length}</span>}
                 </div>
                 <div style={{ font: '400 12px Inter,sans-serif', color: '#9B9390', marginTop: 2 }}>{TREATMENT_CATEGORIES[t.category] ?? t.category}</div>
               </div>
@@ -134,6 +141,7 @@ function EditForm({ treatment, onSave }) {
   const [category, setCategory] = useState(treatment.category ?? 'massage')
   const [durationsCsv, setDurationsCsv] = useState((treatment.duration_options ?? []).join(','))
   const [pricesCsv, setPricesCsv] = useState((treatment.duration_options ?? []).map(d => treatment.prices?.[String(d)] ?? '').join(','))
+  const [photos, setPhotos] = useState(treatment.photos ?? [])
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -142,7 +150,7 @@ function EditForm({ treatment, onSave }) {
     const priceList = pricesCsv.split(',').map(s => parseInt(s.trim(), 10))
     const prices = {}
     durations.forEach((d, i) => { if (priceList[i]) prices[String(d)] = priceList[i] })
-    await onSave({ name, description, badge: badge || null, category, duration_options: durations, prices })
+    await onSave({ name, description, badge: badge || null, category, duration_options: durations, prices, photos })
     setSaving(false)
   }
 
@@ -152,15 +160,74 @@ function EditForm({ treatment, onSave }) {
       <select className="input" value={category} onChange={e => setCategory(e.target.value)}>
         {CATEGORIES.map(c => <option key={c} value={c}>{TREATMENT_CATEGORIES[c]}</option>)}
       </select>
-      <input className="input" value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" />
+      <textarea className="input" rows={3} style={textareaStyle} value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" />
       <input className="input" value={badge} onChange={e => setBadge(e.target.value)} placeholder="Badge (optional)" />
       <div style={{ display: 'flex', gap: 10 }}>
         <input className="input" value={durationsCsv} onChange={e => setDurationsCsv(e.target.value)} placeholder="Durations e.g. 60,90,120" />
         <input className="input" value={pricesCsv} onChange={e => setPricesCsv(e.target.value)} placeholder="Prices e.g. 600,850,1100" />
       </div>
+      <PhotoManager photos={photos} onChange={setPhotos} />
       <button onClick={handleSave} disabled={saving} style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 18px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
         {saving ? 'Saving…' : 'Save Changes'}
       </button>
+    </div>
+  )
+}
+
+// Uploads directly to Cloudinary (unsigned preset) and appends the resulting
+// URL to the treatment's `photos` array — no separate DB table needed, since
+// photos live right on the treatment row.
+function PhotoManager({ photos, onChange }) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError('')
+    if (!CLOUD_NAME || !UPLOAD_PRESET) { setError('Cloudinary is not configured.'); return }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('upload_preset', UPLOAD_PRESET)
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || 'Upload failed')
+      onChange([...photos, data.secure_url])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const removePhoto = (url) => onChange(photos.filter(p => p !== url))
+
+  return (
+    <div>
+      <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 6 }}>Photos</label>
+      {photos.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          {photos.map(url => (
+            <div key={url} style={{ position: 'relative', width: 64, height: 64, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+              <Image src={url} alt="" fill sizes="64px" style={{ objectFit: 'cover' }} />
+              <button
+                onClick={() => removePhoto(url)}
+                aria-label="Remove photo"
+                style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(28,25,23,0.75)', color: '#fff', border: 'none', cursor: 'pointer', font: '400 11px Inter,sans-serif', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <label style={{ display: 'inline-block', background: '#fff', border: '1px solid var(--color-border)', borderRadius: 4, padding: '7px 14px', font: '500 11px Inter,sans-serif', cursor: 'pointer' }}>
+        {uploading ? 'Uploading…' : '+ Add Photo'}
+        <input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} style={{ display: 'none' }} />
+      </label>
+      {error && <p style={{ color: '#DC2626', font: '400 12px Inter,sans-serif', marginTop: 6 }}>{error}</p>}
     </div>
   )
 }
