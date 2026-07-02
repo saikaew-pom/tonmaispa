@@ -22,6 +22,7 @@ export async function POST(req) {
     photos:           Array.isArray(body.photos) ? body.photos : [],
     sort_order:       body.sort_order ?? 0,
     is_active:        body.is_active ?? true,
+    show_on_homepage: body.show_on_homepage ?? false,
   }
 
   const { data, error } = await auth.admin.from('spa_treatments').insert(row).select().single()

@@ -6,7 +6,7 @@ import { TREATMENT_CATEGORIES } from '@/lib/display'
 import { resizeImageForUpload } from '@/lib/resize-image'
 
 const CATEGORIES = Object.keys(TREATMENT_CATEGORIES)
-const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true, photos: [], sort_order: 0 }
+const EMPTY_FORM = { name: '', category: 'massage', description: '', badge: '', durationsCsv: '60,90', pricesCsv: '600,850', is_active: true, photos: [], sort_order: 0, show_on_homepage: false }
 const CLOUD_NAME    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
@@ -18,6 +18,18 @@ export default function TreatmentsClient({ initialTreatments }) {
   const [showNew, setShowNew] = useState(false)
   const [newForm, setNewForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [homepageFilter, setHomepageFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('order') // 'order' | 'name'
+
+  const filtered = treatments
+    .filter(t => categoryFilter === 'all' || t.category === categoryFilter)
+    .filter(t => statusFilter === 'all' || (statusFilter === 'active' ? t.is_active : !t.is_active))
+    .filter(t => homepageFilter === 'all' || (homepageFilter === 'yes' ? t.show_on_homepage : !t.show_on_homepage))
+    .filter(t => !search.trim() || t.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => sortBy === 'name' ? a.name.localeCompare(b.name) : (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
   const parseDurationsAndPrices = (durationsCsv, pricesCsv) => {
     const durations = durationsCsv.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean)
@@ -89,9 +101,13 @@ export default function TreatmentsClient({ initialTreatments }) {
             <input className="input" placeholder="Prices (THB, matching order) e.g. 600,850,1100" value={newForm.pricesCsv} onChange={e => setNewForm(f => ({ ...f, pricesCsv: e.target.value }))} />
           </div>
           <div>
-            <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Homepage / menu order (lower shows first)</label>
+            <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Menu order (lower shows first)</label>
             <input className="input" type="number" value={newForm.sort_order} onChange={e => setNewForm(f => ({ ...f, sort_order: parseInt(e.target.value, 10) || 0 }))} style={{ maxWidth: 100 }} />
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 12px Inter,sans-serif', color: '#1C1917', cursor: 'pointer' }}>
+            <input type="checkbox" checked={newForm.show_on_homepage} onChange={e => setNewForm(f => ({ ...f, show_on_homepage: e.target.checked }))} />
+            Show on homepage (uses the order above)
+          </label>
           <PhotoManager photos={newForm.photos} onChange={photos => setNewForm(f => ({ ...f, photos }))} />
           <button onClick={handleCreate} disabled={saving || !newForm.name} style={{ background: '#C4924A', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 18px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
             {saving ? 'Saving…' : 'Create Treatment'}
@@ -99,14 +115,38 @@ export default function TreatmentsClient({ initialTreatments }) {
         </div>
       )}
 
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }}>
+        <input className="input" placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 200 }} />
+        <select className="input" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ maxWidth: 180 }}>
+          <option value="all">All categories</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{TREATMENT_CATEGORIES[c]}</option>)}
+        </select>
+        <select className="input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ maxWidth: 150 }}>
+          <option value="all">All statuses</option>
+          <option value="active">Active only</option>
+          <option value="inactive">Inactive only</option>
+        </select>
+        <select className="input" value={homepageFilter} onChange={e => setHomepageFilter(e.target.value)} style={{ maxWidth: 180 }}>
+          <option value="all">Homepage: all</option>
+          <option value="yes">On homepage</option>
+          <option value="no">Not on homepage</option>
+        </select>
+        <select className="input" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ maxWidth: 150 }}>
+          <option value="order">Sort by order</option>
+          <option value="name">Sort by name</option>
+        </select>
+        <div style={{ display: 'flex', alignItems: 'center', font: '400 11px Inter,sans-serif', color: '#9B9390' }}>{filtered.length} of {treatments.length}</div>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {treatments.map(t => (
+        {filtered.map(t => (
           <div key={t.id} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, padding: 16, opacity: t.is_active ? 1 : 0.55 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ font: '600 14px Inter,sans-serif' }}>
                   {t.name} {t.badge && <span style={{ background: '#E8EDE9', color: '#3B5249', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', marginLeft: 6 }}>{t.badge}</span>}
                   {t.photos?.length > 0 && <span style={{ color: '#9B9390', font: '400 11px Inter,sans-serif', marginLeft: 8 }}>📷 {t.photos.length}</span>}
+                  {t.show_on_homepage && <span style={{ background: '#FBF0DF', color: '#C4924A', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', marginLeft: 6 }}>🏠 Homepage</span>}
                 </div>
                 <div style={{ font: '400 12px Inter,sans-serif', color: '#9B9390', marginTop: 2 }}>{TREATMENT_CATEGORIES[t.category] ?? t.category} · order {t.sort_order ?? 0}</div>
               </div>
@@ -148,6 +188,7 @@ function EditForm({ treatment, onSave }) {
   const [pricesCsv, setPricesCsv] = useState((treatment.duration_options ?? []).map(d => treatment.prices?.[String(d)] ?? '').join(','))
   const [photos, setPhotos] = useState(treatment.photos ?? [])
   const [sortOrder, setSortOrder] = useState(treatment.sort_order ?? 0)
+  const [showOnHomepage, setShowOnHomepage] = useState(treatment.show_on_homepage ?? false)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -156,7 +197,7 @@ function EditForm({ treatment, onSave }) {
     const priceList = pricesCsv.split(',').map(s => parseInt(s.trim(), 10))
     const prices = {}
     durations.forEach((d, i) => { if (priceList[i]) prices[String(d)] = priceList[i] })
-    await onSave({ name, description, badge: badge || null, category, duration_options: durations, prices, photos, sort_order: sortOrder })
+    await onSave({ name, description, badge: badge || null, category, duration_options: durations, prices, photos, sort_order: sortOrder, show_on_homepage: showOnHomepage })
     setSaving(false)
   }
 
@@ -173,9 +214,13 @@ function EditForm({ treatment, onSave }) {
         <input className="input" value={pricesCsv} onChange={e => setPricesCsv(e.target.value)} placeholder="Prices e.g. 600,850,1100" />
       </div>
       <div>
-        <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Homepage / menu order (lower shows first)</label>
+        <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Menu order (lower shows first)</label>
         <input className="input" type="number" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value, 10) || 0)} style={{ maxWidth: 100 }} />
       </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 12px Inter,sans-serif', color: '#1C1917', cursor: 'pointer' }}>
+        <input type="checkbox" checked={showOnHomepage} onChange={e => setShowOnHomepage(e.target.checked)} />
+        Show on homepage (uses the order above)
+      </label>
       <PhotoManager photos={photos} onChange={setPhotos} />
       <button onClick={handleSave} disabled={saving} style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 18px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
         {saving ? 'Saving…' : 'Save Changes'}

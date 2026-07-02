@@ -38,6 +38,7 @@ async function getData() {
     admin.from('spa_treatments')
       .select('id, name, slug, description, category, duration_options, prices, badge, photos')
       .eq('is_active', true)
+      .eq('show_on_homepage', true)
       .order('sort_order')
       .limit(9),
 
