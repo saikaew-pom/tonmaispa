@@ -16,7 +16,7 @@ export async function GET(req, { params }) {
 
   const { data, error } = await auth.admin
     .from('therapist_shifts')
-    .select('id, date, start_time, end_time')
+    .select('id, date, start_time, end_time, break_start, break_end')
     .eq('therapist_id', params.id)
     .gte('date', start)
     .lte('date', end)
@@ -31,15 +31,15 @@ export async function PUT(req, { params }) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
-  const { date, start_time, end_time } = await req.json()
+  const { date, start_time, end_time, break_start, break_end } = await req.json()
   if (!date || !start_time || !end_time) {
     return Response.json({ error: 'date, start_time and end_time are required' }, { status: 400 })
   }
 
   const { data, error } = await auth.admin
     .from('therapist_shifts')
-    .upsert({ therapist_id: params.id, date, start_time, end_time }, { onConflict: 'therapist_id,date' })
-    .select('id, date, start_time, end_time')
+    .upsert({ therapist_id: params.id, date, start_time, end_time, break_start: break_start || null, break_end: break_end || null }, { onConflict: 'therapist_id,date' })
+    .select('id, date, start_time, end_time, break_start, break_end')
     .single()
 
   if (error) return Response.json({ error: error.message }, { status: 400 })

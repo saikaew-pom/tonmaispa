@@ -181,6 +181,8 @@ function ShiftCalendar({ therapistId }) {
   const [editDate, setEditDate] = useState(null)
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('18:00')
+  const [breakStart, setBreakStart] = useState('')
+  const [breakEnd, setBreakEnd] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -211,13 +213,15 @@ function ShiftCalendar({ therapistId }) {
     const existing = shiftByDate[date]
     setStartTime(existing ? existing.start_time.slice(0, 5) : '09:00')
     setEndTime(existing ? existing.end_time.slice(0, 5) : '18:00')
+    setBreakStart(existing?.break_start ? existing.break_start.slice(0, 5) : '')
+    setBreakEnd(existing?.break_end ? existing.break_end.slice(0, 5) : '')
   }
 
   const saveShift = async () => {
     setBusy(true)
     const res = await fetch(`/api/admin/therapists/${therapistId}/shifts`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: editDate, start_time: startTime, end_time: endTime }),
+      body: JSON.stringify({ date: editDate, start_time: startTime, end_time: endTime, break_start: breakStart || null, break_end: breakEnd || null }),
     })
     setBusy(false)
     if (res.ok) {
@@ -288,6 +292,14 @@ function ShiftCalendar({ therapistId }) {
               <div>
                 <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>End</label>
                 <input className="input" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+              </div>
+              <div style={{ borderTop: '1px solid #F0ECE6', paddingTop: 10, marginTop: 2 }}>
+                <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Break start (optional)</label>
+                <input className="input" type="time" value={breakStart} onChange={e => setBreakStart(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: 'block', font: '500 11px Inter,sans-serif', color: '#6B6663', marginBottom: 4 }}>Break end (optional)</label>
+                <input className="input" type="time" value={breakEnd} onChange={e => setBreakEnd(e.target.value)} />
               </div>
               <button onClick={saveShift} disabled={busy} style={btnPrimary}>{busy ? 'Saving…' : 'Save shift'}</button>
               {shiftByDate[editDate] && <button onClick={clearShift} disabled={busy} style={btnDanger}>Clear (day off)</button>}
