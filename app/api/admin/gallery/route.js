@@ -11,7 +11,7 @@ export async function POST(req) {
     cloudinary_url: body.cloudinary_url,
     alt_text:       body.alt_text ?? null,
     category:       body.category ?? null,
-    featured:       body.featured ?? false,
+    featured:       body.featured ?? true,
     sort_order:     body.sort_order ?? 0,
   }
 
