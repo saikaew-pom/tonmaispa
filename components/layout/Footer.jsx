@@ -10,12 +10,10 @@ export default function Footer({ settings = {}, lang = 'en', dict = {} }) {
   const ig   = settings['settings.instagram_url']   ?? 'https://www.instagram.com/tonmai.spa/'
   const fb   = settings['settings.facebook_url']    ?? 'https://www.facebook.com/tonmai.spa'
 
-  // spa-menu/restaurant/book haven't moved under /[lang]/ yet (later phase),
-  // so they stay unprefixed and English-only for now.
   const exploreLinks = [
-    ['/spa-menu',           t(dict, 'footer.spaMenu')],
-    ['/restaurant',         t(dict, 'footer.restaurant')],
-    ['/book',               t(dict, 'footer.bookNow')],
+    [`/${lang}/spa-menu`,   t(dict, 'footer.spaMenu')],
+    [`/${lang}/restaurant`, t(dict, 'footer.restaurant')],
+    [`/${lang}/book`,       t(dict, 'footer.bookNow')],
     [`/${lang}#facilities`, t(dict, 'footer.facilities')],
     [`/${lang}#pricing`,    t(dict, 'footer.pricing')],
   ]

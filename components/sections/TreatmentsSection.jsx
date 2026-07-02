@@ -18,7 +18,7 @@ function getStartingPrice(t) {
   return firstDuration ? t.prices?.[String(firstDuration)] ?? null : null
 }
 
-export default function TreatmentsSection({ treatments = [], settings = {} }) {
+export default function TreatmentsSection({ treatments = [], settings = {}, lang = 'en' }) {
   const heading    = settings['settings.homepage_services_heading']    || DEFAULT_HEADING
   const subheading = settings['settings.homepage_services_subheading'] || DEFAULT_SUBHEADING
   const rawCount   = parseInt(settings['settings.homepage_services_count'], 10)
@@ -68,7 +68,7 @@ export default function TreatmentsSection({ treatments = [], settings = {} }) {
                 <div style={{ padding: '24px 26px' }}>
                   <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: '#3B5249' }}>{TREATMENT_CATEGORIES[t.category] ?? t.category ?? 'Massage'}</div>
                   <h3 style={{ font: '400 22px/1.1 Cormorant Garamond,serif', color: '#1C1917', margin: '8px 0 0' }}>
-                    {t.slug ? <Link href={`/spa-menu/${t.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t.name}</Link> : t.name}
+                    {t.slug ? <Link href={`/${lang}/spa-menu/${t.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t.name}</Link> : t.name}
                   </h3>
                   <p style={{ font: '400 14px/1.65 Inter,sans-serif', color: '#6B6663', margin: '10px 0 0' }}>{t.description}</p>
                   {t.photos?.length > 0 && (
@@ -90,7 +90,7 @@ export default function TreatmentsSection({ treatments = [], settings = {} }) {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 40 }}>
-          <Link href="/spa-menu" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '600 11px Inter,sans-serif', letterSpacing: '2.5px', textTransform: 'uppercase', color: '#3B5249', borderBottom: '1.5px solid #C4924A', paddingBottom: 6 }}>
+          <Link href={`/${lang}/spa-menu`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '600 11px Inter,sans-serif', letterSpacing: '2.5px', textTransform: 'uppercase', color: '#3B5249', borderBottom: '1.5px solid #C4924A', paddingBottom: 6 }}>
             View Full Menu →
           </Link>
         </div>

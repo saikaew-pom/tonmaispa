@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { LOCALES } from '@/lib/i18n/get-dictionary'
 
 const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.tonmaispa.com'
 
@@ -19,24 +20,25 @@ export default async function sitemap() {
     .select('slug, updated_at')
     .eq('status', 'published')
 
-  // Homepage now lives under /[lang]/ — spa-menu/restaurant/book haven't
-  // migrated yet (later phase) and stay at their unprefixed English URLs.
-  const staticPages = [
-    { url: `${BASE}/en`,         priority: 1.0, changeFrequency: 'weekly'  },
-    { url: `${BASE}/ru`,         priority: 0.9, changeFrequency: 'weekly'  },
-    { url: `${BASE}/zh`,         priority: 0.9, changeFrequency: 'weekly'  },
-    { url: `${BASE}/th`,         priority: 0.9, changeFrequency: 'weekly'  },
-    { url: `${BASE}/spa-menu`,   priority: 0.9, changeFrequency: 'monthly' },
-    { url: `${BASE}/restaurant`, priority: 0.8, changeFrequency: 'monthly' },
-    { url: `${BASE}/book`,       priority: 0.9, changeFrequency: 'weekly'  },
-  ]
+  // Homepage, spa-menu, restaurant, and book all live under /[lang]/ now —
+  // privacy/terms haven't migrated yet (later phase) and stay unprefixed.
+  const localizedPages = ['', '/spa-menu', '/restaurant', '/book']
+  const staticPages = LOCALES.flatMap(lang =>
+    localizedPages.map(page => ({
+      url:             `${BASE}/${lang}${page}`,
+      priority:        page === '' ? 1.0 : 0.9,
+      changeFrequency: page === '' || page === '/book' ? 'weekly' : 'monthly',
+    }))
+  )
 
-  const treatmentPages = (treatments ?? []).map(t => ({
-    url:             `${BASE}/spa-menu/${t.slug}`,
-    lastModified:    t.created_at,
-    priority:        0.7,
-    changeFrequency: 'monthly',
-  }))
+  const treatmentPages = LOCALES.flatMap(lang =>
+    (treatments ?? []).map(t => ({
+      url:             `${BASE}/${lang}/spa-menu/${t.slug}`,
+      lastModified:    t.created_at,
+      priority:        0.7,
+      changeFrequency: 'monthly',
+    }))
+  )
 
   const blogPages = (posts ?? []).map(p => ({
     url:             `${BASE}/blog/${p.slug}`,

@@ -4,12 +4,11 @@ import { NextResponse }           from 'next/server'
 const LOCALES = ['en', 'ru', 'zh', 'th']
 // Paths that stay outside the /[lang]/ tree — dashboard, API, auth flows,
 // and anything that looks like a static file (has a dot in the last segment).
-// Phase 1 only moved the homepage under /[lang]/ — spa-menu, restaurant,
-// book, privacy, terms still live at their old unprefixed paths and stay
-// English-only until they're migrated in a later phase.
+// privacy/terms haven't migrated yet (later phase) and stay at their old
+// unprefixed, English-only paths.
 const UNLOCALIZED_PREFIXES = [
   '/dashboard', '/api', '/login', '/forgot-password', '/reset-password', '/auth',
-  '/spa-menu', '/restaurant', '/book', '/privacy', '/terms',
+  '/privacy', '/terms',
 ]
 
 function isLocalized(pathname) {

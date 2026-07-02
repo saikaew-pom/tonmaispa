@@ -2,30 +2,50 @@ import Nav    from '@/components/layout/Nav'
 import Footer from '@/components/layout/Footer'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { jsonLdScript } from '@/lib/json-ld'
+import { translateRows } from '@/lib/translate'
+import { LOCALES, getDictionary } from '@/lib/i18n/get-dictionary'
+import { t } from '@/lib/i18n/t'
 
 export const revalidate = 60
 
-export const metadata = {
-  title:       'Garden Restaurant Menu — Ton Mai Spa | Rawai Phuket',
-  description: 'Open-air garden dining at Ton Mai Spa, Rawai Phuket. Thai food, international dishes, fresh juices, smoothies and cocktails. Open daily 09:00–23:00.',
-  alternates:  { canonical: '/restaurant' },
-  openGraph: {
-    title:       'Garden Restaurant — Ton Mai Spa',
-    description: 'Thai & international food in a tropical garden setting in Rawai, Phuket.',
-    images:      [{ url: '/og-image.jpg', width: 1200, height: 630 }],
-  },
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.tonmaispa.com'
+
+export function generateMetadata({ params }) {
+  return {
+    title:       'Garden Restaurant Menu — Ton Mai Spa | Rawai Phuket',
+    description: 'Open-air garden dining at Ton Mai Spa, Rawai Phuket. Thai food, international dishes, fresh juices, smoothies and cocktails. Open daily 09:00–23:00.',
+    alternates: {
+      languages: Object.fromEntries([
+        ...LOCALES.map(l => [l, `${SITE_URL}/${l}/restaurant`]),
+        ['x-default', `${SITE_URL}/en/restaurant`],
+      ]),
+    },
+    openGraph: {
+      title:       'Garden Restaurant — Ton Mai Spa',
+      description: 'Thai & international food in a tropical garden setting in Rawai, Phuket.',
+      images:      [{ url: '/og-image.jpg', width: 1200, height: 630 }],
+    },
+  }
 }
 
-async function getData() {
+async function getData(lang) {
   const admin = createSupabaseAdminClient()
   const [catRes, itemRes, stRes] = await Promise.all([
     admin.from('menu_categories').select('id,name,slug,type').order('sort_order'),
     admin.from('menu_items').select('id,category_id,name,description,price,price_note,badge,tags,is_recommended').eq('is_active', true).order('sort_order'),
     admin.from('site_content').select('key,value_text').eq('page', 'settings'),
   ])
-  const settings   = Object.fromEntries((stRes.data ?? []).map(r => [r.key, r.value_text]))
-  const categories = catRes.data ?? []
-  const items      = itemRes.data ?? []
+  const settings = Object.fromEntries((stRes.data ?? []).map(r => [r.key, r.value_text]))
+  let categories = catRes.data ?? []
+  let items      = itemRes.data ?? []
+
+  if (lang !== 'en') {
+    ;[categories, items] = await Promise.all([
+      translateRows('menu_categories', categories, ['name'], lang),
+      translateRows('menu_items', items, ['name', 'description', 'price_note'], lang),
+    ])
+  }
+
   // index items by category_id
   const byCategory = {}
   items.forEach(item => { (byCategory[item.category_id] ??= []).push(item) })
@@ -34,8 +54,9 @@ async function getData() {
   return { food, drinks, byCategory, settings }
 }
 
-export default async function RestaurantPage() {
-  const { food, drinks, byCategory, settings } = await getData()
+export default async function RestaurantPage({ params }) {
+  const { lang } = await params
+  const [{ food, drinks, byCategory, settings }, dict] = await Promise.all([getData(lang), getDictionary(lang)])
 
   const Section = ({ cats, title, icon }) => (
     <div>
@@ -58,7 +79,7 @@ export default async function RestaurantPage() {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ font: '600 15px/1.2 Inter,sans-serif', color: '#1C1917' }}>{item.name}</span>
-                      {item.is_recommended && <span style={{ background: '#C4924A', color: '#fff', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>Chef&apos;s Pick</span>}
+                      {item.is_recommended && <span style={{ background: '#C4924A', color: '#fff', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{t(dict, 'restaurant.chefsPick')}</span>}
                       {item.badge && item.badge.split(' ').map(b => (
                         <span key={b} style={{ background: '#E8EDE9', color: '#3B5249', padding: '2px 8px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1 }}>{b}</span>
                       ))}
@@ -102,26 +123,26 @@ export default async function RestaurantPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: restaurantSchema }} />
-      <Nav />
+      <Nav lang={lang} dict={dict} />
 
       {/* Page hero */}
       <section style={{ background: '#3B5249', padding: 'clamp(100px,14vw,160px) clamp(18px,4vw,40px) clamp(48px,6vw,72px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 32, alignItems: 'end' }}>
           <div>
-            <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#C4924A' }}>Garden Restaurant</div>
-            <h1 style={{ font: '400 clamp(38px,7vw,72px)/1.05 Cormorant Garamond,serif', color: '#fff', margin: '14px 0 0' }}>The Menu</h1>
+            <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#C4924A' }}>{t(dict, 'restaurant.gardenRestaurant')}</div>
+            <h1 style={{ font: '400 clamp(38px,7vw,72px)/1.05 Cormorant Garamond,serif', color: '#fff', margin: '14px 0 0' }}>{t(dict, 'restaurant.theMenu')}</h1>
             <p style={{ font: '400 clamp(14px,1.2vw,17px)/1.7 Inter,sans-serif', color: 'rgba(255,255,255,0.8)', margin: '16px 0 0', maxWidth: '48ch' }}>
-              Thai classics, healthy international dishes and fresh garden drinks — served all day in our open-air sala overlooking the palms.
+              {t(dict, 'restaurant.heroText')}
             </p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '14px 18px' }}>
               <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#fff' }}>09:00–23:00</div>
-              <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>Open Daily</div>
+              <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>{t(dict, 'restaurant.openDaily')}</div>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '14px 18px' }}>
-              <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#fff' }}>Garden Dining</div>
-              <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>Open-Air Salas</div>
+              <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#fff' }}>{t(dict, 'restaurant.gardenDining')}</div>
+              <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>{t(dict, 'restaurant.openAirSalas')}</div>
             </div>
           </div>
         </div>
@@ -139,21 +160,21 @@ export default async function RestaurantPage() {
       <main style={{ padding: 'clamp(56px,7vw,96px) clamp(18px,4vw,40px)', background: '#FAF6F0' }}>
         <div style={{ maxWidth: 860, margin: '0 auto' }}>
 
-          <Section cats={food}   title="Food"   icon="🌿" />
+          <Section cats={food}   title={t(dict, 'restaurant.food')}   icon="🌿" />
 
           <div style={{ borderTop: '1px solid #E5E0D8', margin: 'clamp(40px,5vw,64px) 0' }} />
 
-          <Section cats={drinks} title="Drinks" icon="🍹" />
+          <Section cats={drinks} title={t(dict, 'restaurant.drinks')} icon="🍹" />
 
           <div style={{ marginTop: 'clamp(40px,5vw,64px)', background: '#E8EDE9', borderRadius: 8, padding: 'clamp(24px,3vw,40px)', textAlign: 'center' }}>
             <p style={{ font: '400 14px/1.7 Inter,sans-serif', color: '#6B6663', margin: 0 }}>
-              All prices include VAT. Allergen information available on request — please inform your server of any dietary requirements. Menu items change seasonally.
+              {t(dict, 'restaurant.footerNote')}
             </p>
           </div>
         </div>
       </main>
 
-      <Footer settings={settings} />
+      <Footer settings={settings} lang={lang} dict={dict} />
     </>
   )
 }

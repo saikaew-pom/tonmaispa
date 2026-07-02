@@ -1,23 +1,23 @@
 {
   "nav": {
-    "treatments": "疗程",
+    "treatments": "疗程项目",
     "restaurant": "餐厅",
     "facilities": "设施",
     "pricing": "价格",
-    "bookNow": "立即预订",
+    "bookNow": "立即预约",
     "ourGarden": "我们的花园",
     "openHours": "每日开放 · 上午9点 – 晚上11点"
   },
   "footer": {
-    "tagline": "普吉岛拉威海滩的泰式疗愈热带花园。蒸汽、桑拿、冷水浴、泳池与按摩——每日营业至深夜。",
+    "tagline": "在普吉岛拉威海边，邂逅一片泰式疗愈的热带花园。蒸汽、桑拿、冷泉、泳池与按摩——日日营业，直至夜深。",
     "explore": "探索",
     "spaMenu": "水疗菜单",
     "restaurant": "餐厅",
-    "bookNow": "立即预订",
+    "bookNow": "立即预约",
     "facilities": "设施",
     "pricing": "价格",
     "visit": "到访",
-    "connect": "联系",
+    "connect": "联系我们",
     "instagram": "Instagram",
     "facebook": "Facebook",
     "whatsapp": "WhatsApp",
@@ -30,5 +30,86 @@
     "ru": "Русский",
     "zh": "中文",
     "th": "ไทย"
+  },
+  "spaMenu": {
+    "tonMaiSpa": "Ton Mai Spa",
+    "ourTreatments": "疗程项目",
+    "heroText": "每位疗程均由技艺精湛的泰式治疗师，在面朝花园的开放式凉亭中为您呈现。不匆忙、不喧嚣——只有从容不迫的真诚呵护。",
+    "dayPassLabel": "桑拿日票 — 蒸汽 · 桑拿 · 冷泉 · 泳池 · 按摩池",
+    "perPerson": "/人",
+    "book": "预约",
+    "bookThisTreatment": "预约此疗程",
+    "min": "分钟",
+    "minutes": "分钟",
+    "questions": "有疑问？",
+    "helpChoose": "我们为您贴心推荐。",
+    "helpChooseText": "不确定哪项疗程适合您？欢迎留言，我们的治疗师将根据您的需求，为您推荐最合适的选择。",
+    "whatsappUs": "WhatsApp 联系我们",
+    "bookOnline": "在线预约",
+    "contactForPricing": "联系我们了解最新价格。",
+    "durationPricing": "时长与价格",
+    "backTo": "返回"
+  },
+  "restaurant": {
+    "gardenRestaurant": "花园餐厅",
+    "theMenu": "菜单",
+    "heroText": "经典泰式佳肴、健康国际美食与新鲜花园饮品——全日供应，于棕榈掩映的开放式凉亭中享用。",
+    "openDaily": "每日营业",
+    "gardenDining": "花园用餐",
+    "openAirSalas": "开放式凉亭",
+    "food": "美食",
+    "drinks": "饮品",
+    "chefsPick": "主厨推荐",
+    "footerNote": "价格已含增值税。如有食物过敏或饮食需求，请告知服务员——我们将为您妥善安排。菜单随季节调整。"
+  },
+  "bookingCta": {
+    "bookAVisit": "预约到访",
+    "reserveHeading": "为您预留时光。",
+    "replyHeading": "我们将在数分钟内回复您。",
+    "reserveText": "请选择疗程、日期与时间。我们将通过 WhatsApp 发送确认信息。",
+    "replyText": "请通过下方表格告知您心仪的日期与服务，也可直接通过 WhatsApp 或 Line 联系我们。",
+    "whatsapp": "WhatsApp",
+    "line": "Line"
+  },
+  "book": {
+    "tagline": "Ton Mai Spa · 普吉岛拉威",
+    "reserveYourTime": "为您预留时光。",
+    "heroText": "请通过 WhatsApp 或 Line 留言，我们将在数分钟内确认您的预约。每日开放 09:00–23:00。",
+    "noTreatmentNeeded": "无需疗程",
+    "dayGardenHeading": "在热疗花园中度过悠然一天。",
+    "dayGardenText": "桑拿日票让您全天无限次享用草本蒸汽、芬兰桑拿、冷泉、泳池与按摩池。",
+    "perPersonAllDay": "每人 · 全天畅享",
+    "dayPassItems": [
+      "草本蒸汽房",
+      "芬兰桑拿",
+      "冷泉池",
+      "泳池与按摩池",
+      "草本迎宾茶",
+      "毛巾与储物柜"
+    ],
+    "faqLabel": "常见问题",
+    "faqHeading": "预约相关",
+    "faq": [
+      {
+        "q": "需要提前预约吗？",
+        "a": "欢迎直接到访，但建议周末与公共假期提前预约——部分时段很快约满。3人以上的团体预约，请提前24小时通过 WhatsApp 与我们联系。"
+      },
+      {
+        "q": "取消政策是怎样的？",
+        "a": "预约时间前48小时以上取消，全额退款；24至48小时内取消，收取50%费用；不足24小时取消，恕不退款。如需取消，请通过 WhatsApp 与我们联系。"
+      },
+      {
+        "q": "如何前往 Ton Mai Spa？",
+        "a": "我们位于拉威 Wiset 路——距离奈汉海滩约5分钟车程，距查龙约10分钟。从巴东海滩打车约40分钟。我们可通过 WhatsApp 分享精确的 Google Maps 定位。"
+      },
+      {
+        "q": "需要携带什么？",
+        "a": "无需特别准备——我们提供毛巾、浴袍、拖鞋与储物柜。如使用泳池，请自备或购买泳衣。桑拿日票含草本迎宾茶与储物柜使用。"
+      },
+      {
+        "q": "可以将按摩与热疗循环结合吗？",
+        "a": "当然——这是最受欢迎的组合。可预约桑拿日票加任意疗程。建议在按摩前1小时到达，先享受蒸汽、桑拿与冷泉。"
+      }
+    ]
   }
 }

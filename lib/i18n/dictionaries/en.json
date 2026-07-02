@@ -30,5 +30,64 @@
     "ru": "Русский",
     "zh": "中文",
     "th": "ไทย"
+  },
+  "spaMenu": {
+    "tonMaiSpa": "Ton Mai Spa",
+    "ourTreatments": "Our Treatments",
+    "heroText": "Every treatment is delivered by skilled Thai therapists in open-air salas overlooking the garden. No rush, no noise — only unhurried, genuine care.",
+    "dayPassLabel": "Sauna Day Pass — Steam · Sauna · Cold Plunge · Pool · Jacuzzi",
+    "perPerson": "/person",
+    "book": "Book",
+    "bookThisTreatment": "Book This Treatment",
+    "min": "min",
+    "minutes": "minutes",
+    "questions": "Questions?",
+    "helpChoose": "We will help you choose.",
+    "helpChooseText": "Not sure which treatment is right for you? Message us and a therapist will recommend the best option based on your needs.",
+    "whatsappUs": "WhatsApp Us",
+    "bookOnline": "Book Online",
+    "contactForPricing": "Contact us for current pricing.",
+    "durationPricing": "Duration & Pricing",
+    "backTo": "Back to"
+  },
+  "restaurant": {
+    "gardenRestaurant": "Garden Restaurant",
+    "theMenu": "The Menu",
+    "heroText": "Thai classics, healthy international dishes and fresh garden drinks — served all day in our open-air sala overlooking the palms.",
+    "openDaily": "Open Daily",
+    "gardenDining": "Garden Dining",
+    "openAirSalas": "Open-Air Salas",
+    "food": "Food",
+    "drinks": "Drinks",
+    "chefsPick": "Chef's Pick",
+    "footerNote": "All prices include VAT. Allergen information available on request — please inform your server of any dietary requirements. Menu items change seasonally."
+  },
+  "bookingCta": {
+    "bookAVisit": "Book a Visit",
+    "reserveHeading": "Reserve your time.",
+    "replyHeading": "We reply within minutes.",
+    "reserveText": "Select your treatment, date and time below. We will send a WhatsApp confirmation.",
+    "replyText": "Send us your preferred date and service via the form below — or message us directly on WhatsApp or Line.",
+    "whatsapp": "WhatsApp",
+    "line": "Line"
+  },
+  "book": {
+    "tagline": "Ton Mai Spa · Rawai, Phuket",
+    "reserveYourTime": "Reserve your time.",
+    "heroText": "Message us on WhatsApp or Line and we will confirm your appointment within minutes. Open daily 09:00–23:00.",
+    "noTreatmentNeeded": "No Treatment Needed",
+    "dayGardenHeading": "Spend the day in the thermal garden.",
+    "dayGardenText": "The Sauna Day Pass gives you unlimited access to herbal steam, Finnish sauna, cold plunge, pool and jacuzzi — for a full day.",
+    "perPersonAllDay": "per person · all day access",
+    "dayPassItems": ["Herbal steam room", "Finnish sauna", "Cold plunge pool", "Swimming pool & jacuzzi", "Herbal welcome tea", "Towel & locker"],
+    "faqLabel": "FAQ",
+    "faqHeading": "Booking questions",
+    "faq": [
+      { "q": "Do I need to book in advance?", "a": "Walk-ins are welcome but we recommend booking ahead for weekends and public holidays — some time slots fill early. For group bookings of 3+ people, please message us on WhatsApp 24 hours ahead." },
+      { "q": "What is the cancellation policy?", "a": "Cancellations made more than 48 hours before your appointment are fully refunded. Within 24–48 hours, a 50% fee applies. Less than 24 hours is non-refundable. To cancel, message us on WhatsApp." },
+      { "q": "How do I get to Ton Mai Spa?", "a": "We are located on Wiset Road in Rawai — about 5 minutes from Nai Harn Beach and 10 minutes from Chalong. A taxi from Patong takes around 40 minutes. We can share our exact Google Maps pin via WhatsApp." },
+      { "q": "What should I bring?", "a": "Nothing is required — we provide towels, robes, flip-flops and lockers. If you plan to use the pool, bring or purchase a swimsuit. The sauna day pass includes a herbal welcome tea and locker access." },
+      { "q": "Can I combine a massage with the thermal circuit?", "a": "Absolutely — this is the most popular combination. Book a sauna day pass plus a treatment of your choice. We recommend arriving 1 hour before your massage to enjoy the steam, sauna and cold plunge first." }
+    ]
   }
 }

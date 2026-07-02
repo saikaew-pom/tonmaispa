@@ -23,9 +23,8 @@ export default function Nav({ lang = 'en', dict = {} }) {
 
   const close = () => setMenuOpen(false)
 
-  // spa-menu/restaurant/book haven't moved under /[lang]/ yet (later phase),
-  // so they stay unprefixed and English-only for now. Homepage anchors are
-  // prefixed so Nav works correctly once reused on other localized pages.
+  // privacy/terms haven't moved under /[lang]/ yet (later phase), so those
+  // stay unprefixed and English-only for now.
   return (
     <>
       {/* ── Fixed header ─────────────────────────────────────── */}
@@ -48,15 +47,15 @@ export default function Nav({ lang = 'en', dict = {} }) {
           {/* Desktop links — hidden on small screens via CSS */}
           <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px,2vw,28px)' }}>
             {[
-              ['/spa-menu',           t(dict, 'nav.treatments')],
-              ['/restaurant',         t(dict, 'nav.restaurant')],
+              [`/${lang}/spa-menu`,   t(dict, 'nav.treatments')],
+              [`/${lang}/restaurant`, t(dict, 'nav.restaurant')],
               [`/${lang}#facilities`, t(dict, 'nav.facilities')],
               [`/${lang}#pricing`,    t(dict, 'nav.pricing')],
             ].map(([href, label]) => (
               <a key={href} href={href} style={{ font: '500 12px Inter,sans-serif', letterSpacing: '0.5px', color: '#1C1917' }}>{label}</a>
             ))}
             <LanguageSwitcher lang={lang} dict={dict} />
-            <Link href="/book" onClick={() => { if (window.gtag) window.gtag('event','book_now_click',{method:'nav'}) }} style={{
+            <Link href={`/${lang}/book`} onClick={() => { if (window.gtag) window.gtag('event','book_now_click',{method:'nav'}) }} style={{
               background: '#3B5249', color: '#fff',
               padding: '11px 22px', borderRadius: 2,
               font: '600 11px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase',
@@ -93,11 +92,11 @@ export default function Nav({ lang = 'en', dict = {} }) {
         <nav style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: 'clamp(20px,5vw,56px) clamp(18px,4vw,40px)', display: 'flex', flexDirection: 'column', gap: 'clamp(8px,2vw,18px)', flex: 1 }}>
           {[
             [`/${lang}#about`,      t(dict, 'nav.ourGarden')],
-            ['/spa-menu',           t(dict, 'nav.treatments')],
-            ['/restaurant',         t(dict, 'nav.restaurant')],
+            [`/${lang}/spa-menu`,   t(dict, 'nav.treatments')],
+            [`/${lang}/restaurant`, t(dict, 'nav.restaurant')],
             [`/${lang}#facilities`, t(dict, 'nav.facilities')],
             [`/${lang}#pricing`,    t(dict, 'nav.pricing')],
-            ['/book',               t(dict, 'nav.bookNow')],
+            [`/${lang}/book`,       t(dict, 'nav.bookNow')],
           ].map(([href, label], i) => (
             <a key={href} href={href} onClick={() => { close(); if (i === 5 && window.gtag) window.gtag('event','book_now_click',{method:'mobile_menu'}) }} style={{
               font: `400 clamp(34px,7vw,60px) Cormorant Garamond,serif`,

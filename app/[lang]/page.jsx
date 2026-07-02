@@ -120,7 +120,7 @@ export default async function HomePage({ params }) {
       <main id="top">
         <HeroSection settings={settings} />
         <AboutSection />
-        <TreatmentsSection treatments={treatments} settings={settings} />
+        <TreatmentsSection treatments={treatments} settings={settings} lang={lang} />
         <ThermoSection />
         <FacilitiesSection />
         <PricingSection settings={settings} />
