@@ -14,7 +14,7 @@ const wa     = (settings) => settings['settings.whatsapp_number'] ?? '6663117521
 const lineId = (settings) => settings['settings.line_id']         ?? '@tonmaispa'
 const waMsg  = encodeURIComponent("Hi, I'd like to book at Ton Mai Spa")
 
-export default function BookingCTA({ settings = {}, dict = {} }) {
+export default function BookingCTA({ settings = {}, dict = {}, presetSlug }) {
   const engineEnabled = settings['settings.booking_engine_enabled'] === 'true'
   const whatsapp      = wa(settings)
   const line          = lineId(settings)
@@ -34,7 +34,7 @@ export default function BookingCTA({ settings = {}, dict = {} }) {
 
       {/* Form */}
       <div style={{ background: '#fff', borderRadius: 8, padding: 'clamp(22px,3vw,36px)', boxShadow: '0 4px 24px rgba(28,25,23,0.08)', marginBottom: 20 }}>
-        {engineEnabled ? <BookingEngine /> : <SimpleEnquiryForm />}
+        {engineEnabled ? <BookingEngine presetSlug={presetSlug} /> : <SimpleEnquiryForm />}
       </div>
 
       {/* Alternative CTAs */}

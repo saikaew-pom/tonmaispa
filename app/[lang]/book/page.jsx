@@ -33,8 +33,9 @@ async function getData() {
   return Object.fromEntries((data ?? []).map(r => [r.key, r.value_text]))
 }
 
-export default async function BookPage({ params }) {
+export default async function BookPage({ params, searchParams }) {
   const { lang } = await params
+  const { treatment: presetSlug } = await searchParams
   const [settings, dict] = await Promise.all([getData(), getDictionary(lang)])
   const faq = dict.book?.faq ?? []
   const dayPassItems = dict.book?.dayPassItems ?? []
@@ -61,7 +62,7 @@ export default async function BookPage({ params }) {
         {/* Booking form section */}
         <section style={{ padding: 'clamp(48px,7vw,96px) clamp(18px,4vw,40px)' }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
-            <BookingCTA settings={settings} dict={dict} />
+            <BookingCTA settings={settings} dict={dict} presetSlug={presetSlug} />
           </div>
         </section>
 

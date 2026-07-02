@@ -115,7 +115,7 @@ const labelSt = { display: 'block', font: '600 10px Inter,sans-serif', letterSpa
 const stepBtnSt = (active) => ({ background: active ? '#3B5249' : '#FAF6F0', color: active ? '#fff' : '#1C1917', border: '1px solid #D6D0C8', padding: '12px 20px', borderRadius: 2, font: '600 11px Inter,sans-serif', letterSpacing: '1.5px', textTransform: 'uppercase', cursor: 'pointer' })
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function BookingEngine() {
+export default function BookingEngine({ presetSlug }) {
   const supabase = createClientComponentClient()
 
   const [step, setStep]               = useState(1)
@@ -125,6 +125,11 @@ export default function BookingEngine() {
   // Step 1: treatment + duration
   const [treatment, setTreatment]     = useState(null)
   const [duration, setDuration]       = useState(null)
+  // When arriving from a specific treatment's "Book This Treatment" button,
+  // step 1 locks to just that treatment + add-on upsells instead of showing
+  // the full service list.
+  const [locked, setLocked]           = useState(!!presetSlug)
+  const [selectedAddonIds, setSelectedAddonIds] = useState([])
 
   // Step 2: date + time
   const [calYear, setCalYear]         = useState(new Date().getFullYear())
@@ -149,11 +154,27 @@ export default function BookingEngine() {
   // Fetch treatments on mount
   useEffect(() => {
     supabase.from('spa_treatments')
-      .select('id, name, category, description, duration_options, prices, badge')
+      .select('id, slug, name, category, description, duration_options, prices, badge')
       .eq('is_active', true)
       .order('sort_order')
-      .then(({ data }) => { setTreatments(data ?? []); setLoadingTx(false) })
-  }, [supabase])
+      .then(({ data }) => {
+        const list = data ?? []
+        setTreatments(list)
+        setLoadingTx(false)
+        if (presetSlug) {
+          const preset = list.find(t => t.slug === presetSlug)
+          if (preset) {
+            setTreatment(preset)
+            setDuration(preset.duration_options?.[0] ?? 60)
+          } else {
+            setLocked(false) // bad/unknown slug — fall back to the full picker
+          }
+        }
+      })
+  }, [supabase, presetSlug])
+
+  const addOns = treatments.filter(t => t.category === 'add_on' && t.id !== treatment?.id)
+  const toggleAddon = (id) => setSelectedAddonIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
   // Fetch slots when date changes
   const fetchSlots = useCallback(async (date) => {
@@ -185,11 +206,21 @@ export default function BookingEngine() {
     else setCalMonth(m => m + 1)
   }
 
+  const selectedAddons = addOns.filter(a => selectedAddonIds.includes(a.id))
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
     setErrMsg('')
     try {
+      // Add-ons aren't a separate line item in the booking schema yet — fold
+      // them into notes so staff see the request, and note the estimated
+      // extra cost since it isn't reflected in the stored booking price.
+      const addonNote = selectedAddons.length
+        ? `Add-ons requested: ${selectedAddons.map(a => `${a.name} (฿${a.prices?.[String(a.duration_options?.[0])] ?? '—'})`).join(', ')}`
+        : ''
+      const combinedNotes = [notes, addonNote].filter(Boolean).join('\n\n')
+
       const res  = await fetch('/api/bookings', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,7 +232,7 @@ export default function BookingEngine() {
           date:           selDate,
           time_slot:      selSlot,
           duration,
-          notes,
+          notes:          combinedNotes,
           turnstileToken: token || 'dev-bypass',
         }),
       })
@@ -245,9 +276,58 @@ export default function BookingEngine() {
   if (step === 1) return (
     <div>
       <StepBar />
-      <h3 style={{ font: '400 26px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 20px' }}>Choose a treatment</h3>
+      <h3 style={{ font: '400 26px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 20px' }}>
+        {locked ? 'Your treatment' : 'Choose a treatment'}
+      </h3>
       {loadingTx ? (
         <p style={{ font: '400 14px Inter,sans-serif', color: '#9B9390' }}>Loading treatments…</p>
+      ) : locked && treatment ? (
+        <>
+          {/* Locked-in treatment card — arrived here via "Book This Treatment",
+              so no other services are shown, only this one + add-on upsells. */}
+          <div style={{ padding: '16px 18px', border: '1.5px solid #3B5249', borderRadius: 4, background: '#F0F4F2' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase', color: '#3B5249' }}>{treatment.category}</div>
+                <div style={{ font: '400 18px Cormorant Garamond,serif', color: '#1C1917', marginTop: 2 }}>{treatment.name}</div>
+              </div>
+              {treatment.badge && <span style={{ background: '#C4924A', color: '#fff', padding: '3px 10px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{treatment.badge}</span>}
+            </div>
+            {treatment.description && <p style={{ font: '400 13px/1.5 Inter,sans-serif', color: '#6B6663', margin: '8px 0 0' }}>{treatment.description}</p>}
+            {treatment.duration_options && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+                {treatment.duration_options.map(dur => (
+                  <button key={dur} type="button" onClick={() => setDuration(dur)}
+                    style={{ padding: '7px 14px', borderRadius: 2, border: `1.5px solid ${duration === dur ? '#3B5249' : '#D6D0C8'}`, background: duration === dur ? '#3B5249' : '#fff', color: duration === dur ? '#fff' : '#1C1917', font: `600 11px Inter,sans-serif`, cursor: 'pointer' }}>
+                    {dur} min {treatment.prices?.[String(dur)] ? `· ฿${treatment.prices[String(dur)]}` : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button type="button" onClick={() => setLocked(false)} style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, color: '#9B9390', font: '400 12px Inter,sans-serif', textDecoration: 'underline', cursor: 'pointer' }}>
+            Choose a different treatment
+          </button>
+
+          {addOns.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase', color: '#6B6663', marginBottom: 10 }}>Add to your visit</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {addOns.map(a => {
+                  const checked = selectedAddonIds.includes(a.id)
+                  const price = a.prices?.[String(a.duration_options?.[0])]
+                  return (
+                    <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', border: `1.5px solid ${checked ? '#C4924A' : '#E5E0D8'}`, borderRadius: 4, cursor: 'pointer', background: checked ? '#FBF3E7' : '#fff' }}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleAddon(a.id)} style={{ width: 16, height: 16, accentColor: '#C4924A' }} />
+                      <span style={{ flex: 1, font: '400 14px Inter,sans-serif', color: '#1C1917' }}>{a.name}</span>
+                      {price && <span style={{ font: '600 13px Inter,sans-serif', color: '#6B6663' }}>+฿{price}</span>}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {treatments.map(t => {
@@ -353,6 +433,7 @@ export default function BookingEngine() {
       <h3 style={{ font: '400 26px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 6px' }}>Your details</h3>
       <div style={{ font: '400 13px Inter,sans-serif', color: '#9B9390', marginBottom: 20 }}>
         {treatment?.name} · {duration} min · {formatDate(selDate)} at {selSlot}
+        {selectedAddons.length > 0 && <><br />+ {selectedAddons.map(a => a.name).join(', ')}</>}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -397,10 +478,11 @@ export default function BookingEngine() {
       <div style={{ font: '400 32px/1 Cormorant Garamond,serif', color: '#3B5249', margin: '12px 0', letterSpacing: 2 }}>{refCode}</div>
       <p style={{ font: '400 14px/1.7 Inter,sans-serif', color: '#6B6663', maxWidth: '34ch', margin: '0 auto' }}>
         {treatment?.name} · {duration} min<br />
+        {selectedAddons.length > 0 && <>+ {selectedAddons.map(a => a.name).join(', ')}<br /></>}
         {formatDate(selDate)} at {selSlot}<br /><br />
         We will send a WhatsApp confirmation within minutes.
       </p>
-      <button type="button" onClick={() => { setStep(1); setTreatment(null); setDuration(null); setSelDate(''); setSelSlot(''); setGuestName(''); setGuestPhone(''); setGuestEmail(''); setNotes(''); setToken(''); setRefCode('') }}
+      <button type="button" onClick={() => { setStep(1); setTreatment(null); setDuration(null); setSelDate(''); setSelSlot(''); setGuestName(''); setGuestPhone(''); setGuestEmail(''); setNotes(''); setToken(''); setRefCode(''); setSelectedAddonIds([]); setLocked(false) }}
         style={{ marginTop: 20, ...stepBtnSt(false) }}>
         Make Another Booking
       </button>

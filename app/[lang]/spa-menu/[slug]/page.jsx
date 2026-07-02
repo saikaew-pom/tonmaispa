@@ -156,7 +156,7 @@ export default async function TreatmentDetailPage({ params }) {
             )) : (
               <p style={{ font: '400 14px Inter,sans-serif', color: '#6B6663' }}>{t(dict, 'spaMenu.contactForPricing')}</p>
             )}
-            <TrackedLink href={`/${lang}/book`} event="book_now_click" params={{ method: 'treatment_detail', treatment: treatment.name }} style={{ display: 'block', marginTop: 20, background: '#3B5249', color: '#fff', padding: '14px 0', borderRadius: 2, font: '600 11px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none' }}>
+            <TrackedLink href={`/${lang}/book?treatment=${treatment.slug}`} event="book_now_click" params={{ method: 'treatment_detail', treatment: treatment.name }} style={{ display: 'block', marginTop: 20, background: '#3B5249', color: '#fff', padding: '14px 0', borderRadius: 2, font: '600 11px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none' }}>
               {t(dict, 'spaMenu.bookThisTreatment')}
             </TrackedLink>
           </div>

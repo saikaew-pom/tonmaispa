@@ -141,7 +141,7 @@ export default async function SpaMenuPage({ params }) {
                             <span style={{ font: '600 15px Cormorant Garamond,serif', color: '#1C1917' }}>฿{prices[String(dur)]?.toLocaleString() ?? '—'}</span>
                           </div>
                         ))}
-                        <TrackedLink href={`/${lang}/book`} event="book_now_click" params={{ method: 'spa_menu_treatment_card', treatment: tr.name }} style={{ display: 'block', marginTop: 14, background: '#3B5249', color: '#fff', padding: '10px 0', borderRadius: 2, font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none' }}>
+                        <TrackedLink href={`/${lang}/book?treatment=${tr.slug}`} event="book_now_click" params={{ method: 'spa_menu_treatment_card', treatment: tr.name }} style={{ display: 'block', marginTop: 14, background: '#3B5249', color: '#fff', padding: '10px 0', borderRadius: 2, font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none' }}>
                           {t(dict, 'spaMenu.bookThisTreatment')}
                         </TrackedLink>
                       </div>
