@@ -5,7 +5,7 @@ import { LOCALES } from '@/lib/i18n/get-dictionary'
 
 // Short codes for the switcher — not translated strings, so no dictionary
 // lookup needed here.
-const LOCALE_CODES = { en: 'US', ru: 'RU', zh: 'CH', th: 'TH' }
+const LOCALE_CODES = { en: 'EN', ru: 'RU', zh: 'CH', th: 'TH' }
 
 // Swaps the /[lang]/ segment of the current path, keeping the visitor on
 // the same page. Only used on pages that live under /[lang]/ — Nav itself
