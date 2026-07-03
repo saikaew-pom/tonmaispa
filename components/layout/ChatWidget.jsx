@@ -85,6 +85,25 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     if (session?.messages?.length > 0) {
       // Returning visitor — restore conversation
       setMessages(session.messages)
+      if (session.metadata?.booking_draft) {
+        const draft = session.metadata.booking_draft
+        setToolResults(prev => ({
+          ...prev,
+          draft: {
+            token: draft.token,
+            expires_at: draft.expires_at,
+            summary: {
+              guest_name: draft.guest_name,
+              guest_phone: maskPhone(draft.guest_phone),
+              treatment: draft.treatment_name,
+              date: draft.date,
+              time: draft.time_slot,
+              duration: draft.duration,
+              price: draft.price,
+            },
+          },
+        }))
+      }
 
       // Personalise greeting based on time since last visit
       const lastActive = new Date(session.last_active)
@@ -238,9 +257,8 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     if (tool === 'check_availability' && result.ok) {
       setToolResults(prev => ({ ...prev, availability: result }))
     }
-    if (tool === 'create_booking' && result.ok) {
-      setToolResults(prev => ({ ...prev, booking: result }))
-      if (window.gtag) window.gtag('event', 'booking_complete', { method: 'chatbot' })
+    if (tool === 'prepare_booking' && result.ok) {
+      setToolResults(prev => ({ ...prev, draft: result, booking: null }))
     }
   }
 
@@ -430,7 +448,17 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                   </div>
                 ))}
 
-                {/* Booking confirmation card */}
+                {/* Booking review and confirmation cards */}
+                {toolResults.draft && !toolResults.booking && (
+                  <BookingDraftCard
+                    draft={toolResults.draft}
+                    sessionId={sessionId}
+                    onConfirmed={(booking) => {
+                      setToolResults(prev => ({ ...prev, draft: null, booking }))
+                      if (window.gtag) window.gtag('event', 'booking_complete', { method: 'chatbot' })
+                    }}
+                  />
+                )}
                 {toolResults.booking && (
                   <BookingConfirmCard refCode={toolResults.booking.ref_code} />
                 )}
@@ -601,6 +629,86 @@ function BookingConfirmCard({ refCode }) {
       <div style={{ marginTop: '4px', color: '#6B6663' }}>The team will confirm via WhatsApp shortly.</div>
     </div>
   )
+}
+
+function BookingDraftCard({ draft, sessionId, onConfirmed }) {
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [error, setError] = useState('')
+  const summary = draft.summary ?? {}
+
+  const confirmBooking = async () => {
+    if (isConfirming || !sessionId || !draft.token) return
+    setIsConfirming(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/chat/confirm-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, token: draft.token }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.ok) {
+        const alternatives = result.nearest_open_times?.length
+          ? ` Available times: ${result.nearest_open_times.join(', ')}.`
+          : ''
+        throw new Error(`${result.error || 'Could not confirm this booking.'}${alternatives}`)
+      }
+      onConfirmed(result)
+    } catch (err) {
+      setError(err.message || 'Could not confirm this booking. Please try again.')
+    } finally {
+      setIsConfirming(false)
+    }
+  }
+
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #C4924A',
+      borderRadius: '8px', padding: '12px 14px',
+      fontSize: '12px', color: '#1C1917',
+    }}>
+      <div style={{ fontWeight: '700', color: '#3B5249', marginBottom: '8px' }}>Review your booking</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '78px 1fr', gap: '4px 8px' }}>
+        <span style={{ color: '#6B6663' }}>Treatment</span><strong>{summary.treatment}</strong>
+        <span style={{ color: '#6B6663' }}>Date</span><span>{formatBookingDate(summary.date)}</span>
+        <span style={{ color: '#6B6663' }}>Time</span><span>{summary.time}</span>
+        <span style={{ color: '#6B6663' }}>Duration</span><span>{summary.duration} minutes</span>
+        {summary.price != null && <><span style={{ color: '#6B6663' }}>Price</span><span>{summary.price} THB</span></>}
+        <span style={{ color: '#6B6663' }}>Guest</span><span>{summary.guest_name}</span>
+        <span style={{ color: '#6B6663' }}>Phone</span><span>{summary.guest_phone}</span>
+      </div>
+      <div style={{ marginTop: '9px', color: '#6B6663', lineHeight: '1.45' }}>
+        Nothing is booked until you press the button below. The spa team will confirm the pending request via WhatsApp.
+      </div>
+      <button
+        type="button"
+        onClick={confirmBooking}
+        disabled={isConfirming}
+        style={{
+          width: '100%', marginTop: '10px', padding: '9px 12px',
+          border: 'none', borderRadius: '7px', background: isConfirming ? '#9EA9A4' : '#3B5249',
+          color: '#fff', fontSize: '12px', fontWeight: '700',
+          fontFamily: 'Inter, sans-serif', cursor: isConfirming ? 'wait' : 'pointer',
+        }}
+      >
+        {isConfirming ? 'Confirming…' : 'Confirm booking'}
+      </button>
+      {error && <div role="alert" style={{ marginTop: '8px', color: '#A33A2B', lineHeight: '1.45' }}>{error}</div>}
+    </div>
+  )
+}
+
+function formatBookingDate(date) {
+  if (!date) return ''
+  const parsed = new Date(`${date}T12:00:00`)
+  if (Number.isNaN(parsed.getTime())) return date
+  return parsed.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function maskPhone(phone) {
+  const clean = String(phone ?? '')
+  return clean.length <= 4 ? clean : `${'•'.repeat(Math.min(6, clean.length - 4))}${clean.slice(-4)}`
 }
 
 const iconBtnStyle = {

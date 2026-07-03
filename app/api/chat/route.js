@@ -8,10 +8,11 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getMiniMax, MINIMAX_MODEL }  from '@/lib/minimax'
 import { checkRateLimit }             from '@/lib/ratelimit'
 import { buildSystemPrompt, TOOLS_SIMPLE, TOOLS_FULL } from '@/lib/chatbot'
-import { sendEmail, enquiryOwnerHtml, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
-import { getAvailableSlots, checkSlotCapacity, getBookableTreatmentsAt } from '@/lib/scheduling'
+import { sendEmail, enquiryOwnerHtml } from '@/lib/brevo'
+import { getAvailableSlots, getBookableTreatmentsAt } from '@/lib/scheduling'
 import { chatMessageSchema } from '@/lib/schemas'
 import { prepareModelMessages, prepareStoredMessages } from '@/lib/chat-history'
+import { prepareBookingDraft } from '@/lib/chat-booking'
 
 export const maxDuration = 60
 
@@ -158,7 +159,7 @@ export async function POST(req) {
             if (block.type !== 'tool_use') continue
 
             // executeToolCall's own `bookingEngineEnabled` guard is really asking
-            // "is the chatbot allowed to check_availability/create_booking right
+            // "is the chatbot allowed to check_availability/prepare_booking right
             // now" — that's chatbotFullMode, not the raw master switch.
             const toolResult = await executeToolCall(
               block.name,
@@ -311,96 +312,9 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
       }
     }
 
-    case 'create_booking': {
+    case 'prepare_booking': {
       if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
-
-      const treatment = await resolveTreatment(admin, input)
-      if (!treatment) return { ok: false, error: 'Unknown treatment — ask the guest which treatment from the menu they mean.' }
-
-      // Validate capacity before inserting — the chatbot must never create a
-      // booking no therapist/room can actually serve. Auto-assigns the
-      // therapist(s) exactly like the public flow.
-      const endTime = addMinutesStr(input.time_slot, input.duration)
-      const capacity = await checkSlotCapacity(admin, {
-        treatmentId: treatment.id, date: input.date, startTime: input.time_slot, endTime,
-      })
-      if (!capacity.ok) {
-        const { slots } = await getAvailableSlots(admin, { date: input.date, treatmentId: treatment.id, duration: input.duration })
-        const alternatives = slots.filter(s => s.available).map(s => s.time).slice(0, 6)
-        return {
-          ok: false,
-          error: 'This slot is no longer available.',
-          nearest_open_times: alternatives,
-          hint: alternatives.length ? 'Offer the guest these times instead.' : 'Suggest a different date.',
-        }
-      }
-
-      const price = treatment.prices?.[String(input.duration)] ?? null
-
-      const { data: booking, error } = await admin.from('bookings').insert({
-        guest_name:      input.guest_name,
-        guest_phone:     input.guest_phone,
-        guest_email:     input.guest_email,
-        treatment_id:    treatment.id,
-        therapist_id:    capacity.therapistIds[0],
-        secondary_therapist_id: capacity.therapistIds[1] ?? null,
-        date:            input.date,
-        time_slot:       input.time_slot,
-        duration:        input.duration,
-        price,
-        notes:           input.notes,
-        source:          'chatbot',
-        chat_session_id: sessionId,
-        status:          'pending',
-      }).select().single()
-
-      if (error) return { ok: false, error: error.message }
-
-      // Update session with guest info
-      await admin.from('chat_sessions')
-        .update({ guest_name: input.guest_name, guest_phone: input.guest_phone })
-        .eq('session_id', sessionId)
-
-      // Email confirmations — guest (if email given) + owner notification
-      const treatmentName = treatment.name ?? 'Spa Treatment'
-      const whatsapp = settings?.['settings.whatsapp_number'] ?? '66631175211'
-      const ownerEmail = process.env.INQUIRY_EMAIL
-
-      await Promise.allSettled([
-        input.guest_email && sendEmail({
-          to:      input.guest_email,
-          subject: `Booking Request Received — ${booking.ref_code} — Ton Mai Spa`,
-          html:    bookingGuestHtml({
-            name:      input.guest_name,
-            refCode:   booking.ref_code,
-            date:      booking.date,
-            time:      booking.time_slot,
-            treatment: treatmentName,
-            whatsapp,
-          }),
-        }),
-        ownerEmail && sendEmail({
-          to:      ownerEmail,
-          subject: `New Booking ${booking.ref_code} — ${treatmentName} (chatbot)`,
-          html:    bookingOwnerHtml({
-            name:      input.guest_name,
-            phone:     input.guest_phone,
-            refCode:   booking.ref_code,
-            date:      booking.date,
-            time:      booking.time_slot,
-            treatment: treatmentName,
-            notes:     input.notes,
-          }),
-        }),
-      ])
-
-      return {
-        ok: true,
-        status: 'pending',
-        ref_code: booking.ref_code,
-        booking_id: booking.id,
-        message: 'Booking request received. The spa team will confirm it with the guest.',
-      }
+      return prepareBookingDraft(admin, sessionId, input)
     }
 
     default:
@@ -433,12 +347,6 @@ function buildEnquiryMessage(input) {
   if (input.party_size > 1)  parts.push(`Party size: ${input.party_size}`)
   if (input.notes)           parts.push(`Notes: ${input.notes}`)
   return parts.join(' | ')
-}
-
-function addMinutesStr(time, mins) {
-  const [h, m] = time.split(':').map(Number)
-  const total = h * 60 + m + mins
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
 // Resolve the treatment the model is referring to — by UUID when it copied

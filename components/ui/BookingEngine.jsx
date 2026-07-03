@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 const SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
@@ -120,6 +120,7 @@ export default function BookingEngine({ presetSlug }) {
 
   const [step, setStep]               = useState(1)
   const [treatments, setTreatments]   = useState([])
+  const [popularTreatmentIds, setPopularTreatmentIds] = useState([])
   const [loadingTx, setLoadingTx]     = useState(true)
 
   // Step 1: treatment + duration
@@ -153,13 +154,18 @@ export default function BookingEngine({ presetSlug }) {
 
   // Fetch treatments on mount
   useEffect(() => {
-    supabase.from('spa_treatments')
-      .select('id, slug, name, category, description, duration_options, prices, badge')
-      .eq('is_active', true)
-      .order('sort_order')
-      .then(({ data }) => {
+    Promise.all([
+      supabase.from('spa_treatments')
+        .select('id, slug, name, category, description, duration_options, prices, badge')
+        .eq('is_active', true)
+        .order('sort_order'),
+      fetch('/api/bookings/popular-treatments')
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null),
+    ]).then(([{ data }, popularity]) => {
         const list = data ?? []
         setTreatments(list)
+        setPopularTreatmentIds(popularity?.treatment_ids ?? [])
         setLoadingTx(false)
         if (presetSlug) {
           const preset = list.find(t => t.slug === presetSlug)
@@ -174,6 +180,16 @@ export default function BookingEngine({ presetSlug }) {
   }, [supabase, presetSlug])
 
   const addOns = treatments.filter(t => t.category === 'add_on' && t.id !== treatment?.id)
+  // Rank by confirmed/completed bookings from the rolling 45-day window.
+  // The API supplies a complete top five, using the curated order only to
+  // break ties or fill gaps when a treatment has no recent booking history.
+  const bestSellingTreatments = useMemo(() => {
+    const eligible = treatments.filter(t => t.category !== 'add_on')
+    const byId = new Map(eligible.map(t => [t.id, t]))
+    const ranked = popularTreatmentIds.map(id => byId.get(id)).filter(Boolean)
+    const rankedIds = new Set(ranked.map(t => t.id))
+    return [...ranked, ...eligible.filter(t => !rankedIds.has(t.id))].slice(0, 5)
+  }, [treatments, popularTreatmentIds])
   const toggleAddon = (id) => setSelectedAddonIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
   // Fetch slots when date changes
@@ -329,11 +345,11 @@ export default function BookingEngine({ presetSlug }) {
           )}
         </>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {treatments.map(t => {
+        <div data-testid="booking-treatment-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {bestSellingTreatments.map(t => {
             const sel = treatment?.id === t.id
             return (
-              <div key={t.id}
+              <div key={t.id} data-testid="booking-treatment-card"
                 onClick={() => { setTreatment(t); setDuration(t.duration_options?.[0] ?? 60) }}
                 style={{ padding: '16px 18px', border: `1.5px solid ${sel ? '#3B5249' : '#E5E0D8'}`, borderRadius: 4, cursor: 'pointer', background: sel ? '#F0F4F2' : '#fff', transition: 'all 200ms' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
@@ -354,16 +370,28 @@ export default function BookingEngine({ presetSlug }) {
                     ))}
                   </div>
                 )}
+                {sel && (
+                  <button
+                    data-testid="booking-treatment-continue"
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setStep(2) }}
+                    style={{ ...stepBtnSt(true), width: '100%', marginTop: 14 }}
+                  >
+                    Book this treatment →
+                  </button>
+                )}
               </div>
             )
           })}
         </div>
       )}
-      <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-        <button type="button" disabled={!treatment} onClick={() => setStep(2)} style={{ ...stepBtnSt(true), opacity: treatment ? 1 : 0.4 }}>
-          Next: Pick a Date →
-        </button>
-      </div>
+      {locked && (
+        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" disabled={!treatment} onClick={() => setStep(2)} style={{ ...stepBtnSt(true), opacity: treatment ? 1 : 0.4 }}>
+            Next: Pick a Date →
+          </button>
+        </div>
+      )}
     </div>
   )
 
