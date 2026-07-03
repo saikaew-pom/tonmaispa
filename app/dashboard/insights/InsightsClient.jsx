@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -18,6 +18,8 @@ const toYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return toYMD(d) }
 const money = (n) => `฿${Math.round(n ?? 0).toLocaleString()}`
 const shortDate = (s) => { const d = new Date(s + 'T00:00:00'); return `${d.getDate()}/${d.getMonth() + 1}` }
+
+const LOADING_STEPS = ['Drafting recommendations…', 'Fact-checking against your real data…', 'Finalizing…']
 
 const TooltipBox = ({ active, payload, label, fmt }) => {
   if (!active || !payload?.length) return null
@@ -39,10 +41,26 @@ export default function InsightsClient({ defaultRange, revenue: initRevenue, the
   const [therapistUtilization, setTherapistUtilization] = useState(initUtil)
   const [forwardBookings, setForwardBookings] = useState(initForward)
   const [recommendations, setRecommendations] = useState(null)
+  const [critique, setCritique] = useState(null)
+  const [showFactCheck, setShowFactCheck] = useState(false)
+  const [currentId, setCurrentId] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState(0)
   const [error, setError] = useState('')
   const [history, setHistory] = useState(initHistory)
   const [viewingId, setViewingId] = useState(null)
+  const stepTimer = useRef(null)
+
+  useEffect(() => {
+    if (loading) {
+      setLoadingStep(0)
+      // Real timing against MiniMax-M3: draft ~30-90s, critique ~15-30s, distill ~30-90s.
+      stepTimer.current = setInterval(() => setLoadingStep(s => Math.min(s + 1, LOADING_STEPS.length - 1)), 60000)
+    } else if (stepTimer.current) {
+      clearInterval(stepTimer.current)
+    }
+    return () => stepTimer.current && clearInterval(stepTimer.current)
+  }, [loading])
 
   const applyPastPreset = (days) => {
     setMode('past')
@@ -105,6 +123,8 @@ export default function InsightsClient({ defaultRange, revenue: initRevenue, the
       setTherapistUtilization(data.summary.therapistUtilization)
       setForwardBookings(data.summary.forwardBookings)
       setRecommendations(data.recommendations)
+      setCritique(data.critique)
+      setCurrentId(data.id)
       if (data.id) setHistory(h => [{ id: data.id, period_start: startDate, period_end: endDate, created_at: new Date().toISOString() }, ...h])
     } catch (e) {
       setError(e.message)
@@ -124,6 +144,8 @@ export default function InsightsClient({ defaultRange, revenue: initRevenue, the
       setTherapistUtilization(data.insight.input_summary.therapistUtilization)
       if (data.insight.input_summary.forwardBookings) setForwardBookings(data.insight.input_summary.forwardBookings)
       setRecommendations(data.insight.recommendations)
+      setCritique(data.insight.critique)
+      setCurrentId(id)
       setStartDate(data.insight.period_start)
       setEndDate(data.insight.period_end)
       setMode('past')
@@ -224,7 +246,7 @@ export default function InsightsClient({ defaultRange, revenue: initRevenue, the
           </div>
 
           <button onClick={askForRecommendations} disabled={loading} style={{ ...btnPrimary, marginTop: 18, opacity: loading ? 0.7 : 1, cursor: loading ? 'wait' : 'pointer' }}>
-            {loading ? 'Analyzing…' : '✨ Ask for Recommendations'}
+            {loading ? LOADING_STEPS[loadingStep] : '✨ Ask for Recommendations'}
           </button>
           {error && <p style={{ color: '#DC2626', font: '400 12px Inter,sans-serif', marginTop: 10 }}>{error}</p>}
         </div>
@@ -316,6 +338,50 @@ export default function InsightsClient({ defaultRange, revenue: initRevenue, the
 
         {recommendations && (
           <>
+            <div style={card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <h2 style={{ ...sectionTitle, margin: 0 }}>Export</h2>
+                {currentId && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <a href={`/api/admin/insights/${currentId}/export?format=pdf`} style={btnGhost(false)}>⬇ PDF</a>
+                    <a href={`/api/admin/insights/${currentId}/export?format=docx`} style={btnGhost(false)}>⬇ Word (.docx)</a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {critique && (
+              <div style={card}>
+                <button onClick={() => setShowFactCheck(s => !s)} style={{ ...sectionTitle, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  {showFactCheck ? '▾' : '▸'} Show fact-check ({critique.issues?.length ?? 0} issues found and corrected)
+                </button>
+                {showFactCheck && (
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(critique.issues ?? []).map((iss, i) => (
+                      <div key={i} style={{ fontSize: 12, padding: 8, borderRadius: 6, background: iss.severity === 'must-fix' ? '#FDECEC' : '#F5F2ED' }}>
+                        <strong>{iss.location}:</strong> {iss.problem}
+                      </div>
+                    ))}
+                    {(!critique.issues || critique.issues.length === 0) && <p style={{ font: '400 12px Inter,sans-serif', color: '#9B9390' }}>No issues found — the draft was already well-grounded.</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {recommendations.groundingNotes?.length > 0 && (
+              <div style={{ ...card, background: '#F0F4F2' }}>
+                <h2 style={sectionTitle}>Grounding Notes — what&apos;s real data vs. estimated</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {recommendations.groundingNotes.map((g, i) => (
+                    <div key={i} style={{ font: '400 12px Inter,sans-serif', color: '#4A4745' }}>
+                      <span style={{ font: '600 10px Inter,sans-serif', textTransform: 'uppercase', color: g.source === 'actual data' ? '#3B5249' : '#C4924A', marginRight: 6 }}>{g.source}</span>
+                      {g.claim}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <InsightList title="Revenue Perspective" items={recommendations.revenueInsights} />
             <InsightList title="Marketing Perspective" items={recommendations.marketingInsights} />
           </>

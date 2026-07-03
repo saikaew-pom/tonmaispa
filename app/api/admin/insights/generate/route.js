@@ -1,10 +1,16 @@
 import { requireAdmin } from '@/lib/require-admin'
 import { getRevenueSummary, getTherapistUtilizationSummary, getForwardBookingSummary, getMarketingFunnelSummary, generateRecommendations } from '@/lib/insights'
 
+// 3 sequential MiniMax calls (draft -> critique -> distill) can take several
+// minutes combined against this model — see lib/ai-critique.js. Use the
+// highest duration Vercel allows for this project's plan.
+export const maxDuration = 300
+
 // POST /api/admin/insights/generate — { startDate, endDate }
 // Aggregates historical revenue/therapist/marketing data for the selected
 // period plus everything already on the books going forward, asks MiniMax
-// for grounded revenue + marketing recommendations, and persists the result.
+// for grounded revenue + marketing recommendations (via the 3-stage
+// self-critique pipeline), and persists the result.
 export async function POST(req) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
@@ -22,9 +28,9 @@ export async function POST(req) {
   ])
 
   const inputSummary = { revenue, therapistUtilization, forwardBookings, marketingFunnel }
-  const recommendations = await generateRecommendations(inputSummary)
+  const result = await generateRecommendations(inputSummary)
 
-  if (!recommendations) {
+  if (!result) {
     return Response.json({ error: 'Could not generate recommendations. Please try again.' }, { status: 502 })
   }
 
@@ -35,7 +41,9 @@ export async function POST(req) {
       period_end: endDate,
       requested_by: auth.session.user.id,
       input_summary: inputSummary,
-      recommendations,
+      draft_recommendations: result.draftRecommendations,
+      critique: result.critique,
+      recommendations: result.finalRecommendations,
     })
     .select('id, created_at')
     .single()
@@ -45,6 +53,7 @@ export async function POST(req) {
   return Response.json({
     id: saved?.id ?? null,
     summary: { revenue, therapistUtilization, forwardBookings, marketingFunnel },
-    recommendations,
+    recommendations: result.finalRecommendations,
+    critique: result.critique,
   })
 }

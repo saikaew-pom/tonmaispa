@@ -12,7 +12,7 @@ export async function GET(req) {
   if (id) {
     const { data, error } = await auth.admin
       .from('revenue_insights')
-      .select('id, period_start, period_end, created_at, recommendations, input_summary')
+      .select('id, period_start, period_end, created_at, recommendations, input_summary, draft_recommendations, critique')
       .eq('id', id)
       .single()
     if (error) return Response.json({ error: error.message }, { status: 404 })
