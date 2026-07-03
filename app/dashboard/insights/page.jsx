@@ -1,5 +1,7 @@
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getRevenueSummary, getTherapistUtilizationSummary, getForwardBookingSummary } from '@/lib/insights'
+import { isFeatureEnabled } from '@/lib/site-settings'
+import FeatureDisabled from '../FeatureDisabled'
 import InsightsClient from './InsightsClient'
 
 export const dynamic = 'force-dynamic'
@@ -31,6 +33,17 @@ async function getData() {
 }
 
 export default async function InsightsPage() {
+  const admin = createSupabaseAdminClient()
+  const enabled = await isFeatureEnabled(admin, 'settings.insights_enabled')
+  if (!enabled) {
+    return (
+      <div>
+        <h1 style={{ font: '400 32px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 24px' }}>Revenue &amp; Marketing Advisor</h1>
+        <FeatureDisabled name="The Revenue & Marketing Advisor" />
+      </div>
+    )
+  }
+
   const data = await getData()
   return (
     <div>

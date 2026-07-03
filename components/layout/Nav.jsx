@@ -55,6 +55,7 @@ export default function Nav({ lang = 'en', dict = {} }) {
               <a key={href} href={href} style={{ font: '500 12px Inter,sans-serif', letterSpacing: '0.5px', color: '#1C1917' }}>{label}</a>
             ))}
             <LanguageSwitcher lang={lang} dict={dict} />
+            <Link href="/login" style={{ font: '500 12px Inter,sans-serif', letterSpacing: '0.5px', color: '#1C1917', opacity: 0.75 }}>{t(dict, 'nav.login')}</Link>
             <Link href={`/${lang}/book`} onClick={() => { if (window.gtag) window.gtag('event','book_now_click',{method:'nav'}) }} style={{
               background: '#3B5249', color: '#fff',
               padding: '11px 22px', borderRadius: 2,
@@ -109,9 +110,12 @@ export default function Nav({ lang = 'en', dict = {} }) {
           ))}
         </nav>
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 clamp(18px,4vw,40px) 40px' }}>
-          <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(250,246,240,0.5)' }}>{t(dict, 'nav.openHours')}</div>
-          <div style={{ font: '400 15px Inter,sans-serif', color: 'rgba(250,246,240,0.85)', marginTop: 8 }}>+66 63 117 5211 · Rawai, Phuket</div>
+        <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 clamp(18px,4vw,40px) 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(250,246,240,0.5)' }}>{t(dict, 'nav.openHours')}</div>
+            <div style={{ font: '400 15px Inter,sans-serif', color: 'rgba(250,246,240,0.85)', marginTop: 8 }}>+66 63 117 5211 · Rawai, Phuket</div>
+          </div>
+          <Link href="/login" onClick={close} style={{ font: '500 12px Inter,sans-serif', color: 'rgba(250,246,240,0.55)', textDecoration: 'underline' }}>{t(dict, 'nav.login')}</Link>
         </div>
       </div>
 

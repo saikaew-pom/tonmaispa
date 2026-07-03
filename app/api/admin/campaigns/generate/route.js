@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
+import { isFeatureEnabled } from '@/lib/site-settings'
 import { buildCampaignContext, generateCampaignPlan } from '@/lib/campaigns'
 
 // 3 sequential MiniMax calls (draft -> critique -> distill) can take several
@@ -13,6 +14,9 @@ export const maxDuration = 300
 export async function POST(req) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+  if (!(await isFeatureEnabled(auth.admin, 'settings.campaigns_enabled'))) {
+    return Response.json({ error: 'This feature is not enabled' }, { status: 403 })
+  }
 
   const body = await req.json()
   const { freeText, objective, audience, budgetTHB, periodStart, periodEnd, channels, constraints } = body

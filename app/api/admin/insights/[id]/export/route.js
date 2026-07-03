@@ -1,10 +1,14 @@
 import { requireAdmin } from '@/lib/require-admin'
+import { isFeatureEnabled } from '@/lib/site-settings'
 import { renderInsightsPdf, renderInsightsDocx } from '@/lib/insights-export'
 
 // GET /api/admin/insights/[id]/export?format=pdf|docx
 export async function GET(req, { params }) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+  if (!(await isFeatureEnabled(auth.admin, 'settings.insights_enabled'))) {
+    return Response.json({ error: 'This feature is not enabled' }, { status: 403 })
+  }
 
   const { id } = await params
   const { searchParams } = new URL(req.url)

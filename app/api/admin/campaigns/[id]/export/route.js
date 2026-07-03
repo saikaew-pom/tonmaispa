@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
+import { isFeatureEnabled } from '@/lib/site-settings'
 import { renderCampaignPdf, renderCampaignDocx } from '@/lib/campaign-export'
 
 // GET /api/admin/campaigns/[id]/export?format=pdf|docx
@@ -7,6 +8,9 @@ import { renderCampaignPdf, renderCampaignDocx } from '@/lib/campaign-export'
 export async function GET(req, { params }) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+  if (!(await isFeatureEnabled(auth.admin, 'settings.campaigns_enabled'))) {
+    return Response.json({ error: 'This feature is not enabled' }, { status: 403 })
+  }
 
   const { id } = await params
   const { searchParams } = new URL(req.url)

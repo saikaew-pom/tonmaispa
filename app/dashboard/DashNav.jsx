@@ -3,11 +3,11 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const LINKS = [
+const BASE_LINKS = [
   { href: '/dashboard',            label: 'Overview' },
   { href: '/dashboard/bookings',   label: 'Bookings' },
-  { href: '/dashboard/insights',   label: 'Insights' },
-  { href: '/dashboard/campaigns',  label: 'Campaigns' },
+  { href: '/dashboard/insights',   label: 'Insights', flag: 'insights' },
+  { href: '/dashboard/campaigns',  label: 'Campaigns', flag: 'campaigns' },
   { href: '/dashboard/availability', label: 'Availability' },
   { href: '/dashboard/therapists',   label: 'Therapists' },
   { href: '/dashboard/enquiries',  label: 'Enquiries' },
@@ -17,9 +17,12 @@ const LINKS = [
   { href: '/dashboard/settings',   label: 'Settings' },
 ]
 
-export default function DashNav({ fullName, role, email }) {
+export default function DashNav({ fullName, role, email, insightsEnabled = true, campaignsEnabled = true }) {
   const pathname = usePathname()
   const router   = useRouter()
+  const LINKS = BASE_LINKS.filter(l =>
+    (l.flag !== 'insights' || insightsEnabled) && (l.flag !== 'campaigns' || campaignsEnabled)
+  )
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

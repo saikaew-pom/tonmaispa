@@ -1,10 +1,14 @@
 import { requireAdmin } from '@/lib/require-admin'
+import { isFeatureEnabled } from '@/lib/site-settings'
 
 // GET /api/admin/insights — list past recommendations (history)
 // GET /api/admin/insights?id=uuid — fetch one full past result
 export async function GET(req) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+  if (!(await isFeatureEnabled(auth.admin, 'settings.insights_enabled'))) {
+    return Response.json({ error: 'This feature is not enabled' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')

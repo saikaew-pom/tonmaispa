@@ -8,6 +8,8 @@
 import { cookies } from 'next/headers'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { redirect } from 'next/navigation'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getSettingsMap } from '@/lib/site-settings'
 import DashNav from './DashNav'
 
 export const metadata = { robots: { index: false, follow: false } }
@@ -24,9 +26,16 @@ export default async function DashboardLayout({ children }) {
     .eq('id', session.user.id)
     .single()
 
+  const admin = createSupabaseAdminClient()
+  const flags = await getSettingsMap(admin, ['settings.insights_enabled', 'settings.campaigns_enabled'])
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--color-bg)' }}>
-      <DashNav fullName={profile?.full_name} role={profile?.role} email={session.user.email} />
+      <DashNav
+        fullName={profile?.full_name} role={profile?.role} email={session.user.email}
+        insightsEnabled={flags['settings.insights_enabled'] === 'true'}
+        campaignsEnabled={flags['settings.campaigns_enabled'] === 'true'}
+      />
       <main style={{ flex: 1, padding: 'clamp(20px,3vw,40px)', minWidth: 0 }}>
         {children}
       </main>

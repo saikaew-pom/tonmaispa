@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
+import { isFeatureEnabled } from '@/lib/site-settings'
 import { getRevenueSummary, getTherapistUtilizationSummary, getForwardBookingSummary, getMarketingFunnelSummary, generateRecommendations } from '@/lib/insights'
 
 // 3 sequential MiniMax calls (draft -> critique -> distill) can take several
@@ -14,6 +15,9 @@ export const maxDuration = 300
 export async function POST(req) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+  if (!(await isFeatureEnabled(auth.admin, 'settings.insights_enabled'))) {
+    return Response.json({ error: 'This feature is not enabled' }, { status: 403 })
+  }
 
   const { startDate, endDate } = await req.json()
   if (!startDate || !endDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {

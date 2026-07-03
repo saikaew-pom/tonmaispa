@@ -7,6 +7,8 @@ const BOOLEAN_KEYS = [
   'settings.chatbot_enabled',
   'settings.announcement_enabled',
   'settings.maintenance_mode',
+  'settings.insights_enabled',
+  'settings.campaigns_enabled',
 ]
 
 const TEXTAREA_KEYS = ['settings.homepage_services_subheading']
@@ -27,7 +29,11 @@ const GROUPS = [
   },
   {
     title: 'Feature Toggles',
-    keys: ['settings.booking_engine_enabled', 'settings.chatbot_enabled', 'settings.chatbot_booking_mode', 'settings.announcement_enabled', 'settings.maintenance_mode'],
+    keys: [
+      'settings.booking_engine_enabled', 'settings.chatbot_enabled', 'settings.chatbot_booking_mode',
+      'settings.insights_enabled', 'settings.campaigns_enabled',
+      'settings.announcement_enabled', 'settings.maintenance_mode',
+    ],
   },
 ]
 
@@ -47,8 +53,38 @@ const LABELS = {
   'settings.booking_engine_enabled':      'Booking engine enabled',
   'settings.chatbot_enabled':             'Chatbot enabled',
   'settings.chatbot_booking_mode':        'Chatbot booking mode (simple / full)',
+  'settings.insights_enabled':            'Revenue & Marketing Advisor enabled',
+  'settings.campaigns_enabled':           'AI Campaign Planner enabled',
   'settings.announcement_enabled':        'Announcement banner enabled',
   'settings.maintenance_mode':            'Maintenance mode',
+}
+
+const HINTS = {
+  'settings.insights_enabled':  'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
+  'settings.campaigns_enabled': 'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
+}
+
+function ToggleSwitch({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      style={{
+        width: 44, height: 24, borderRadius: 999, border: 'none', padding: 2,
+        background: checked ? '#3B5249' : '#D8D2C8', cursor: 'pointer',
+        display: 'flex', justifyContent: checked ? 'flex-end' : 'flex-start',
+        transition: 'background 160ms ease', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        width: 20, height: 20, borderRadius: '50%', background: '#fff',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.25)', display: 'block',
+        transition: 'transform 160ms ease',
+      }} />
+    </button>
+  )
 }
 
 export default function SettingsClient({ initialSettings }) {
@@ -80,20 +116,25 @@ export default function SettingsClient({ initialSettings }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {group.keys.map(key => (
               <div key={key}>
-                <label style={{ display: 'block', font: '500 12px Inter,sans-serif', color: '#4A4745', marginBottom: 4 }}>{LABELS[key] ?? key}</label>
                 {BOOLEAN_KEYS.includes(key) ? (
-                  <input
-                    type="checkbox"
-                    checked={values[key] === 'true'}
-                    onChange={e => setValue(key, e.target.checked ? 'true' : 'false')}
-                    style={{ width: 18, height: 18 }}
-                  />
-                ) : TEXTAREA_KEYS.includes(key) ? (
-                  <textarea className="input" rows={3} style={{ resize: 'vertical', minHeight: 70, fontFamily: 'inherit' }} value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
-                ) : NUMBER_KEYS.includes(key) ? (
-                  <input className="input" type="number" min={1} max={9} value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '4px 0' }}>
+                    <div>
+                      <div style={{ font: '500 13px Inter,sans-serif', color: '#1C1917' }}>{LABELS[key] ?? key}</div>
+                      {HINTS[key] && <div style={{ font: '400 11px Inter,sans-serif', color: '#9B9390', marginTop: 2, maxWidth: 380 }}>{HINTS[key]}</div>}
+                    </div>
+                    <ToggleSwitch checked={values[key] === 'true'} onChange={v => setValue(key, v ? 'true' : 'false')} />
+                  </div>
                 ) : (
-                  <input className="input" value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
+                  <>
+                    <label style={{ display: 'block', font: '500 12px Inter,sans-serif', color: '#4A4745', marginBottom: 4 }}>{LABELS[key] ?? key}</label>
+                    {TEXTAREA_KEYS.includes(key) ? (
+                      <textarea className="input" rows={3} style={{ resize: 'vertical', minHeight: 70, fontFamily: 'inherit' }} value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
+                    ) : NUMBER_KEYS.includes(key) ? (
+                      <input className="input" type="number" min={1} max={9} value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
+                    ) : (
+                      <input className="input" value={values[key] ?? ''} onChange={e => setValue(key, e.target.value)} />
+                    )}
+                  </>
                 )}
               </div>
             ))}
