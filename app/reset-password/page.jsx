@@ -11,12 +11,38 @@ export default function ResetPasswordPage() {
   const [error,    setError]      = useState('')
   const [loading,  setLoading]    = useState(false)
   const [ready,    setReady]      = useState(false)
+  const [linkError, setLinkError] = useState('')
 
   useEffect(() => {
-    // Supabase sends the token via URL hash — exchange it for a session
-    supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'PASSWORD_RECOVERY') setReady(true)
+    let settled = false
+    const markReady = () => { settled = true; setReady(true) }
+
+    // Supabase Auth-js processes the URL's access token as soon as the client
+    // is created — which can happen before this effect runs, so the
+    // PASSWORD_RECOVERY event can fire and be missed entirely. Check for an
+    // already-established session first (covers both recovery and invite
+    // links — invite links land here too but fire SIGNED_IN, not
+    // PASSWORD_RECOVERY), then keep listening for the event as a fallback
+    // for the timing case where the session appears after mount.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) markReady()
     })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') markReady()
+    })
+
+    // If neither the session check nor the event fires within a few
+    // seconds, the link is expired/invalid — show that instead of hanging
+    // on "Verifying link..." forever.
+    const timeout = setTimeout(() => {
+      if (!settled) setLinkError('This link has expired or is invalid. Please ask an administrator to send a new one.')
+    }, 6000)
+
+    return () => {
+      listener?.subscription?.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   const handleSubmit = async (e) => {
@@ -42,6 +68,14 @@ export default function ResetPasswordPage() {
     }
 
     router.push('/dashboard')
+  }
+
+  if (linkError) {
+    return (
+      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)', padding: '2rem' }}>
+        <p style={{ color: '#DC2626', textAlign: 'center', maxWidth: 360 }}>{linkError}</p>
+      </main>
+    )
   }
 
   if (!ready) {
