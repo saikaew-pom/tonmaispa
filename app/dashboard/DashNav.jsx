@@ -14,14 +14,19 @@ const BASE_LINKS = [
   { href: '/dashboard/treatments', label: 'Treatments' },
   { href: '/dashboard/menu',       label: 'Restaurant Menu' },
   { href: '/dashboard/gallery',    label: 'Gallery' },
-  { href: '/dashboard/settings',   label: 'Settings' },
+  { href: '/dashboard/users',      label: 'Users', minRole: 'owner' },
+  { href: '/dashboard/settings',   label: 'Settings', minRole: 'owner' },
 ]
+
+const ROLE_RANK = { staff: 0, owner: 1, super_admin: 2 }
 
 export default function DashNav({ fullName, role, email, insightsEnabled = true, campaignsEnabled = true }) {
   const pathname = usePathname()
   const router   = useRouter()
   const LINKS = BASE_LINKS.filter(l =>
-    (l.flag !== 'insights' || insightsEnabled) && (l.flag !== 'campaigns' || campaignsEnabled)
+    (l.flag !== 'insights' || insightsEnabled) &&
+    (l.flag !== 'campaigns' || campaignsEnabled) &&
+    (!l.minRole || (ROLE_RANK[role] ?? 0) >= ROLE_RANK[l.minRole])
   )
 
   const handleLogout = async () => {

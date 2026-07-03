@@ -19,7 +19,13 @@ const WORD_TOGGLE_KEYS = {
 const TEXTAREA_KEYS = ['settings.homepage_services_subheading']
 const NUMBER_KEYS   = ['settings.homepage_services_count']
 
-const GROUPS = [
+// Keys an `owner` account is allowed to see and change — everything else
+// (contact info, business info, homepage copy, and every toggle except the
+// two operational ones) is super_admin-only, enforced here for display and
+// again server-side in app/api/admin/settings/route.js.
+const OWNER_ALLOWED_KEYS = ['settings.announcement_enabled', 'settings.maintenance_mode']
+
+const FULL_GROUPS = [
   {
     title: 'Contact & Social',
     keys: ['settings.whatsapp_number', 'settings.line_id', 'settings.instagram_url', 'settings.facebook_url', 'settings.google_maps_url'],
@@ -41,6 +47,11 @@ const GROUPS = [
     ],
   },
 ]
+
+function groupsForRole(role) {
+  if (role !== 'owner') return FULL_GROUPS
+  return [{ title: 'Feature Toggles', keys: OWNER_ALLOWED_KEYS }]
+}
 
 const LABELS = {
   'settings.whatsapp_number':             'WhatsApp number (no +)',
@@ -93,10 +104,14 @@ function ToggleSwitch({ checked, onChange }) {
   )
 }
 
-export default function SettingsClient({ initialSettings }) {
+export default function SettingsClient({ initialSettings, role }) {
   const [values, setValues] = useState(initialSettings)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
+  const [error, setError]   = useState('')
+
+  const GROUPS = groupsForRole(role)
+  const editableKeys = GROUPS.flatMap(g => g.keys)
 
   const setValue = (key, value) => {
     setValues(prev => ({ ...prev, [key]: value }))
@@ -105,13 +120,20 @@ export default function SettingsClient({ initialSettings }) {
 
   const handleSave = async () => {
     setSaving(true)
+    setError('')
+    // Only send keys this role can actually edit — an owner's save must
+    // never include the other keys just because they're in initialSettings,
+    // or the server-side check (which mirrors this same restriction) rejects it.
+    const payload = Object.fromEntries(editableKeys.map(k => [k, values[k]]))
     const res = await fetch('/api/admin/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
     })
+    const data = await res.json().catch(() => ({}))
     setSaving(false)
     setSaved(res.ok)
+    if (!res.ok) setError(data.error || 'Could not save settings')
   }
 
   return (
@@ -163,6 +185,7 @@ export default function SettingsClient({ initialSettings }) {
         {saving ? 'Saving…' : 'Save All Settings'}
       </button>
       {saved && <span style={{ marginLeft: 12, color: '#065F46', font: '500 12px Inter,sans-serif' }}>Saved ✓</span>}
+      {error && <p style={{ color: '#DC2626', font: '400 12px Inter,sans-serif', marginTop: 10 }}>{error}</p>}
     </div>
   )
 }
