@@ -40,14 +40,26 @@ function computePeriod(presetId, holidayId, customStart, customEnd) {
 
 const LOADING_STEPS = ['Drafting your campaign…', 'Fact-checking against your real data…', 'Finalizing…']
 
-export default function CampaignsClient({ context, campaigns: initCampaigns, prefillObjective }) {
+// Turns an Insights card (title/detail/suggestedAction) into a natural-language
+// campaign brief for the Quick Brief textarea, and a clean, actionable
+// objective sentence for the guided builder's Step 1 textarea.
+function rewriteInsightAsBrief({ title, detail, action }) {
+  if (!title && !detail && !action) return { quickBrief: '', objective: '' }
+  const quickBrief = [title, detail, action ? `Suggested action: ${action}` : null].filter(Boolean).join('. ')
+  const objective = action || title || ''
+  return { quickBrief, objective }
+}
+
+export default function CampaignsClient({ context, campaigns: initCampaigns, prefillInsight }) {
   const [campaigns, setCampaigns] = useState(initCampaigns)
   const [view, setView] = useState('builder') // 'builder' | 'plan'
   const [selectedId, setSelectedId] = useState(null)
 
+  const insightPrefill = rewriteInsightAsBrief(prefillInsight ?? {})
+
   // Builder state
   const [objPreset, setObjPreset] = useState(null)
-  const [objectiveText, setObjectiveText] = useState(prefillObjective || '')
+  const [objectiveText, setObjectiveText] = useState(insightPrefill.objective)
   const [packagePick, setPackagePick] = useState(PACKAGE_OPTIONS[0])
   const [holidayPick, setHolidayPick] = useState(HOLIDAY_OPTIONS[0].id)
   const [freeTextExtra, setFreeTextExtra] = useState('')
@@ -59,7 +71,7 @@ export default function CampaignsClient({ context, campaigns: initCampaigns, pre
   const [customEnd, setCustomEnd] = useState('')
   const [channels, setChannels] = useState([])
   const [constraints, setConstraints] = useState('')
-  const [quickBrief, setQuickBrief] = useState('')
+  const [quickBrief, setQuickBrief] = useState(insightPrefill.quickBrief)
 
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState(0)

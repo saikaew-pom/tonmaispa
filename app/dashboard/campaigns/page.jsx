@@ -24,7 +24,11 @@ export default async function CampaignsPage({ searchParams }) {
   return (
     <div>
       <h1 style={{ font: '400 32px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 24px' }}>AI Campaign Planner</h1>
-      <CampaignsClient {...data} prefillObjective={params?.objective ?? ''} />
+      <CampaignsClient {...data} prefillInsight={{
+        title: params?.title ?? '',
+        detail: params?.detail ?? '',
+        action: params?.action ?? '',
+      }} />
     </div>
   )
 }
