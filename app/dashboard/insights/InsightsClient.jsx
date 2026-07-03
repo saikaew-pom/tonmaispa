@@ -151,6 +151,10 @@ export default function InsightsClient({ defaultRange, revenue: initRevenue, the
             {ins.suggestedAction && (
               <p style={{ font: '600 12px/1.5 Inter,sans-serif', color: '#3B5249', margin: '8px 0 0' }}>→ {ins.suggestedAction}</p>
             )}
+            <a href={`/dashboard/campaigns?objective=${encodeURIComponent(ins.title)}`}
+              style={{ display: 'inline-block', marginTop: 10, font: '600 11px Inter,sans-serif', color: '#C4924A', textDecoration: 'none' }}>
+              ✨ Plan a campaign from this insight →
+            </a>
           </div>
         ))}
       </div>
