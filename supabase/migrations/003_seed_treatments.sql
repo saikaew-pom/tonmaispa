@@ -226,5 +226,5 @@ INSERT INTO site_content (key, value_text, page, section) VALUES
   ('settings.google_review_count',    '369',          'settings', 'seo'),
   ('settings.instagram_url',          'https://www.instagram.com/tonmaispa/', 'settings', 'social'),
   ('settings.facebook_url',           'https://www.facebook.com/tonmaispa/', 'settings', 'social'),
-  ('settings.google_maps_url',        'https://maps.app.goo.gl/tonmaispa',   'settings', 'social')
+  ('settings.google_maps_url',        'https://www.google.com/maps/dir/?api=1&destination=Ton+Mai+Spa+Rawai+Phuket', 'settings', 'social')
 ON CONFLICT (key) DO UPDATE SET value_text = EXCLUDED.value_text;

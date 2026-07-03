@@ -10,6 +10,8 @@ import { checkRateLimit }             from '@/lib/ratelimit'
 import { buildSystemPrompt, TOOLS_SIMPLE, TOOLS_FULL } from '@/lib/chatbot'
 import { sendEmail, enquiryOwnerHtml, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
 import { getAvailableSlots, checkSlotCapacity, getBookableTreatmentsAt } from '@/lib/scheduling'
+import { chatMessageSchema } from '@/lib/schemas'
+import { prepareModelMessages, prepareStoredMessages } from '@/lib/chat-history'
 
 export const maxDuration = 60
 
@@ -17,15 +19,22 @@ export async function POST(req) {
   // ── 1. Rate limit — 30 messages per 10 min per IP ──────────
   const rl = await checkRateLimit(req, 'chat', { limit: 30, window: 600 })
   if (!rl.success) {
-    return Response.json({ error: 'Too many messages. Please wait a moment.' }, { status: 429 })
+    const retryAfter = rl.retryAfter ?? 600
+    return Response.json(
+      {
+        error: 'You have sent several messages in a short time. Please take a short pause, then try again.',
+        retryAfter,
+      },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+    )
   }
 
   const body = await req.json()
-  const { messages, sessionId } = body
-
-  if (!messages?.length || !sessionId) {
-    return Response.json({ error: 'Invalid request' }, { status: 400 })
+  const parsed = chatMessageSchema.safeParse(body)
+  if (!parsed.success) {
+    return Response.json({ error: 'Invalid chat message.' }, { status: 400 })
   }
+  const { messages, sessionId } = parsed.data
 
   const admin = createSupabaseAdminClient()
 
@@ -61,8 +70,10 @@ export async function POST(req) {
     return Response.json({ error: 'AI service unavailable' }, { status: 503 })
   }
 
-  // Keep last 20 messages to manage token usage
-  const trimmedMessages = messages.slice(-20)
+  // Bound both message count and total characters. A few long answers can be
+  // more expensive than dozens of short turns, so count-only trimming is not
+  // enough to protect the model context.
+  const modelMessages = prepareModelMessages(messages)
 
   // ── 5. Stream response + run the tool-use loop ──────────────
   // Anthropic/MiniMax tool calling is a round-trip: the model emits a
@@ -79,7 +90,7 @@ export async function POST(req) {
   const readable = new ReadableStream({
     async start(controller) {
       let fullText = ''
-      const conversationMessages = [...trimmedMessages]
+      const conversationMessages = [...modelMessages]
 
       try {
         let resolvedNaturally = false
@@ -171,7 +182,7 @@ export async function POST(req) {
         }
 
         // ── 6. Persist conversation to Supabase ────────────────
-        await persistSession({ admin, sessionId, messages: trimmedMessages, assistantText: fullText })
+        await persistSession({ admin, sessionId, messages, assistantText: fullText })
 
       } catch (err) {
         console.error('[chat] stream error:', err)
@@ -358,7 +369,7 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
       await Promise.allSettled([
         input.guest_email && sendEmail({
           to:      input.guest_email,
-          subject: `Booking Confirmed — ${booking.ref_code} — Ton Mai Spa`,
+          subject: `Booking Request Received — ${booking.ref_code} — Ton Mai Spa`,
           html:    bookingGuestHtml({
             name:      input.guest_name,
             refCode:   booking.ref_code,
@@ -383,7 +394,13 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
         }),
       ])
 
-      return { ok: true, ref_code: booking.ref_code, booking_id: booking.id }
+      return {
+        ok: true,
+        status: 'pending',
+        ref_code: booking.ref_code,
+        booking_id: booking.id,
+        message: 'Booking request received. The spa team will confirm it with the guest.',
+      }
     }
 
     default:
@@ -396,11 +413,7 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
 // ============================================================
 
 async function persistSession({ admin, sessionId, messages, assistantText }) {
-  // Append assistant reply to messages
-  const updatedMessages = [
-    ...messages,
-    { role: 'assistant', content: assistantText, timestamp: new Date().toISOString() },
-  ]
+  const updatedMessages = prepareStoredMessages(messages, assistantText)
 
   await admin.from('chat_sessions').upsert(
     {
