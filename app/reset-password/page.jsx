@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter }           from 'next/navigation'
 import { supabase }            from '@/lib/supabase'
+import PasswordInput           from '@/components/ui/PasswordInput'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -92,8 +93,8 @@ export default function ResetPasswordPage() {
         <p className="label" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Set New Password</p>
         <div style={{ background: 'var(--color-white)', borderRadius: 'var(--radius-lg)', padding: '2rem', boxShadow: 'var(--shadow-md)', border: '1px solid var(--color-border)' }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="input" placeholder="New password (min 8 chars)" />
-            <input type="password" required value={confirm} onChange={e => setConfirm(e.target.value)} className="input" placeholder="Confirm password" />
+            <PasswordInput required value={password} onChange={e => setPassword(e.target.value)} placeholder="New password (min 8 chars)" autoComplete="new-password" />
+            <PasswordInput required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirm password" autoComplete="new-password" />
             {error && <p style={{ color: '#DC2626', fontSize: '0.875rem' }}>{error}</p>}
             <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
               {loading ? 'Saving…' : 'Set Password'}

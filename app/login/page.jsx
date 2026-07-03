@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 function LoginForm() {
   const router = useRouter()
@@ -66,10 +67,10 @@ function LoginForm() {
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.4rem' }}>
                 Password
               </label>
-              <input
-                type="password" required value={password}
+              <PasswordInput
+                required value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="input" placeholder="••••••••"
+                placeholder="••••••••"
                 autoComplete="current-password"
               />
             </div>

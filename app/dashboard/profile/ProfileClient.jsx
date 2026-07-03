@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 const card = { background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: 20, boxShadow: '0 1px 2px rgba(28,25,23,0.04)' }
 const sectionTitle = { font: '600 12px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#9B9390', margin: '0 0 14px' }
@@ -91,8 +92,8 @@ export default function ProfileClient({ initialFullName, role, email }) {
       <div style={card}>
         <h2 style={sectionTitle}>Change Password</h2>
         <form onSubmit={savePassword} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input className="input" type="password" placeholder="New password (min 8 chars)" value={password} onChange={e => setPassword(e.target.value)} required />
-          <input className="input" type="password" placeholder="Confirm new password" value={confirm} onChange={e => setConfirm(e.target.value)} required />
+          <PasswordInput placeholder="New password (min 8 chars)" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" required />
+          <PasswordInput placeholder="Confirm new password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" required />
           <button type="submit" disabled={savingPassword} style={{ ...btnPrimary, opacity: savingPassword ? 0.7 : 1, alignSelf: 'flex-start' }}>
             {savingPassword ? 'Saving…' : 'Update Password'}
           </button>
