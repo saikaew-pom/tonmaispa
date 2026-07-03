@@ -9,9 +9,13 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 export async function GET(req) {
   const sessionId = new URL(req.url).searchParams.get('sessionId')
-  if (!sessionId) return Response.json({ error: 'Missing sessionId' }, { status: 400 })
+  if (!UUID_PATTERN.test(sessionId ?? '')) {
+    return Response.json({ error: 'Invalid sessionId' }, { status: 400 })
+  }
 
   const admin = createSupabaseAdminClient()
   const { data } = await admin
@@ -21,4 +25,20 @@ export async function GET(req) {
     .single()
 
   return Response.json({ session: data ?? null })
+}
+
+export async function DELETE(req) {
+  const sessionId = new URL(req.url).searchParams.get('sessionId')
+  if (!UUID_PATTERN.test(sessionId ?? '')) {
+    return Response.json({ error: 'Invalid sessionId' }, { status: 400 })
+  }
+
+  const admin = createSupabaseAdminClient()
+  const { error } = await admin
+    .from('chat_sessions')
+    .delete()
+    .eq('session_id', sessionId)
+
+  if (error) return Response.json({ error: 'Unable to clear conversation' }, { status: 500 })
+  return Response.json({ ok: true })
 }

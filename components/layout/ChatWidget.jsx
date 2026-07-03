@@ -2,11 +2,11 @@
 
 // ============================================================
 // TON MAI SPA — ChatWidget
-// State-of-the-art chatbot widget with full session persistence
-// Same device: automatic (localStorage). Cross-device: phone match.
+// Chatbot widget with same-device session persistence.
+// Cross-device restoration requires verified identity and is intentionally off.
 // ============================================================
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const STORAGE_KEY = 'tms_chat_id'
 const WELCOME_NEW = "Sawasdee kha 🙏 Welcome to Ton Mai Spa. How can I help you today?"
@@ -22,7 +22,6 @@ export default function ChatWidget({ chatbotEnabled = true }) {
   const [input,       setInput]       = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [sessionId,   setSessionId]   = useState(null)
-  const [guestInfo,   setGuestInfo]   = useState({ name: null, phone: null })
   const [unread,      setUnread]      = useState(0)
   const [toolResults, setToolResults] = useState({}) // {messageIndex: toolResult}
   const [clearStickyBar, setClearStickyBar] = useState(false)
@@ -86,7 +85,6 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     if (session?.messages?.length > 0) {
       // Returning visitor — restore conversation
       setMessages(session.messages)
-      setGuestInfo({ name: session.guest_name, phone: session.guest_phone })
 
       // Personalise greeting based on time since last visit
       const lastActive = new Date(session.last_active)
@@ -114,43 +112,9 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     }
   }
 
-  // ── Phone number lookup (cross-device) ────────────────────
-  // When guest provides their phone number in chat,
-  // check if we have a prior session for that number.
-  // Runs server-side (admin client) — the browser never queries
-  // chat_sessions directly by phone number.
-  const checkPhoneMatch = useCallback(async (phone) => {
-    const currentSid = localStorage.getItem(STORAGE_KEY)
-    try {
-      const res = await fetch('/api/chat/phone-lookup', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ phone, currentSessionId: currentSid }),
-      })
-      const data = await res.json()
-      if (data.matched) {
-        setMessages(data.messages)
-        setGuestInfo({ name: data.guestName, phone })
-        return true
-      }
-    } catch {}
-    return false
-  }, [])
-
   // ── Send message ───────────────────────────────────────────
   const sendMessage = async (text) => {
     if (!text.trim() || isStreaming || !sessionId) return
-
-    // Detect if guest typed a phone number — check for cross-device match
-    const phoneMatch = text.match(/(\+?[\d\s\-]{9,15})/)
-    if (phoneMatch && !guestInfo.phone) {
-      const rawPhone = phoneMatch[1].replace(/[\s\-]/g, '')
-      const matched = await checkPhoneMatch(rawPhone)
-      if (matched) {
-        setInput('')
-        return
-      }
-    }
 
     const userMsg = {
       role:      'user',
@@ -182,12 +146,20 @@ export default function ChatWidget({ chatbotEnabled = true }) {
         headers: { 'Content-Type': 'application/json' },
         signal:  abortRef.current.signal,
         body:    JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: messagesForRequest(newMessages),
           sessionId,
         }),
       })
 
-      if (!res.ok) throw new Error('API error')
+      if (!res.ok) {
+        let errorBody = {}
+        try { errorBody = await res.json() } catch {}
+        const error = new Error(errorBody.error || 'The chat service is temporarily unavailable.')
+        error.userMessage = res.status === 429
+          ? `${errorBody.error} You can continue on WhatsApp if your question is urgent.`
+          : errorBody.error
+        throw error
+      }
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -223,7 +195,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
               fullText = event.text
               setMessages(prev => {
                 const updated = [...prev]
-                updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullText }
+                updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullText, isError: true }
                 return updated
               })
             }
@@ -237,7 +209,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           const updated = [...prev]
           updated[updated.length - 1] = {
             ...updated[updated.length - 1],
-            content: "I'm having a moment — please try again, or WhatsApp us directly at +66 63 117 5211 🙏",
+            content: err.userMessage || "I'm having a moment — please try again, or WhatsApp us directly at +66 63 117 5211 🙏",
             isError: true,
           }
           return updated
@@ -291,6 +263,38 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     setIsOpen(false)
   }
 
+  const handleNewConversation = async () => {
+    if (!window.confirm('Start a new conversation and permanently delete this chat history?')) return
+    if (isStreaming) abortRef.current?.abort()
+
+    try {
+      const res = await fetch(`/api/chat/session?sessionId=${encodeURIComponent(sessionId)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Unable to delete conversation')
+
+      const nextSessionId = crypto.randomUUID()
+      localStorage.setItem(STORAGE_KEY, nextSessionId)
+      setSessionId(nextSessionId)
+      setMessages([{
+        role: 'assistant',
+        content: WELCOME_NEW,
+        timestamp: new Date().toISOString(),
+      }])
+      setToolResults({})
+      setInput('')
+      setUnread(0)
+      setIsStreaming(false)
+    } catch {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'I could not clear this conversation. Please try again.',
+        timestamp: new Date().toISOString(),
+        isError: true,
+      }])
+    }
+  }
+
   if (!chatbotEnabled) return null
 
   // ── RENDER ─────────────────────────────────────────────────
@@ -328,7 +332,11 @@ export default function ChatWidget({ chatbotEnabled = true }) {
 
       {/* Chat window */}
       {isOpen && (
-        <div style={{
+        <div
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="chat-title"
+          style={{
           position: 'fixed', bottom: clearStickyBar ? '92px' : '24px', right: '24px', zIndex: 999,
           width: 'clamp(320px, 90vw, 390px)',
           height: isMinimised ? 'auto' : 'clamp(480px, 70vh, 600px)',
@@ -337,7 +345,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           display: 'flex', flexDirection: 'column',
           fontFamily: 'Inter, sans-serif', overflow: 'hidden',
           border: '1px solid #E0D9D0',
-        }}>
+          }}>
 
           {/* Header */}
           <div style={{
@@ -353,11 +361,25 @@ export default function ChatWidget({ chatbotEnabled = true }) {
               <span style={{ fontSize: '16px' }}>🌳</span>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#FAF6F0' }}>Ton Mai Spa</div>
+              <div id="chat-title" style={{ fontSize: '13px', fontWeight: '600', color: '#FAF6F0' }}>Ton Mai Spa</div>
               <div style={{ fontSize: '10px', color: 'rgba(250,246,240,0.7)', marginTop: '1px' }}>
                 {isStreaming ? 'Typing…' : 'Usually replies instantly'}
               </div>
             </div>
+            <button
+              onClick={handleNewConversation}
+              aria-label="Start a new conversation"
+              disabled={isStreaming}
+              style={{
+                ...iconBtnStyle,
+                color: '#FAF6F0',
+                fontSize: '10px',
+                fontFamily: 'Inter, sans-serif',
+                opacity: isStreaming ? 0.4 : 0.85,
+              }}
+            >
+              New
+            </button>
             <button onClick={() => setIsMinimised(v => !v)} aria-label="Minimise" style={iconBtnStyle}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d={isMinimised ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4"} stroke="#FAF6F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -373,7 +395,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           {!isMinimised && (
             <>
               {/* Messages */}
-              <div style={{
+              <div role="log" aria-live="polite" aria-relevant="additions text" style={{
                 flex: 1, overflowY: 'auto', padding: '16px 14px',
                 display: 'flex', flexDirection: 'column', gap: '10px',
               }}>
@@ -382,7 +404,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                     display: 'flex',
                     justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   }}>
-                    <div style={{
+                    <div role={msg.isError ? 'alert' : undefined} style={{
                       maxWidth: '82%',
                       background: msg.role === 'user' ? '#3B5249' : '#fff',
                       color: msg.role === 'user' ? '#FAF6F0' : '#1C1917',
@@ -394,7 +416,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                       boxShadow: '0 1px 3px rgba(28,25,23,0.08)',
                       border: msg.role === 'assistant' ? '1px solid #E0D9D0' : 'none',
                     }}>
-                      {msg.content || (
+                      {msg.content ? <MessageContent content={msg.content} /> : (
                         <span style={{ opacity: 0.5 }}>
                           <TypingDots />
                         </span>
@@ -422,12 +444,12 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                 display: 'flex', gap: '6px', flexWrap: 'wrap',
               }}>
                 {getQuickReplies(messages).map((qr, i) => (
-                  <button key={i} onClick={() => sendMessage(qr)} style={{
+                  <button key={i} onClick={() => sendMessage(qr)} disabled={isStreaming} style={{
                     background: 'transparent', border: '1px solid #E0D9D0',
                     borderRadius: '9999px', padding: '5px 12px',
-                    fontSize: '11px', color: '#3B5249', cursor: 'pointer',
+                    fontSize: '11px', color: '#3B5249', cursor: isStreaming ? 'default' : 'pointer',
                     fontFamily: 'Inter, sans-serif', fontWeight: '500',
-                    transition: 'background 150ms',
+                    transition: 'background 150ms', opacity: isStreaming ? 0.55 : 1,
                   }}>
                     {qr}
                   </button>
@@ -445,7 +467,9 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  aria-label="Message Ton Mai Spa"
                   placeholder="Ask about treatments, prices, hours…"
+                  maxLength={2000}
                   rows={1}
                   disabled={isStreaming}
                   style={{
@@ -500,12 +524,52 @@ function getQuickReplies(messages) {
     return ['Prices?', 'How long?', 'Can I book now?']
   }
   if (lastBot.toLowerCase().includes('book')) {
-    return ['Book via WhatsApp', 'Tell me more first']
+    return ['Continue booking', 'Tell me more first']
   }
   return ['Opening hours?', 'Where are you?', 'Book a massage']
 }
 
+function messagesForRequest(messages) {
+  const selected = []
+  let characters = 0
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (selected.length >= 24 || characters >= 20000) break
+    const message = messages[index]
+    if (!message?.content || !['user', 'assistant'].includes(message.role)) continue
+
+    const content = String(message.content).slice(0, 4000)
+    if (selected.length > 0 && characters + content.length > 20000) continue
+    selected.unshift({ role: message.role, content })
+    characters += content.length
+  }
+
+  return selected
+}
+
 // ── Sub-components ─────────────────────────────────────────────
+function MessageContent({ content }) {
+  const tokens = String(content).split(/(\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g)
+
+  return (
+    <span style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+      {tokens.map((token, index) => {
+        if (token.startsWith('**') && token.endsWith('**')) {
+          return <strong key={index}>{token.slice(2, -2)}</strong>
+        }
+        if (/^https?:\/\//.test(token)) {
+          return (
+            <a key={index} href={token} target="_blank" rel="noopener noreferrer" style={{ color: '#3B5249' }}>
+              {token}
+            </a>
+          )
+        }
+        return token
+      })}
+    </span>
+  )
+}
+
 function TypingDots() {
   return (
     <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}>
