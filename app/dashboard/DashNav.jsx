@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 const BASE_LINKS = [
@@ -63,8 +64,10 @@ export default function DashNav({ fullName, role, email, insightsEnabled = true,
       </nav>
 
       <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(250,246,240,0.12)' }}>
-        <div style={{ font: '600 13px Inter,sans-serif', color: '#FAF6F0' }}>{fullName || email}</div>
-        <div style={{ font: '400 11px Inter,sans-serif', color: 'rgba(250,246,240,0.5)', marginTop: 2, textTransform: 'capitalize' }}>{role?.replace('_', ' ')}</div>
+        <Link href="/dashboard/profile" style={{ display: 'block', textDecoration: 'none' }}>
+          <div style={{ font: '600 13px Inter,sans-serif', color: '#FAF6F0' }}>{fullName || email}</div>
+          <div style={{ font: '400 11px Inter,sans-serif', color: 'rgba(250,246,240,0.5)', marginTop: 2, textTransform: 'capitalize' }}>{role?.replace('_', ' ')} · Edit profile</div>
+        </Link>
         <button onClick={handleLogout} style={{
           marginTop: 12, background: 'none', border: '1px solid rgba(250,246,240,0.25)', color: 'rgba(250,246,240,0.8)',
           borderRadius: 4, padding: '7px 12px', font: '500 11px Inter,sans-serif', cursor: 'pointer', width: '100%',

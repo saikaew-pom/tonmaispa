@@ -80,6 +80,27 @@ export default function UsersClient({ viewerRole }) {
     }
   }
 
+  const [resendingId, setResendingId] = useState(null)
+  const [resendMessage, setResendMessage] = useState('')
+
+  const resendLink = async (user) => {
+    setError('')
+    setResendMessage('')
+    setResendingId(user.id)
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/resend`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not resend link')
+      setResendMessage(data.type === 'password_reset'
+        ? `Password reset link sent to ${user.email}.`
+        : `Invite resent to ${user.email}.`)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setResendingId(null)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 720 }}>
       <div style={card}>
@@ -113,6 +134,7 @@ export default function UsersClient({ viewerRole }) {
         <h2 style={sectionTitle}>{viewerRole === 'owner' ? 'Staff accounts' : 'All accounts'}</h2>
         {loading && <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>Loading…</p>}
         {!loading && users.length === 0 && <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No accounts yet.</p>}
+        {resendMessage && <p style={{ color: '#065F46', font: '500 12px Inter,sans-serif', marginBottom: 10 }}>{resendMessage}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {users.map(u => (
             <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #F0ECE6', borderRadius: 8, padding: 12 }}>
@@ -121,13 +143,21 @@ export default function UsersClient({ viewerRole }) {
                   {u.full_name || '(no name)'}
                   <span style={{ marginLeft: 8, font: '600 9px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: ROLE_COLORS[u.role] ?? '#6B6663' }}>{u.role?.replace('_', ' ')}</span>
                   {!u.is_active && <span style={{ marginLeft: 8, font: '600 9px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#9B9390' }}>DEACTIVATED</span>}
+                  {u.is_active && !u.hasSignedIn && <span style={{ marginLeft: 8, font: '600 9px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#C4924A' }}>INVITE PENDING</span>}
                 </div>
                 <div style={{ font: '400 11px Inter,sans-serif', color: '#9B9390' }}>{u.email}</div>
               </div>
               {(viewerRole === 'super_admin' || u.role === 'staff') && (
-                <button onClick={() => toggleActive(u)} style={btnGhost}>
-                  {u.is_active ? 'Deactivate' : 'Reactivate'}
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {u.is_active && (
+                    <button onClick={() => resendLink(u)} disabled={resendingId === u.id} style={{ ...btnGhost, opacity: resendingId === u.id ? 0.6 : 1 }}>
+                      {resendingId === u.id ? 'Sending…' : u.hasSignedIn ? 'Resend Password Reset' : 'Resend Invite'}
+                    </button>
+                  )}
+                  <button onClick={() => toggleActive(u)} style={btnGhost}>
+                    {u.is_active ? 'Deactivate' : 'Reactivate'}
+                  </button>
+                </div>
               )}
             </div>
           ))}

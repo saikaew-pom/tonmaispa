@@ -19,13 +19,18 @@ export async function GET() {
   const { data, error } = await query
   if (error) return Response.json({ error: error.message }, { status: 400 })
 
-  // Emails live in auth.users, not profiles — fetch them via the admin API
-  // rather than duplicating email into profiles.
+  // Email + signup status live in auth.users, not profiles — fetch via the
+  // admin API rather than duplicating them into profiles. hasSignedIn drives
+  // whether "Resend" sends a fresh invite or a password-reset link.
   const { data: authUsers } = await auth.admin.auth.admin.listUsers({ perPage: 200 })
-  const emailById = Object.fromEntries((authUsers?.users ?? []).map(u => [u.id, u.email]))
+  const authById = Object.fromEntries((authUsers?.users ?? []).map(u => [u.id, u]))
 
   return Response.json({
-    users: (data ?? []).map(u => ({ ...u, email: emailById[u.id] ?? null })),
+    users: (data ?? []).map(u => ({
+      ...u,
+      email: authById[u.id]?.email ?? null,
+      hasSignedIn: !!authById[u.id]?.last_sign_in_at,
+    })),
   })
 }
 
