@@ -9,7 +9,7 @@ import { getMiniMax, MINIMAX_MODEL }  from '@/lib/minimax'
 import { checkRateLimit }             from '@/lib/ratelimit'
 import { buildSystemPrompt, TOOLS_SIMPLE, TOOLS_FULL } from '@/lib/chatbot'
 import { sendEmail, enquiryOwnerHtml, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
-import { getAvailableSlots, checkSlotCapacity } from '@/lib/scheduling'
+import { getAvailableSlots, checkSlotCapacity, getBookableTreatmentsAt } from '@/lib/scheduling'
 
 export const maxDuration = 60
 
@@ -255,6 +255,21 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
       }
 
       return { ok: true, enquiry_id: enquiry?.id }
+    }
+
+    case 'recommend_treatments': {
+      if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
+
+      const { date, time, duration } = input
+      const { closed, treatments } = await getBookableTreatmentsAt(admin, {
+        date, startTime: time, durationPref: duration,
+      })
+      if (closed) return { ok: true, available: false, message: 'The spa is closed on this date.' }
+      if (!treatments.length) {
+        return { ok: true, available: false, date, time, message: 'Nothing is free at that exact time — suggest a slightly different time or date.' }
+      }
+      // Grouped by category so the model can present a tidy, varied set.
+      return { ok: true, available: true, date, time, bookable_treatments: treatments }
     }
 
     case 'check_availability': {
