@@ -6,7 +6,7 @@ import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
 import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
-import { findAvailableTherapists } from '@/lib/scheduling'
+import { checkSlotCapacity } from '@/lib/scheduling'
 
 function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
@@ -31,17 +31,18 @@ export async function POST(req) {
 
   const admin = createSupabaseAdminClient()
 
-  // Re-check slot availability (prevents race condition from optimistic UI)
-  // and find enough qualified, free therapists for this exact window — some
-  // treatments (e.g. a couple's massage) need 2 working simultaneously, not
-  // just 1. A slot isn't real availability unless it can actually be staffed.
+  // Re-check slot availability (prevents race condition from optimistic UI):
+  // enough qualified, free therapists for this exact window — some treatments
+  // (e.g. a couple's massage) need 2 working simultaneously — AND a free
+  // treatment room. A slot isn't real availability unless both hold.
   const endTime = addMinutes(d.time_slot, d.duration)
-  const therapistIds = await findAvailableTherapists(admin, {
+  const capacity = await checkSlotCapacity(admin, {
     treatmentId: d.treatment_id, date: d.date, startTime: d.time_slot, endTime,
   })
-  if (!therapistIds) {
+  if (!capacity.ok) {
     return Response.json({ error: 'This slot just filled up. Please choose another time.' }, { status: 409 })
   }
+  const therapistIds = capacity.therapistIds
 
   // Resolve treatment name + price
   const { data: treatment } = await admin

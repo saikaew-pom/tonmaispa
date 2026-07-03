@@ -234,17 +234,21 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
   const [notes, setNotes]           = useState('')
   const [saving, setSaving]         = useState(false)
   const [err, setErr]               = useState('')
+  // Set when the server rejects with SLOT_FULL — swaps the submit button
+  // into an explicit "Book anyway (overbook)" confirmation.
+  const [slotFull, setSlotFull]     = useState(false)
 
   const treatment = treatments.find(t => t.id === treatmentId)
   const durationOptions = treatment?.duration_options ?? [60]
 
   const handleTreatmentChange = (id) => {
+    setSlotFull(false)
     setTreatmentId(id)
     const t = treatments.find(x => x.id === id)
     setDuration(t?.duration_options?.[0] ?? 60)
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, overbook = false) => {
     e.preventDefault()
     setSaving(true)
     setErr('')
@@ -255,10 +259,14 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
           guest_name: guestName, guest_phone: guestPhone, guest_email: guestEmail,
           treatment_id: treatmentId, therapist_id: therapistId || null,
           date, time_slot: time, duration, status, source, notes,
+          overbook,
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Could not create booking')
+      if (!res.ok) {
+        if (json.code === 'SLOT_FULL') setSlotFull(true)
+        throw new Error(json.error || 'Could not create booking')
+      }
       onCreated(json.booking)
     } catch (e2) {
       setErr(e2.message)
@@ -300,7 +308,7 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Duration</label>
-              <select value={duration} onChange={e => setDuration(parseInt(e.target.value, 10))} style={inputSt}>
+              <select value={duration} onChange={e => { setSlotFull(false); setDuration(parseInt(e.target.value, 10)) }} style={inputSt}>
                 {durationOptions.map(d => <option key={d} value={d}>{d} min{treatment?.prices?.[String(d)] ? ` · ฿${treatment.prices[String(d)]}` : ''}</option>)}
               </select>
             </div>
@@ -316,11 +324,11 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Date</label>
-              <input required type="date" value={date} onChange={e => setDate(e.target.value)} style={inputSt} />
+              <input required type="date" value={date} onChange={e => { setSlotFull(false); setDate(e.target.value) }} style={inputSt} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Time</label>
-              <input required type="time" value={time} onChange={e => setTime(e.target.value)} style={inputSt} />
+              <input required type="time" value={time} onChange={e => { setSlotFull(false); setTime(e.target.value) }} style={inputSt} />
             </div>
           </div>
 
@@ -349,6 +357,12 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
           <button type="submit" disabled={saving} style={{ marginTop: 6, background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '11px 0', font: '600 12px Inter,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Creating…' : 'Create Booking'}
           </button>
+          {slotFull && (
+            <button type="button" disabled={saving} onClick={e => handleSubmit(e, true)}
+              style={{ background: '#fff', color: '#C0392B', border: '1px solid #C0392B', borderRadius: 6, padding: '10px 0', font: '600 12px Inter,sans-serif', cursor: saving ? 'wait' : 'pointer' }}>
+              Book anyway (overbook this slot)
+            </button>
+          )}
         </div>
       </form>
     </div>

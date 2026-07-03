@@ -9,6 +9,7 @@ import { getMiniMax, MINIMAX_MODEL }  from '@/lib/minimax'
 import { checkRateLimit }             from '@/lib/ratelimit'
 import { buildSystemPrompt, TOOLS_SIMPLE, TOOLS_FULL } from '@/lib/chatbot'
 import { sendEmail, enquiryOwnerHtml, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
+import { getAvailableSlots, checkSlotCapacity } from '@/lib/scheduling'
 
 export const maxDuration = 60
 
@@ -259,57 +260,68 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
     case 'check_availability': {
       if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
 
-      const { date, treatment_id, duration } = input
+      const { date, duration } = input
+      const treatment = await resolveTreatment(admin, input)
+      if (!treatment) return { ok: false, error: 'Unknown treatment — ask the guest which treatment from the menu they mean.' }
 
-      // Check blocked dates
-      const { data: blocked } = await admin.from('blocked_dates')
-        .select('id')
-        .eq('date', date)
-        .is('therapist_id', null)  // whole-spa blocks only
-        .limit(1)
+      // Same shared logic as the public /book page — therapist shifts,
+      // qualifications, overlapping-duration bookings, and room capacity all
+      // taken into account, so the chatbot can never over-promise a slot.
+      const { slots, closed } = await getAvailableSlots(admin, {
+        date, treatmentId: treatment.id, duration: duration ?? treatment.duration_options?.[0] ?? 60,
+      })
+      if (closed) return { ok: true, available: false, message: 'The spa is closed on this date.' }
 
-      if (blocked?.length > 0) {
-        return { ok: true, available: false, message: 'The spa is closed on this date.' }
+      const openTimes = slots.filter(s => s.available).map(s => s.time)
+      return {
+        ok: true,
+        available: openTimes.length > 0,
+        treatment: treatment.name,
+        date,
+        open_times: openTimes,
+        message: openTimes.length === 0
+          ? 'Fully booked for this treatment on this date — suggest another date or a different treatment.'
+          : undefined,
       }
-
-      // Get slot settings
-      const { data: slotSetting } = await admin.from('slot_settings')
-        .select('*')
-        .eq('is_active', true)
-        .limit(1)
-        .single()
-
-      if (!slotSetting) return { ok: false, error: 'No slot configuration found' }
-
-      // Count existing bookings per slot for that date
-      const { data: existing } = await admin.from('bookings')
-        .select('time_slot')
-        .eq('date', date)
-        .in('status', ['pending', 'confirmed'])
-
-      const bookedSlots = {}
-      for (const b of existing ?? []) {
-        bookedSlots[b.time_slot] = (bookedSlots[b.time_slot] ?? 0) + 1
-      }
-
-      // Generate available slots
-      const slots = generateSlots(slotSetting, bookedSlots)
-
-      return { ok: true, available: slots.length > 0, slots, date }
     }
 
     case 'create_booking': {
       if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
 
+      const treatment = await resolveTreatment(admin, input)
+      if (!treatment) return { ok: false, error: 'Unknown treatment — ask the guest which treatment from the menu they mean.' }
+
+      // Validate capacity before inserting — the chatbot must never create a
+      // booking no therapist/room can actually serve. Auto-assigns the
+      // therapist(s) exactly like the public flow.
+      const endTime = addMinutesStr(input.time_slot, input.duration)
+      const capacity = await checkSlotCapacity(admin, {
+        treatmentId: treatment.id, date: input.date, startTime: input.time_slot, endTime,
+      })
+      if (!capacity.ok) {
+        const { slots } = await getAvailableSlots(admin, { date: input.date, treatmentId: treatment.id, duration: input.duration })
+        const alternatives = slots.filter(s => s.available).map(s => s.time).slice(0, 6)
+        return {
+          ok: false,
+          error: 'This slot is no longer available.',
+          nearest_open_times: alternatives,
+          hint: alternatives.length ? 'Offer the guest these times instead.' : 'Suggest a different date.',
+        }
+      }
+
+      const price = treatment.prices?.[String(input.duration)] ?? null
+
       const { data: booking, error } = await admin.from('bookings').insert({
         guest_name:      input.guest_name,
         guest_phone:     input.guest_phone,
         guest_email:     input.guest_email,
-        treatment_id:    input.treatment_id,
-        therapist_id:    input.therapist_id ?? null,
+        treatment_id:    treatment.id,
+        therapist_id:    capacity.therapistIds[0],
+        secondary_therapist_id: capacity.therapistIds[1] ?? null,
         date:            input.date,
         time_slot:       input.time_slot,
         duration:        input.duration,
+        price,
         notes:           input.notes,
         source:          'chatbot',
         chat_session_id: sessionId,
@@ -324,12 +336,7 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
         .eq('session_id', sessionId)
 
       // Email confirmations — guest (if email given) + owner notification
-      const { data: bookedTreatment } = await admin
-        .from('spa_treatments')
-        .select('name')
-        .eq('id', input.treatment_id)
-        .maybeSingle()
-      const treatmentName = bookedTreatment?.name ?? 'Spa Treatment'
+      const treatmentName = treatment.name ?? 'Spa Treatment'
       const whatsapp = settings?.['settings.whatsapp_number'] ?? '66631175211'
       const ownerEmail = process.env.INQUIRY_EMAIL
 
@@ -400,27 +407,29 @@ function buildEnquiryMessage(input) {
   return parts.join(' | ')
 }
 
-function generateSlots(setting, bookedSlots) {
-  const slots   = []
-  const [fh, fm] = setting.first_slot.split(':').map(Number)
-  const [lh, lm] = setting.last_slot.split(':').map(Number)
-  const interval  = setting.slot_interval
-  const maxConc   = setting.max_concurrent
+function addMinutesStr(time, mins) {
+  const [h, m] = time.split(':').map(Number)
+  const total = h * 60 + m + mins
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
 
-  let cur = fh * 60 + fm
-  const end = lh * 60 + lm
-
-  while (cur <= end) {
-    const hh   = String(Math.floor(cur / 60)).padStart(2, '0')
-    const mm   = String(cur % 60).padStart(2, '0')
-    const key  = `${hh}:${mm}:00`
-    const booked = bookedSlots[key] ?? 0
-
-    if (booked < maxConc) {
-      slots.push({ time: `${hh}:${mm}`, available: maxConc - booked })
-    }
-    cur += interval
+// Resolve the treatment the model is referring to — by UUID when it copied
+// the [id: …] tag correctly, falling back to a name match when it didn't
+// (models occasionally garble UUIDs; a wrong id must not book the wrong
+// treatment or silently fail).
+async function resolveTreatment(admin, input) {
+  if (input.treatment_id) {
+    const { data } = await admin.from('spa_treatments')
+      .select('id, name, prices, duration_options')
+      .eq('id', input.treatment_id).eq('is_active', true).maybeSingle()
+    if (data) return data
   }
-
-  return slots
+  if (input.treatment_name) {
+    const { data } = await admin.from('spa_treatments')
+      .select('id, name, prices, duration_options')
+      .ilike('name', `%${input.treatment_name.replace(/[%_]/g, '')}%`)
+      .eq('is_active', true).limit(1).maybeSingle()
+    if (data) return data
+  }
+  return null
 }
