@@ -37,16 +37,22 @@ export async function POST(req) {
   const settings = Object.fromEntries(
     (settingsRes.data ?? []).map(r => [r.key, r.value_text])
   )
+  // booking_engine_enabled is the master switch for the whole booking system;
+  // chatbot_booking_mode ('simple' | 'full') decides whether the chatbot,
+  // specifically, is allowed to check availability and create bookings
+  // autonomously, or just captures a lead for staff follow-up. Both must be
+  // true/'full' for the chatbot to get the full tool set.
   const bookingEngineEnabled = settings['settings.booking_engine_enabled'] === 'true'
+  const chatbotFullMode = bookingEngineEnabled && settings['settings.chatbot_booking_mode'] === 'full'
 
   // ── 3. Build dynamic system prompt ─────────────────────────
   const systemPrompt = buildSystemPrompt({
     treatments: treatmentsRes.data ?? [],
     settings,
-    bookingEngineEnabled,
+    bookingEngineEnabled: chatbotFullMode,
   })
 
-  const tools = bookingEngineEnabled ? TOOLS_FULL : TOOLS_SIMPLE
+  const tools = chatbotFullMode ? TOOLS_FULL : TOOLS_SIMPLE
 
   // ── 4. Call MiniMax with streaming ─────────────────────────
   const client = getMiniMax()
@@ -108,10 +114,13 @@ export async function POST(req) {
             let toolInput = {}
             try { toolInput = JSON.parse(toolInputJson) } catch {}
 
+            // executeToolCall's own `bookingEngineEnabled` guard is really asking
+            // "is the chatbot allowed to check_availability/create_booking right
+            // now" — that's chatbotFullMode, not the raw master switch.
             const toolResult = await executeToolCall(
               toolUseBlock.name,
               toolInput,
-              { admin, sessionId, bookingEngineEnabled, settings }
+              { admin, sessionId, bookingEngineEnabled: chatbotFullMode, settings }
             )
 
             // Send tool result event to client (for UI state updates)

@@ -11,6 +11,11 @@ const BOOLEAN_KEYS = [
   'settings.campaigns_enabled',
 ]
 
+// Toggles whose stored value is a pair of words rather than 'true'/'false'
+const WORD_TOGGLE_KEYS = {
+  'settings.chatbot_booking_mode': { on: 'full', off: 'simple' },
+}
+
 const TEXTAREA_KEYS = ['settings.homepage_services_subheading']
 const NUMBER_KEYS   = ['settings.homepage_services_count']
 
@@ -52,7 +57,7 @@ const LABELS = {
   'settings.homepage_services_count':      'How many treatments to show (1–9)',
   'settings.booking_engine_enabled':      'Booking engine enabled',
   'settings.chatbot_enabled':             'Chatbot enabled',
-  'settings.chatbot_booking_mode':        'Chatbot booking mode (simple / full)',
+  'settings.chatbot_booking_mode':        'Chatbot full booking mode',
   'settings.insights_enabled':            'Revenue & Marketing Advisor enabled',
   'settings.campaigns_enabled':           'AI Campaign Planner enabled',
   'settings.announcement_enabled':        'Announcement banner enabled',
@@ -60,8 +65,9 @@ const LABELS = {
 }
 
 const HINTS = {
-  'settings.insights_enabled':  'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
-  'settings.campaigns_enabled': 'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
+  'settings.insights_enabled':      'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
+  'settings.campaigns_enabled':     'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
+  'settings.chatbot_booking_mode':  'Off = chatbot only captures name/phone for staff follow-up. On = chatbot checks real availability and books directly. Requires "Booking engine enabled" above to also be on.',
 }
 
 function ToggleSwitch({ checked, onChange }) {
@@ -123,6 +129,17 @@ export default function SettingsClient({ initialSettings }) {
                       {HINTS[key] && <div style={{ font: '400 11px Inter,sans-serif', color: '#9B9390', marginTop: 2, maxWidth: 380 }}>{HINTS[key]}</div>}
                     </div>
                     <ToggleSwitch checked={values[key] === 'true'} onChange={v => setValue(key, v ? 'true' : 'false')} />
+                  </div>
+                ) : WORD_TOGGLE_KEYS[key] ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '4px 0' }}>
+                    <div>
+                      <div style={{ font: '500 13px Inter,sans-serif', color: '#1C1917' }}>{LABELS[key] ?? key}</div>
+                      {HINTS[key] && <div style={{ font: '400 11px Inter,sans-serif', color: '#9B9390', marginTop: 2, maxWidth: 380 }}>{HINTS[key]}</div>}
+                    </div>
+                    <ToggleSwitch
+                      checked={values[key] === WORD_TOGGLE_KEYS[key].on}
+                      onChange={v => setValue(key, v ? WORD_TOGGLE_KEYS[key].on : WORD_TOGGLE_KEYS[key].off)}
+                    />
                   </div>
                 ) : (
                   <>
