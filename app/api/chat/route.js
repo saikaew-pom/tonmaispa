@@ -63,73 +63,110 @@ export async function POST(req) {
   // Keep last 20 messages to manage token usage
   const trimmedMessages = messages.slice(-20)
 
-  const stream = await client.messages.create({
-    model:      MINIMAX_MODEL,
-    max_tokens: 500,
-    system:     systemPrompt,
-    messages:   trimmedMessages,
-    tools,
-    stream:     true,
-  })
-
-  // ── 5. Stream response + intercept tool calls ───────────────
+  // ── 5. Stream response + run the tool-use loop ──────────────
+  // Anthropic/MiniMax tool calling is a round-trip: the model emits a
+  // tool_use block, we execute it, then we must send the result BACK to
+  // the model in a follow-up call so it can write the actual answer.
+  // Previously this route executed the tool and stopped — the model never
+  // saw the result, so it just kept saying "let me check" / "one moment"
+  // forever on every subsequent message. This loop keeps calling MiniMax
+  // with the accumulated tool results appended until it produces a final
+  // text answer (stop_reason !== 'tool_use'), capped at a few rounds.
   const encoder = new TextEncoder()
+  const MAX_TOOL_ROUNDS = 4
 
   const readable = new ReadableStream({
     async start(controller) {
-      let fullText      = ''
-      let toolUseBlock  = null
-      let toolInputJson = ''
-      let stopReason    = null
+      let fullText = ''
+      const conversationMessages = [...trimmedMessages]
 
       try {
-        for await (const event of stream) {
+        let resolvedNaturally = false
 
-          // Stream text delta to client
-          if (event.type === 'content_block_delta') {
-            if (event.delta?.type === 'text_delta') {
-              fullText += event.delta.text
-              controller.enqueue(encoder.encode(
-                JSON.stringify({ type: 'text', text: event.delta.text }) + '\n'
-              ))
+        for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          const stream = await client.messages.create({
+            model:      MINIMAX_MODEL,
+            max_tokens: 500,
+            system:     systemPrompt,
+            messages:   conversationMessages,
+            tools,
+            stream:     true,
+          })
+
+          const blocks = {} // index -> accumulated content block
+          let stopReason = null
+
+          for await (const event of stream) {
+            if (event.type === 'content_block_start') {
+              const block = event.content_block
+              blocks[event.index] = block.type === 'tool_use'
+                ? { type: 'tool_use', id: block.id, name: block.name, inputJson: '' }
+                : { type: 'text', text: '' }
             }
-            // Accumulate tool input JSON
-            if (event.delta?.type === 'input_json_delta') {
-              toolInputJson += event.delta.partial_json ?? ''
+
+            if (event.type === 'content_block_delta') {
+              const block = blocks[event.index]
+              if (event.delta?.type === 'text_delta') {
+                block.text += event.delta.text
+                fullText += event.delta.text
+                controller.enqueue(encoder.encode(
+                  JSON.stringify({ type: 'text', text: event.delta.text }) + '\n'
+                ))
+              }
+              if (event.delta?.type === 'input_json_delta') {
+                block.inputJson += event.delta.partial_json ?? ''
+              }
+            }
+
+            if (event.type === 'message_delta') {
+              stopReason = event.delta?.stop_reason
             }
           }
 
-          // Capture which tool is being called
-          if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
-            toolUseBlock = event.content_block
-            toolInputJson = ''
+          const assistantContent = Object.keys(blocks).sort((a, b) => a - b).map(i => {
+            const b = blocks[i]
+            if (b.type === 'tool_use') {
+              let input = {}
+              try { input = JSON.parse(b.inputJson || '{}') } catch {}
+              return { type: 'tool_use', id: b.id, name: b.name, input }
+            }
+            return { type: 'text', text: b.text }
+          })
+          conversationMessages.push({ role: 'assistant', content: assistantContent })
+
+          if (stopReason !== 'tool_use') {
+            resolvedNaturally = true
+            break
           }
 
-          if (event.type === 'message_delta') {
-            stopReason = event.delta?.stop_reason
-          }
-
-          // Tool call complete — execute it
-          if (event.type === 'content_block_stop' && toolUseBlock) {
-            let toolInput = {}
-            try { toolInput = JSON.parse(toolInputJson) } catch {}
+          // Execute every tool_use block from this turn, then feed the
+          // results back as a user turn so the next round can use them.
+          const toolResultContent = []
+          for (const block of assistantContent) {
+            if (block.type !== 'tool_use') continue
 
             // executeToolCall's own `bookingEngineEnabled` guard is really asking
             // "is the chatbot allowed to check_availability/create_booking right
             // now" — that's chatbotFullMode, not the raw master switch.
             const toolResult = await executeToolCall(
-              toolUseBlock.name,
-              toolInput,
+              block.name,
+              block.input,
               { admin, sessionId, bookingEngineEnabled: chatbotFullMode, settings }
             )
 
-            // Send tool result event to client (for UI state updates)
             controller.enqueue(encoder.encode(
-              JSON.stringify({ type: 'tool_result', tool: toolUseBlock.name, result: toolResult }) + '\n'
+              JSON.stringify({ type: 'tool_result', tool: block.name, result: toolResult }) + '\n'
             ))
 
-            toolUseBlock = null
+            toolResultContent.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(toolResult) })
           }
+          conversationMessages.push({ role: 'user', content: toolResultContent })
+        }
+
+        if (!resolvedNaturally) {
+          const fallback = "I'm having trouble finishing that check — let me connect you with our team on WhatsApp."
+          fullText += fallback
+          controller.enqueue(encoder.encode(JSON.stringify({ type: 'text', text: fallback }) + '\n'))
         }
 
         // ── 6. Persist conversation to Supabase ────────────────
