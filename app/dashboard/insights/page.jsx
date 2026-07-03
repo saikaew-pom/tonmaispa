@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { getRevenueSummary, getTherapistUtilizationSummary } from '@/lib/insights'
+import { getRevenueSummary, getTherapistUtilizationSummary, getForwardBookingSummary } from '@/lib/insights'
 import InsightsClient from './InsightsClient'
 
 export const dynamic = 'force-dynamic'
@@ -14,9 +14,10 @@ async function getData() {
   const startDate = toYMD(start)
   const endDate = toYMD(today)
 
-  const [revenue, therapistUtilization, insightsRes] = await Promise.all([
+  const [revenue, therapistUtilization, forwardBookings, insightsRes] = await Promise.all([
     getRevenueSummary(admin, { startDate, endDate }),
     getTherapistUtilizationSummary(admin, { startDate, endDate }),
+    getForwardBookingSummary(admin),
     admin.from('revenue_insights').select('id, period_start, period_end, created_at').order('created_at', { ascending: false }).limit(30),
   ])
 
@@ -24,6 +25,7 @@ async function getData() {
     defaultRange: { startDate, endDate },
     revenue,
     therapistUtilization,
+    forwardBookings,
     history: insightsRes.data ?? [],
   }
 }
