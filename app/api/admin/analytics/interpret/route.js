@@ -1,12 +1,10 @@
 import { requireOwnerOrAbove } from '@/lib/require-admin'
 import { getAnalyticsSummary, resolvePeriod } from '@/lib/ga4'
 import { interpretAnalytics } from '@/lib/analytics-interpret'
-import { renderAnalyticsPdf } from '@/lib/analytics-export'
 
-// GET /api/admin/analytics/export?period=7d|30d|90d|all|custom&start=&end=
-// Renders fresh from a live GA4 call for the requested period — not cached,
-// always matches what's on screen. The MiniMax interpretation is best-effort:
-// if it fails or times out, the PDF still generates with just the data.
+// GET /api/admin/analytics/interpret?period=7d|30d|90d|all|custom&start=&end=
+// Separate, slower endpoint (MiniMax call) so the KPI numbers can render
+// instantly from /api/admin/analytics while this streams in behind it.
 export async function GET(req) {
   const auth = await requireOwnerOrAbove()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
@@ -20,13 +18,9 @@ export async function GET(req) {
   const summary = await getAnalyticsSummary({ startDate, endDate })
   if (!summary) return Response.json({ error: 'GA4 is not configured yet' }, { status: 501 })
 
-  const interpretation = await interpretAnalytics(summary).catch(() => null)
-
-  const buffer = await renderAnalyticsPdf(summary, interpretation)
-  return new Response(buffer, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="website-analytics-${summary.period.startDate}-to-${summary.period.endDate}.pdf"`,
-    },
-  })
+  const interpretation = await interpretAnalytics(summary)
+  if (!interpretation) {
+    return Response.json({ error: 'Could not generate an interpretation right now. Try again in a moment.' }, { status: 502 })
+  }
+  return Response.json({ interpretation })
 }
