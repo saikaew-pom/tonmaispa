@@ -55,7 +55,11 @@ export default function Nav({ lang = 'en', dict = {} }) {
               <a key={href} href={href} style={{ font: '500 12px Inter,sans-serif', letterSpacing: '0.5px', color: '#1C1917' }}>{label}</a>
             ))}
             <LanguageSwitcher lang={lang} dict={dict} />
-            <Link href="/login" style={{ font: '500 12px Inter,sans-serif', letterSpacing: '0.5px', color: '#1C1917', opacity: 0.75 }}>{t(dict, 'nav.login')}</Link>
+            <Link href="/login" style={{
+              font: '600 12px Inter,sans-serif', letterSpacing: '0.8px', color: '#3B5249',
+              padding: '10px 16px', border: '1.5px solid #3B5249', borderRadius: 2,
+              background: 'rgba(255,255,255,0.42)',
+            }}>{t(dict, 'nav.login')}</Link>
             <Link href={`/${lang}/book`} onClick={() => { if (window.gtag) window.gtag('event','book_now_click',{method:'nav'}) }} style={{
               background: '#3B5249', color: '#fff',
               padding: '11px 22px', borderRadius: 2,
@@ -77,10 +81,11 @@ export default function Nav({ lang = 'en', dict = {} }) {
       </header>
 
       {/* ── Full-screen overlay menu ─────────────────────────── */}
-      <div style={{
+      <div className="full-menu-overlay" style={{
         position: 'fixed', inset: 0, zIndex: 100,
         background: '#3B5249',
         display: 'flex', flexDirection: 'column',
+        overflowY: 'auto', overscrollBehavior: 'contain',
         opacity: menuOpen ? 1 : 0,
         pointerEvents: menuOpen ? 'auto' : 'none',
         transition: 'opacity 300ms ease',
@@ -90,7 +95,7 @@ export default function Nav({ lang = 'en', dict = {} }) {
           <button onClick={close} aria-label="Close menu" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FAF6F0', font: '300 32px Inter,sans-serif', lineHeight: 1 }}>×</button>
         </div>
 
-        <nav style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: 'clamp(20px,5vw,56px) clamp(18px,4vw,40px)', display: 'flex', flexDirection: 'column', gap: 'clamp(8px,2vw,18px)', flex: 1 }}>
+        <nav className="full-menu-nav" style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: 'clamp(20px,5vw,56px) clamp(18px,4vw,40px)', display: 'flex', flexDirection: 'column', gap: 'clamp(8px,2vw,18px)', flex: 1 }}>
           {[
             [`/${lang}#about`,      t(dict, 'nav.ourGarden')],
             [`/${lang}/spa-menu`,   t(dict, 'nav.treatments')],
@@ -99,7 +104,7 @@ export default function Nav({ lang = 'en', dict = {} }) {
             [`/${lang}#pricing`,    t(dict, 'nav.pricing')],
             [`/${lang}/book`,       t(dict, 'nav.bookNow')],
           ].map(([href, label], i) => (
-            <a key={href} href={href} onClick={() => { close(); if (i === 5 && window.gtag) window.gtag('event','book_now_click',{method:'mobile_menu'}) }} style={{
+            <a className="full-menu-link" key={href} href={href} onClick={() => { close(); if (i === 5 && window.gtag) window.gtag('event','book_now_click',{method:'mobile_menu'}) }} style={{
               font: `400 clamp(34px,7vw,60px) Cormorant Garamond,serif`,
               color: i === 5 ? '#D9AE72' : '#FAF6F0',
               borderBottom: i < 5 ? '1px solid rgba(250,246,240,0.14)' : 'none',
@@ -110,7 +115,7 @@ export default function Nav({ lang = 'en', dict = {} }) {
           ))}
         </nav>
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 clamp(18px,4vw,40px) 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+        <div className="full-menu-footer" style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '0 clamp(18px,4vw,40px) 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(250,246,240,0.5)' }}>{t(dict, 'nav.openHours')}</div>
             <div style={{ font: '400 15px Inter,sans-serif', color: 'rgba(250,246,240,0.85)', marginTop: 8 }}>+66 63 117 5211 · Rawai, Phuket</div>
@@ -122,6 +127,25 @@ export default function Nav({ lang = 'en', dict = {} }) {
       <style>{`
         @media (min-width: 860px) {
           .nav-links { display: flex !important; }
+          .full-menu-nav {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-content: center;
+            column-gap: clamp(36px, 6vw, 96px) !important;
+            row-gap: 0 !important;
+            padding-top: clamp(12px, 2.5vh, 28px) !important;
+            padding-bottom: clamp(12px, 2.5vh, 28px) !important;
+          }
+          .full-menu-link {
+            min-width: 0;
+            font-size: clamp(36px, 4.5vw, 56px) !important;
+            line-height: 1.05 !important;
+            padding-top: clamp(10px, 1.6vh, 18px) !important;
+            padding-bottom: clamp(10px, 1.6vh, 18px) !important;
+          }
+          .full-menu-footer {
+            padding-bottom: clamp(18px, 3vh, 32px) !important;
+          }
         }
         @media (max-width: 859px) {
           .nav-links { display: none !important; }
