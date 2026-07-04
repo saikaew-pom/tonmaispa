@@ -8,6 +8,7 @@ const BASE_LINKS = [
   { href: '/dashboard',            label: 'Overview' },
   { href: '/dashboard/bookings',   label: 'Bookings' },
   { href: '/dashboard/customers',  label: 'Guests' },
+  { href: '/dashboard/analytics',  label: 'Analytics', minRole: 'owner' },
   { href: '/dashboard/insights',   label: 'Insights', flag: 'insights' },
   { href: '/dashboard/campaigns',  label: 'Campaigns', flag: 'campaigns' },
   { href: '/dashboard/availability', label: 'Availability' },
