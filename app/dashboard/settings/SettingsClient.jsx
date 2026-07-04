@@ -15,7 +15,7 @@ const WORD_TOGGLE_KEYS = {
   'settings.chatbot_booking_mode': { on: 'full', off: 'simple' },
 }
 
-const TEXTAREA_KEYS = ['settings.homepage_services_subheading']
+const TEXTAREA_KEYS = ['settings.homepage_services_subheading', 'settings.homepage_facilities_subheading']
 const NUMBER_KEYS   = ['settings.homepage_services_count']
 
 // Keys an `owner` account is allowed to see and change — everything else
@@ -36,6 +36,10 @@ const FULL_GROUPS = [
   {
     title: 'Homepage — Services Section',
     keys: ['settings.homepage_services_heading', 'settings.homepage_services_subheading', 'settings.homepage_services_count'],
+  },
+  {
+    title: 'Homepage — Facilities Section',
+    keys: ['settings.homepage_facilities_eyebrow', 'settings.homepage_facilities_heading', 'settings.homepage_facilities_subheading'],
   },
   {
     title: 'Feature Toggles',
@@ -65,6 +69,9 @@ const LABELS = {
   'settings.homepage_services_heading':    'Section heading',
   'settings.homepage_services_subheading': 'Section subheading',
   'settings.homepage_services_count':      'How many treatments to show (1–9)',
+  'settings.homepage_facilities_eyebrow':   'Section eyebrow label',
+  'settings.homepage_facilities_heading':   'Section heading',
+  'settings.homepage_facilities_subheading': 'Section subheading',
   'settings.booking_engine_enabled':      'Booking engine enabled',
   'settings.chatbot_enabled':             'Chatbot enabled',
   'settings.chatbot_booking_mode':        'Chatbot full booking mode',
@@ -74,6 +81,7 @@ const LABELS = {
 }
 
 const HINTS = {
+  'settings.homepage_facilities_eyebrow': 'The photos themselves are managed on the Facilities dashboard page, not here.',
   'settings.insights_enabled':      'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
   'settings.campaigns_enabled':     'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
   'settings.chatbot_booking_mode':  'Off = chatbot only captures name/phone for staff follow-up. On = chatbot checks real availability and books directly. Requires "Booking engine enabled" above to also be on.',

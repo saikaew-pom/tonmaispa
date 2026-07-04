@@ -16,6 +16,7 @@ const BASE_LINKS = [
   { href: '/dashboard/enquiries',  label: 'Enquiries' },
   { href: '/dashboard/treatments', label: 'Treatments' },
   { href: '/dashboard/menu',       label: 'Restaurant Menu' },
+  { href: '/dashboard/facilities', label: 'Facilities' },
   { href: '/dashboard/gallery',    label: 'Gallery' },
   { href: '/dashboard/banners',    label: 'Banners', minRole: 'owner' },
   { href: '/dashboard/users',      label: 'Users', minRole: 'owner' },

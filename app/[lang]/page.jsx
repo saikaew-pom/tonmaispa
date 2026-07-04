@@ -48,7 +48,7 @@ export function generateMetadata({ params }) {
 async function getData(lang) {
   const admin = createSupabaseAdminClient()
 
-  const [treatmentsRes, settingsRes, galleryRes] = await Promise.all([
+  const [treatmentsRes, settingsRes, galleryRes, facilitiesRes] = await Promise.all([
     admin.from('spa_treatments')
       .select('id, name, slug, description, category, duration_options, prices, badge, photos')
       .eq('is_active', true)
@@ -65,6 +65,11 @@ async function getData(lang) {
       .eq('featured', true)
       .order('sort_order')
       .limit(48),
+
+    admin.from('facilities')
+      .select('id, image_url, title, body')
+      .eq('is_active', true)
+      .order('sort_order'),
   ])
 
   let settings = Object.fromEntries(
@@ -72,15 +77,20 @@ async function getData(lang) {
   )
   let treatments = treatmentsRes.data ?? []
   let gallery    = galleryRes.data ?? []
+  let facilities = facilitiesRes.data ?? []
 
   if (lang !== 'en') {
     treatments = await translateRows('spa_treatments', treatments, ['name', 'description', 'badge'], lang)
+    facilities = await translateRows('facilities', facilities, ['title', 'body'], lang)
 
     // Only the homepage settings copy (headings/subheadings) is worth
     // translating — numeric/URL settings pass through untouched.
     const TRANSLATABLE_SETTING_KEYS = [
       'settings.homepage_services_heading',
       'settings.homepage_services_subheading',
+      'settings.homepage_facilities_eyebrow',
+      'settings.homepage_facilities_heading',
+      'settings.homepage_facilities_subheading',
     ]
     const settingFields = Object.fromEntries(
       TRANSLATABLE_SETTING_KEYS.filter(k => settings[k]).map(k => [k, settings[k]])
@@ -91,12 +101,12 @@ async function getData(lang) {
     }
   }
 
-  return { treatments, settings, gallery }
+  return { treatments, settings, gallery, facilities }
 }
 
 export default async function HomePage({ params }) {
   const { lang } = await params
-  const [{ treatments, settings, gallery }, dict] = await Promise.all([
+  const [{ treatments, settings, gallery, facilities }, dict] = await Promise.all([
     getData(lang),
     getDictionary(lang),
   ])
@@ -122,7 +132,7 @@ export default async function HomePage({ params }) {
         <AboutSection dict={dict} />
         <TreatmentsSection treatments={treatments} settings={settings} lang={lang} />
         <ThermoSection dict={dict} />
-        <FacilitiesSection dict={dict} />
+        <FacilitiesSection facilities={facilities} settings={settings} />
         <PricingSection settings={settings} dict={dict} />
         <GallerySection gallery={gallery} dict={dict} />
         <ReviewsSection settings={settings} dict={dict} />
