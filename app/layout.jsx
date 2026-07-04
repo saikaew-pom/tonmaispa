@@ -9,6 +9,7 @@ import { SpeedInsights }  from '@vercel/speed-insights/next'
 import ChatWidget         from '@/components/layout/ChatWidget'
 import GoogleAnalytics    from '@/components/layout/GoogleAnalytics'
 import CookieConsentBanner from '@/components/layout/CookieConsentBanner'
+import AnnouncementBanner from '@/components/layout/AnnouncementBanner'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.tonmaispa.com'
@@ -34,16 +35,25 @@ export const metadata = {
 }
 
 export default async function RootLayout({ children }) {
-  // Load chatbot toggle — fail silently so layout never crashes
+  // Load chatbot toggle + announcement banner — fail silently so layout
+  // never crashes if a query hiccups.
   let chatbotEnabled = true
+  let announcement = { enabled: false, text: '', link: '', linkLabel: '' }
   try {
     const admin = createSupabaseAdminClient()
     const { data } = await admin
       .from('site_content')
-      .select('value_text')
-      .eq('key', 'settings.chatbot_enabled')
-      .single()
-    chatbotEnabled = data?.value_text !== 'false'
+      .select('key, value_text')
+      .eq('page', 'settings')
+      .in('key', ['settings.chatbot_enabled', 'settings.announcement_enabled', 'settings.announcement_text', 'settings.announcement_link', 'settings.announcement_link_label'])
+    const map = Object.fromEntries((data ?? []).map(r => [r.key, r.value_text]))
+    chatbotEnabled = map['settings.chatbot_enabled'] !== 'false'
+    announcement = {
+      enabled:   map['settings.announcement_enabled'] === 'true',
+      text:      map['settings.announcement_text'] ?? '',
+      link:      map['settings.announcement_link'] ?? '',
+      linkLabel: map['settings.announcement_link_label'] ?? '',
+    }
   } catch {}
 
   return (
@@ -60,6 +70,9 @@ export default async function RootLayout({ children }) {
         <link rel="preconnect" href="https://res.cloudinary.com" />
       </head>
       <body>
+        {announcement.enabled && (
+          <AnnouncementBanner text={announcement.text} link={announcement.link} linkLabel={announcement.linkLabel} />
+        )}
         {children}
         <ChatWidget chatbotEnabled={chatbotEnabled} />
         {/* GA4 — only injects the script + sets cookies after the visitor consents */}

@@ -3,7 +3,7 @@ import { requireOwnerOrAbove } from '@/lib/require-admin'
 // Keys an `owner` account may change. Everything else in site_content's
 // settings page is super_admin-only — the agency's business-model levers
 // (booking engine, chatbot mode, premium feature flags), not the client's.
-const OWNER_ALLOWED_KEYS = ['settings.announcement_enabled', 'settings.maintenance_mode']
+const OWNER_ALLOWED_KEYS = ['settings.announcement_enabled', 'settings.announcement_text', 'settings.announcement_link', 'settings.announcement_link_label', 'settings.maintenance_mode']
 
 export async function PATCH(req) {
   const auth = await requireOwnerOrAbove()
