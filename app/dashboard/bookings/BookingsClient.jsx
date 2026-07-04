@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 
 const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled']
 const SOURCES  = ['online', 'walk_in', 'phone', 'chatbot']
@@ -192,7 +193,11 @@ function TableView({ visible, savingId, onStatusChange }) {
             <tr key={b.id} style={{ borderTop: '1px solid #F0ECE6' }}>
               <td style={{ padding: '12px 14px', font: '600 12px Inter,sans-serif', color: '#3B5249' }}>{b.ref_code}</td>
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>
-                <div style={{ fontWeight: 600 }}>{b.guest_name}</div>
+                {b.guest_id ? (
+                  <Link href={`/dashboard/guests?id=${b.guest_id}`} style={{ fontWeight: 600, color: '#3B5249', textDecoration: 'none' }}>{b.guest_name}</Link>
+                ) : (
+                  <div style={{ fontWeight: 600 }}>{b.guest_name}</div>
+                )}
                 <div style={{ color: '#9B9390', fontSize: 12 }}>{b.guest_phone}</div>
               </td>
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>{b.spa_treatments?.name ?? '—'} <span style={{ color: '#9B9390' }}>({b.duration}min)</span></td>

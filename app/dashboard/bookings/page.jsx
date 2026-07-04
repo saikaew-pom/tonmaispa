@@ -7,7 +7,7 @@ async function getData() {
   const admin = createSupabaseAdminClient()
   const [bookingsRes, treatmentsRes, therapistsRes] = await Promise.all([
     admin.from('bookings')
-      .select('id, ref_code, guest_name, guest_phone, guest_email, treatment_id, therapist_id, date, time_slot, duration, price, status, source, notes, spa_treatments(name)')
+      .select('id, ref_code, guest_name, guest_phone, guest_email, guest_id, treatment_id, therapist_id, date, time_slot, duration, price, status, source, notes, spa_treatments(name)')
       .order('date', { ascending: false })
       .order('time_slot', { ascending: false })
       .limit(500),
