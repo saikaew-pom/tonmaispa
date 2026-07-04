@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 const BASE_LINKS = [
   { href: '/dashboard',            label: 'Overview' },
   { href: '/dashboard/bookings',   label: 'Bookings' },
-  { href: '/dashboard/guests',     label: 'Guests' },
+  { href: '/dashboard/customers',  label: 'Guests' },
   { href: '/dashboard/insights',   label: 'Insights', flag: 'insights' },
   { href: '/dashboard/campaigns',  label: 'Campaigns', flag: 'campaigns' },
   { href: '/dashboard/availability', label: 'Availability' },

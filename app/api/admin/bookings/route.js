@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/require-admin'
 import { checkSlotCapacity } from '@/lib/scheduling'
-import { upsertGuest } from '@/lib/guests'
+import { upsertCustomer } from '@/lib/customers'
 
 function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
@@ -47,7 +47,7 @@ export async function POST(req) {
   // deliberate overbook there may be no free therapist — saved as null so
   // staff can resolve the assignment manually afterward.
   const autoTherapistIds = therapist_id ? null : capacity.therapistIds
-  const guestId = await upsertGuest(auth.admin, { name: guest_name, phone: guest_phone, email: guest_email })
+  const customerId = await upsertCustomer(auth.admin, { name: guest_name, phone: guest_phone, email: guest_email })
 
   const { data: booking, error } = await auth.admin
     .from('bookings')
@@ -55,7 +55,7 @@ export async function POST(req) {
       guest_name,
       guest_phone,
       guest_email:  guest_email || null,
-      guest_id:     guestId,
+      customer_id:  customerId,
       treatment_id,
       therapist_id: therapist_id || autoTherapistIds?.[0] || null,
       secondary_therapist_id: therapist_id ? null : (autoTherapistIds?.[1] ?? null),

@@ -193,8 +193,8 @@ function TableView({ visible, savingId, onStatusChange }) {
             <tr key={b.id} style={{ borderTop: '1px solid #F0ECE6' }}>
               <td style={{ padding: '12px 14px', font: '600 12px Inter,sans-serif', color: '#3B5249' }}>{b.ref_code}</td>
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>
-                {b.guest_id ? (
-                  <Link href={`/dashboard/guests?id=${b.guest_id}`} style={{ fontWeight: 600, color: '#3B5249', textDecoration: 'none' }}>{b.guest_name}</Link>
+                {b.customer_id ? (
+                  <Link href={`/dashboard/customers?id=${b.customer_id}`} style={{ fontWeight: 600, color: '#3B5249', textDecoration: 'none' }}>{b.guest_name}</Link>
                 ) : (
                   <div style={{ fontWeight: 600 }}>{b.guest_name}</div>
                 )}

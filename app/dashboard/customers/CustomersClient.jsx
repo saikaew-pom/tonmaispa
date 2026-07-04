@@ -6,7 +6,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 const card = { background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: 20, boxShadow: '0 1px 2px rgba(28,25,23,0.04)' }
 const sectionTitle = { font: '600 12px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#9B9390', margin: '0 0 14px' }
 const btnPrimary = { background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 18px', font: '600 13px Inter,sans-serif', cursor: 'pointer' }
-const btnGhost = { padding: '7px 14px', borderRadius: 6, border: '1px solid var(--color-border)', background: '#fff', color: '#1C1917', font: '500 12px Inter,sans-serif', cursor: 'pointer' }
 const STATUS_COLORS = { pending: '#C4924A', confirmed: '#3B5249', completed: '#6B6663', cancelled: '#C0392B' }
 
 const money = (n) => `฿${Math.round(n ?? 0).toLocaleString()}`
@@ -21,12 +20,12 @@ const StatusBadge = ({ status }) => (
   </span>
 )
 
-export default function GuestsClient({ initialGuests }) {
+export default function CustomersClient({ initialCustomers }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const openId = searchParams.get('id')
 
-  const [guests, setGuests] = useState(initialGuests)
+  const [customers, setCustomers] = useState(initialCustomers)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(openId)
@@ -37,9 +36,9 @@ export default function GuestsClient({ initialGuests }) {
     const t = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/admin/guests?search=${encodeURIComponent(search)}`)
+        const res = await fetch(`/api/admin/customers?search=${encodeURIComponent(search)}`)
         const data = await res.json()
-        if (res.ok) setGuests(data.guests ?? [])
+        if (res.ok) setCustomers(data.customers ?? [])
       } finally {
         setLoading(false)
       }
@@ -47,13 +46,13 @@ export default function GuestsClient({ initialGuests }) {
     return () => clearTimeout(t)
   }, [search])
 
-  const openGuest = (id) => {
+  const openCustomer = (id) => {
     setSelectedId(id)
-    router.replace(`/dashboard/guests?id=${id}`, { scroll: false })
+    router.replace(`/dashboard/customers?id=${id}`, { scroll: false })
   }
-  const closeGuest = () => {
+  const closeCustomer = () => {
     setSelectedId(null)
-    router.replace('/dashboard/guests', { scroll: false })
+    router.replace('/dashboard/customers', { scroll: false })
   }
 
   return (
@@ -64,8 +63,8 @@ export default function GuestsClient({ initialGuests }) {
       </div>
 
       <div style={card}>
-        <h2 style={sectionTitle}>{guests.length} guest{guests.length === 1 ? '' : 's'}</h2>
-        {guests.length === 0 ? (
+        <h2 style={sectionTitle}>{customers.length} guest{customers.length === 1 ? '' : 's'}</h2>
+        {customers.length === 0 ? (
           <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No guests found.</p>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -73,20 +72,20 @@ export default function GuestsClient({ initialGuests }) {
               <tr style={{ textAlign: 'left', color: '#9B9390', font: '600 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase' }}>
                 <th style={{ padding: '6px 8px 10px' }}>Name</th>
                 <th style={{ padding: '6px 8px 10px' }}>Phone</th>
-                <th style={{ padding: '6px 8px 10px' }}>Bookings</th>
-                <th style={{ padding: '6px 8px 10px' }}>Lifetime Spend</th>
+                <th style={{ padding: '6px 8px 10px' }}>Visits</th>
+                <th style={{ padding: '6px 8px 10px' }}>Lifetime Value</th>
                 <th style={{ padding: '6px 8px 10px' }}>Last Visit</th>
               </tr>
             </thead>
             <tbody>
-              {guests.map(g => (
-                <tr key={g.id} onClick={() => openGuest(g.id)}
+              {customers.map(c => (
+                <tr key={c.id} onClick={() => openCustomer(c.id)}
                   style={{ borderTop: '1px solid #F0ECE6', cursor: 'pointer' }}>
-                  <td style={{ padding: '10px 8px', font: '600 13px Inter,sans-serif', color: '#1C1917' }}>{g.full_name}</td>
-                  <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{g.phone}</td>
-                  <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{g.bookingCount}</td>
-                  <td style={{ padding: '10px 8px', font: '600 13px Inter,sans-serif', color: '#3B5249' }}>{money(g.lifetimeSpend)}</td>
-                  <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{fmtDate(g.lastVisit)}</td>
+                  <td style={{ padding: '10px 8px', font: '600 13px Inter,sans-serif', color: '#1C1917' }}>{c.display_name}</td>
+                  <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{c.primary_phone_e164}</td>
+                  <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{c.visit_count}</td>
+                  <td style={{ padding: '10px 8px', font: '600 13px Inter,sans-serif', color: '#3B5249' }}>{money(c.lifetime_value)}</td>
+                  <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{fmtDate(c.last_visit_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -94,19 +93,18 @@ export default function GuestsClient({ initialGuests }) {
         )}
       </div>
 
-      {selectedId && <GuestProfilePanel id={selectedId} onClose={closeGuest} onSaved={(g) => setGuests(gs => gs.map(x => x.id === g.id ? { ...x, ...g } : x))} />}
+      {selectedId && <CustomerProfilePanel id={selectedId} onClose={closeCustomer} onSaved={(c) => setCustomers(cs => cs.map(x => x.id === c.id ? { ...x, ...c } : x))} />}
     </div>
   )
 }
 
-function GuestProfilePanel({ id, onClose, onSaved }) {
-  const [guest, setGuest] = useState(null)
+function CustomerProfilePanel({ id, onClose, onSaved }) {
+  const [customer, setCustomer] = useState(null)
   const [bookings, setBookings] = useState([])
-  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [fullName, setFullName] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [notes, setNotes] = useState('')
@@ -117,16 +115,15 @@ function GuestProfilePanel({ id, onClose, onSaved }) {
     let cancelled = false
     setLoading(true)
     setError('')
-    fetch(`/api/admin/guests/${id}`).then(r => r.json()).then(data => {
+    fetch(`/api/admin/customers/${id}`).then(r => r.json()).then(data => {
       if (cancelled) return
       if (data.error) { setError(data.error); return }
-      setGuest(data.guest)
+      setCustomer(data.customer)
       setBookings(data.bookings)
-      setStats(data.stats)
-      setFullName(data.guest.full_name ?? '')
-      setPhone(data.guest.phone ?? '')
-      setEmail(data.guest.email ?? '')
-      setNotes(data.guest.notes ?? '')
+      setDisplayName(data.customer.display_name ?? '')
+      setPhone(data.customer.primary_phone_e164 ?? '')
+      setEmail(data.customer.email ?? '')
+      setNotes(data.customer.notes ?? '')
     }).finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
   }, [id])
@@ -137,15 +134,15 @@ function GuestProfilePanel({ id, onClose, onSaved }) {
     setError('')
     setSaved(false)
     try {
-      const res = await fetch(`/api/admin/guests/${id}`, {
+      const res = await fetch(`/api/admin/customers/${id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: fullName, phone, email, notes }),
+        body: JSON.stringify({ display_name: displayName, primary_phone_e164: phone, email, notes }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Could not save')
-      setGuest(data.guest)
+      setCustomer(c => ({ ...c, ...data.customer }))
       setSaved(true)
-      onSaved({ id, full_name: data.guest.full_name, phone: data.guest.phone, email: data.guest.email })
+      onSaved({ id, display_name: data.customer.display_name, primary_phone_e164: data.customer.primary_phone_e164, email: data.customer.email })
     } catch (e2) {
       setError(e2.message)
     } finally {
@@ -157,20 +154,18 @@ function GuestProfilePanel({ id, onClose, onSaved }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,25,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#FAF6F0', borderRadius: 12, padding: 0, maxWidth: 640, width: '100%', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, background: '#FAF6F0' }}>
-          <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#1C1917' }}>{guest?.full_name ?? 'Guest Profile'}</div>
+          <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#1C1917' }}>{customer?.display_name ?? 'Guest Profile'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9B9390', lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {loading && <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>Loading…</p>}
 
-          {!loading && stats && (
+          {!loading && customer && (
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <StatChip label="Bookings" value={stats.bookingCount} />
-              <StatChip label="Completed" value={stats.completedCount} />
-              <StatChip label="Cancelled" value={stats.cancelledCount} />
-              <StatChip label="Lifetime Spend" value={money(stats.lifetimeSpend)} accent="#3B5249" />
-              <StatChip label="Last Visit" value={fmtDate(stats.lastVisit)} />
+              <StatChip label="Visits" value={customer.visit_count} />
+              <StatChip label="Lifetime Value" value={money(customer.lifetime_value)} accent="#3B5249" />
+              <StatChip label="Last Visit" value={fmtDate(customer.last_visit_at)} />
             </div>
           )}
 
@@ -180,7 +175,7 @@ function GuestProfilePanel({ id, onClose, onSaved }) {
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', font: '500 12px Inter,sans-serif', color: '#4A4745', marginBottom: 4 }}>Full name</label>
-                  <input className="input" value={fullName} onChange={e => setFullName(e.target.value)} required />
+                  <input className="input" value={displayName} onChange={e => setDisplayName(e.target.value)} required />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', font: '500 12px Inter,sans-serif', color: '#4A4745', marginBottom: 4 }}>Phone</label>
