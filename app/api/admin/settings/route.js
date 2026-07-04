@@ -3,7 +3,7 @@ import { requireOwnerOrAbove } from '@/lib/require-admin'
 // Keys an `owner` account may change. Everything else in site_content's
 // settings page is super_admin-only — the agency's business-model levers
 // (booking engine, chatbot mode, premium feature flags), not the client's.
-const OWNER_ALLOWED_KEYS = ['settings.announcement_enabled', 'settings.announcement_text', 'settings.announcement_link', 'settings.announcement_link_label', 'settings.maintenance_mode']
+const OWNER_ALLOWED_KEYS = ['settings.maintenance_mode']
 
 export async function PATCH(req) {
   const auth = await requireOwnerOrAbove()
@@ -17,7 +17,7 @@ export async function PATCH(req) {
     const disallowed = entries.map(([key]) => key).filter(key => !OWNER_ALLOWED_KEYS.includes(key))
     if (disallowed.length > 0) {
       return Response.json({
-        error: `Not allowed to change: ${disallowed.join(', ')}. Only announcement banner and maintenance mode can be changed by an owner account.`,
+        error: `Not allowed to change: ${disallowed.join(', ')}. Only maintenance mode can be changed by an owner account here (banners are managed on the Banners page).`,
       }, { status: 403 })
     }
   }

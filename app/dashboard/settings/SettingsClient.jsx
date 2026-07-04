@@ -5,7 +5,6 @@ import { useState } from 'react'
 const BOOLEAN_KEYS = [
   'settings.booking_engine_enabled',
   'settings.chatbot_enabled',
-  'settings.announcement_enabled',
   'settings.maintenance_mode',
   'settings.insights_enabled',
   'settings.campaigns_enabled',
@@ -23,15 +22,7 @@ const NUMBER_KEYS   = ['settings.homepage_services_count']
 // (contact info, business info, homepage copy, and every toggle except the
 // two operational ones) is super_admin-only, enforced here for display and
 // again server-side in app/api/admin/settings/route.js.
-const OWNER_ALLOWED_KEYS = [
-  'settings.announcement_enabled', 'settings.announcement_text', 'settings.announcement_link', 'settings.announcement_link_label',
-  'settings.maintenance_mode',
-]
-
-const ANNOUNCEMENT_GROUP = {
-  title: 'Announcement Banner',
-  keys: ['settings.announcement_enabled', 'settings.announcement_text', 'settings.announcement_link', 'settings.announcement_link_label'],
-}
+const OWNER_ALLOWED_KEYS = ['settings.maintenance_mode']
 
 const FULL_GROUPS = [
   {
@@ -46,7 +37,6 @@ const FULL_GROUPS = [
     title: 'Homepage — Services Section',
     keys: ['settings.homepage_services_heading', 'settings.homepage_services_subheading', 'settings.homepage_services_count'],
   },
-  ANNOUNCEMENT_GROUP,
   {
     title: 'Feature Toggles',
     keys: [
@@ -59,7 +49,7 @@ const FULL_GROUPS = [
 
 function groupsForRole(role) {
   if (role !== 'owner') return FULL_GROUPS
-  return [ANNOUNCEMENT_GROUP, { title: 'Feature Toggles', keys: ['settings.maintenance_mode'] }]
+  return [{ title: 'Feature Toggles', keys: OWNER_ALLOWED_KEYS }]
 }
 
 const LABELS = {
@@ -80,18 +70,12 @@ const LABELS = {
   'settings.chatbot_booking_mode':        'Chatbot full booking mode',
   'settings.insights_enabled':            'Revenue & Marketing Advisor enabled',
   'settings.campaigns_enabled':           'AI Campaign Planner enabled',
-  'settings.announcement_enabled':        'Announcement banner enabled',
-  'settings.announcement_text':            'Banner message',
-  'settings.announcement_link':            'Link URL (optional)',
-  'settings.announcement_link_label':      'Link text (optional)',
   'settings.maintenance_mode':            'Maintenance mode',
 }
 
 const HINTS = {
   'settings.insights_enabled':      'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
   'settings.campaigns_enabled':     'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
-  'settings.announcement_text':     'Shown as a dismissible bar at the top of every public page when the toggle above is on. Visitors who dismiss it won\'t see it again unless you change this message.',
-  'settings.announcement_link':     'e.g. a promo page or booking link. Leave blank for a plain text-only banner.',
   'settings.chatbot_booking_mode':  'Off = chatbot only captures name/phone for staff follow-up. On = chatbot checks real availability and books directly. Requires "Booking engine enabled" above to also be on.',
 }
 
