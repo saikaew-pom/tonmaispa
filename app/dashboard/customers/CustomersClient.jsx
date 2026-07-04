@@ -74,6 +74,7 @@ export default function CustomersClient({ initialCustomers }) {
                 <th style={{ padding: '6px 8px 10px' }}>Phone</th>
                 <th style={{ padding: '6px 8px 10px' }}>Visits</th>
                 <th style={{ padding: '6px 8px 10px' }}>Lifetime Value</th>
+                <th style={{ padding: '6px 8px 10px' }}>Potential Value</th>
                 <th style={{ padding: '6px 8px 10px' }}>Last Visit</th>
               </tr>
             </thead>
@@ -85,6 +86,7 @@ export default function CustomersClient({ initialCustomers }) {
                   <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{c.primary_phone_e164}</td>
                   <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{c.visit_count}</td>
                   <td style={{ padding: '10px 8px', font: '600 13px Inter,sans-serif', color: '#3B5249' }}>{money(c.lifetime_value)}</td>
+                  <td style={{ padding: '10px 8px', font: '600 13px Inter,sans-serif', color: c.potential_value > 0 ? '#C4924A' : '#9B9390' }}>{c.potential_value > 0 ? money(c.potential_value) : '—'}</td>
                   <td style={{ padding: '10px 8px', font: '400 13px Inter,sans-serif', color: '#6B6663' }}>{fmtDate(c.last_visit_at)}</td>
                 </tr>
               ))}
@@ -161,13 +163,21 @@ function CustomerProfilePanel({ id, onClose, onSaved }) {
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {loading && <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>Loading…</p>}
 
-          {!loading && customer && (
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <StatChip label="Visits" value={customer.visit_count} />
-              <StatChip label="Lifetime Value" value={money(customer.lifetime_value)} accent="#3B5249" />
-              <StatChip label="Last Visit" value={fmtDate(customer.last_visit_at)} />
-            </div>
-          )}
+          {!loading && customer && (() => {
+            const potentialValue = bookings
+              .filter(b => b.status === 'pending' || b.status === 'confirmed')
+              .reduce((sum, b) => sum + (b.price ?? 0), 0)
+            return (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <StatChip label="Visits" value={customer.visit_count} />
+                <StatChip label="Lifetime Value" value={money(customer.lifetime_value)} accent="#3B5249" />
+                {potentialValue > 0 && (
+                  <StatChip label="Potential Value" value={money(potentialValue)} accent="#C4924A" />
+                )}
+                <StatChip label="Last Visit" value={fmtDate(customer.last_visit_at)} />
+              </div>
+            )
+          })()}
 
           {!loading && (
             <form onSubmit={handleSave} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -198,31 +208,55 @@ function CustomerProfilePanel({ id, onClose, onSaved }) {
             </form>
           )}
 
-          {!loading && (
-            <div style={card}>
-              <h2 style={sectionTitle}>Booking History</h2>
-              {bookings.length === 0 ? (
-                <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No bookings yet.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {bookings.map(b => (
-                    <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #F0ECE6', borderRadius: 6, padding: 10 }}>
-                      <div>
-                        <div style={{ font: '600 12px Inter,sans-serif', color: '#1C1917' }}>{b.spa_treatments?.name ?? '—'}</div>
-                        <div style={{ font: '400 11px Inter,sans-serif', color: '#9B9390' }}>{b.date} · {b.time_slot?.slice(0, 5)} · {b.ref_code}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ font: '600 12px Inter,sans-serif', color: '#3B5249' }}>{money(b.price)}</span>
-                        <StatusBadge status={b.status} />
-                      </div>
-                    </div>
-                  ))}
+          {!loading && (() => {
+            const today = new Date().toISOString().slice(0, 10)
+            const upcoming = bookings
+              .filter(b => b.date >= today && b.status !== 'cancelled')
+              .sort((a, b) => a.date === b.date ? a.time_slot?.localeCompare(b.time_slot) : a.date.localeCompare(b.date))
+            const past = bookings
+              .filter(b => !(b.date >= today && b.status !== 'cancelled'))
+            return (
+              <>
+                <div style={card}>
+                  <h2 style={sectionTitle}>Upcoming Bookings</h2>
+                  {upcoming.length === 0 ? (
+                    <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No upcoming bookings.</p>
+                  ) : (
+                    <BookingList bookings={upcoming} />
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+                <div style={card}>
+                  <h2 style={sectionTitle}>Past Bookings</h2>
+                  {past.length === 0 ? (
+                    <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No past bookings yet.</p>
+                  ) : (
+                    <BookingList bookings={past} />
+                  )}
+                </div>
+              </>
+            )
+          })()}
         </div>
       </div>
+    </div>
+  )
+}
+
+function BookingList({ bookings }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {bookings.map(b => (
+        <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #F0ECE6', borderRadius: 6, padding: 10 }}>
+          <div>
+            <div style={{ font: '600 12px Inter,sans-serif', color: '#1C1917' }}>{b.spa_treatments?.name ?? '—'}</div>
+            <div style={{ font: '400 11px Inter,sans-serif', color: '#9B9390' }}>{b.date} · {b.time_slot?.slice(0, 5)} · {b.ref_code}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ font: '600 12px Inter,sans-serif', color: '#3B5249' }}>{money(b.price)}</span>
+            <StatusBadge status={b.status} />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
