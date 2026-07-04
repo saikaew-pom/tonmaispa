@@ -25,7 +25,7 @@ export default function ContactSection({ settings = {}, dict = {} }) {
               {t(dict, 'home.contact.openDaily')}
             </p>
             <a
-              href="https://www.google.com/maps/dir/?api=1&destination=Ton+Mai+Spa+Rawai+Phuket"
+              href="https://www.google.com/maps/dir/?api=1&destination=7.7794138,98.3285633&destination_place_id=0x305028b829ce03eb:0x8195de1e2fc2ad11"
               target="_blank" rel="noopener noreferrer"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, font: '600 11px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: '#3B5249', borderBottom: '1.5px solid #C4924A', paddingBottom: 4 }}
               onClick={() => { if (window.gtag) window.gtag('event','map_click') }}
@@ -38,7 +38,7 @@ export default function ContactSection({ settings = {}, dict = {} }) {
           <div style={{ borderRadius: 8, overflow: 'hidden', height: 'clamp(260px,30vw,380px)', boxShadow: '0 6px 24px rgba(28,25,23,0.1)' }}>
             <iframe
               title="Ton Mai Spa location — Rawai, Phuket"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3953.238!2d98.3!3d7.78!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zTG9uIE1haSBTcGE!5e0!3m2!1sen!2sth!4v1"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3953.0!2d98.3285633!3d7.7794138!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x305028b829ce03eb%3A0x8195de1e2fc2ad11!2sTon%20Mai%20Spa%20%26%20Massage%20Rawai%20Phuket!5e0!3m2!1sen!2sth!4v1"
               width="100%" height="100%" style={{ border: 0 }}
               allowFullScreen loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
