@@ -18,6 +18,7 @@ const BASE_LINKS = [
   { href: '/dashboard/menu',       label: 'Restaurant Menu' },
   { href: '/dashboard/facilities', label: 'Facilities' },
   { href: '/dashboard/gallery',    label: 'Gallery' },
+  { href: '/dashboard/blog',       label: 'Blog' },
   { href: '/dashboard/banners',    label: 'Banners', minRole: 'owner' },
   { href: '/dashboard/users',      label: 'Users', minRole: 'owner' },
   { href: '/dashboard/settings',   label: 'Settings', minRole: 'owner' },
