@@ -111,7 +111,7 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       const res = await fetch(`/api/admin/bookings/${id}/whatsapp`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { setNotifyError(data.error || 'Could not send the WhatsApp message.'); return }
-      patchBooking(id, { last_whatsapp_sent_at: data.last_whatsapp_sent_at })
+      patchBooking(id, { last_whatsapp_sent_at: data.last_whatsapp_sent_at, last_whatsapp_status: data.last_whatsapp_status })
     } finally {
       setNotifyingId(null)
     }
@@ -247,8 +247,11 @@ function NotifyCell({ booking, notifyingId, twilioEnabled, onSendEmail, onSendWh
   const canNotify = ['confirmed', 'cancelled'].includes(booking.status)
   const emailSending = notifyingId === `${booking.id}:email`
   const whatsappSending = notifyingId === `${booking.id}:whatsapp`
-  const emailSentAt = formatSentAt(booking.last_email_sent_at)
-  const whatsappSentAt = formatSentAt(booking.last_whatsapp_sent_at)
+  // Only treat a past send as "done" if it reflected the CURRENT status —
+  // if staff changes status again after sending, the button must reappear
+  // so they can notify the guest of the new status too.
+  const emailSentAt = booking.last_email_status === booking.status ? formatSentAt(booking.last_email_sent_at) : null
+  const whatsappSentAt = booking.last_whatsapp_status === booking.status ? formatSentAt(booking.last_whatsapp_sent_at) : null
 
   const btnSt = {
     border: '1px solid #3B5249', borderRadius: 3, background: '#fff', color: '#3B5249',

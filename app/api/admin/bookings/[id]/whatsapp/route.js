@@ -61,7 +61,7 @@ export async function POST(req, { params }) {
   }
 
   const sentAt = new Date().toISOString()
-  await auth.admin.from('bookings').update({ last_whatsapp_sent_at: sentAt }).eq('id', id)
+  await auth.admin.from('bookings').update({ last_whatsapp_sent_at: sentAt, last_whatsapp_status: booking.status }).eq('id', id)
 
   await logBookingAction(auth.admin, {
     bookingId: id,
@@ -70,5 +70,5 @@ export async function POST(req, { params }) {
     detail: `${booking.status === 'confirmed' ? 'Confirmed' : 'Cancelled'} WhatsApp message sent to ${booking.guest_phone}`,
   })
 
-  return Response.json({ ok: true, last_whatsapp_sent_at: sentAt })
+  return Response.json({ ok: true, last_whatsapp_sent_at: sentAt, last_whatsapp_status: booking.status })
 }
