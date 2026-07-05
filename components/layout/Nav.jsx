@@ -51,6 +51,7 @@ export default function Nav({ lang = 'en', dict = {} }) {
               [`/${lang}/restaurant`, t(dict, 'nav.restaurant')],
               [`/${lang}#facilities`, t(dict, 'nav.facilities')],
               [`/${lang}#pricing`,    t(dict, 'nav.pricing')],
+              [`/${lang}/blog`,       t(dict, 'nav.blog')],
             ].map(([href, label]) => (
               <a key={href} href={href} style={{ font: '500 12px Inter,sans-serif', letterSpacing: '0.5px', color: '#1C1917' }}>{label}</a>
             ))}
@@ -102,13 +103,14 @@ export default function Nav({ lang = 'en', dict = {} }) {
             [`/${lang}/restaurant`, t(dict, 'nav.restaurant')],
             [`/${lang}#facilities`, t(dict, 'nav.facilities')],
             [`/${lang}#pricing`,    t(dict, 'nav.pricing')],
+            [`/${lang}/blog`,       t(dict, 'nav.blog')],
             [`/${lang}/book`,       t(dict, 'nav.bookNow')],
           ].map(([href, label], i) => (
-            <a className="full-menu-link" key={href} href={href} onClick={() => { close(); if (i === 5 && window.gtag) window.gtag('event','book_now_click',{method:'mobile_menu'}) }} style={{
+            <a className="full-menu-link" key={href} href={href} onClick={() => { close(); if (i === 6 && window.gtag) window.gtag('event','book_now_click',{method:'mobile_menu'}) }} style={{
               font: `400 clamp(34px,7vw,60px) Cormorant Garamond,serif`,
-              color: i === 5 ? '#D9AE72' : '#FAF6F0',
-              borderBottom: i < 5 ? '1px solid rgba(250,246,240,0.14)' : 'none',
-              paddingBottom: i < 5 ? 'clamp(8px,2vw,18px)' : 0,
+              color: i === 6 ? '#D9AE72' : '#FAF6F0',
+              borderBottom: i < 6 ? '1px solid rgba(250,246,240,0.14)' : 'none',
+              paddingBottom: i < 6 ? 'clamp(8px,2vw,18px)' : 0,
             }}>
               {label}
             </a>

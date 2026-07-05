@@ -14,14 +14,14 @@ export default async function sitemap() {
     .select('slug, created_at')
     .eq('is_active', true)
 
-  // Blog posts (Phase 2 — empty until then)
+  // Every published blog post gets its own indexable page per locale.
   const { data: posts } = await admin
     .from('blog_posts')
     .select('slug, updated_at')
-    .eq('status', 'published')
+    .eq('is_published', true)
 
   // All customer-facing pages now live under /[lang]/.
-  const localizedPages = ['', '/spa-menu', '/restaurant', '/book', '/privacy', '/terms']
+  const localizedPages = ['', '/spa-menu', '/restaurant', '/blog', '/book', '/privacy', '/terms']
   const staticPages = LOCALES.flatMap(lang =>
     localizedPages.map(page => ({
       url:             `${BASE}/${lang}${page}`,
@@ -39,12 +39,14 @@ export default async function sitemap() {
     }))
   )
 
-  const blogPages = (posts ?? []).map(p => ({
-    url:             `${BASE}/blog/${p.slug}`,
-    lastModified:    p.updated_at,
-    priority:        0.6,
-    changeFrequency: 'monthly',
-  }))
+  const blogPages = LOCALES.flatMap(lang =>
+    (posts ?? []).map(p => ({
+      url:             `${BASE}/${lang}/blog/${p.slug}`,
+      lastModified:    p.updated_at,
+      priority:        0.6,
+      changeFrequency: 'monthly',
+    }))
+  )
 
   return [...staticPages, ...treatmentPages, ...blogPages]
 }

@@ -7,7 +7,8 @@
     "bookNow": "Book Now",
     "login": "Log In",
     "ourGarden": "Our Garden",
-    "openHours": "Open daily · 9am – 11pm"
+    "openHours": "Open daily · 9am – 11pm",
+    "blog": "Blog"
   },
   "footer": {
     "tagline": "A tropical garden of Thai healing in Rawai, Phuket. Steam, sauna, cold plunge, pool & massage — open every day until late.",
@@ -24,7 +25,8 @@
     "whatsapp": "WhatsApp",
     "line": "Line",
     "privacy": "Privacy",
-    "terms": "Terms"
+    "terms": "Terms",
+    "blog": "Blog"
   },
   "language": {
     "en": "English",
@@ -59,10 +61,22 @@
       "eyebrow": "Thermotherapy",
       "title": "The ancient cycle of heat, cold and rest.",
       "steps": [
-        { "title": "Herbal Steam", "body": "Breathe deep in our private herbal steam rooms infused with lemongrass, kaffir lime and eucalyptus — opening pores and melting muscle tension." },
-        { "title": "Finnish Sauna", "body": "Dry heat at 80–95°C accelerates circulation, deeply relaxes connective tissue and prepares the body for the next plunge." },
-        { "title": "Cold Plunge", "body": "A 10–15°C cold bath seals the pores, activates the lymphatic system and floods you with a natural rush of clarity." },
-        { "title": "Rest & Float", "body": "Drift in the mineral pool or lie in the garden under palms. Repeat the circuit as many times as you wish — you have the whole day." }
+        {
+          "title": "Herbal Steam",
+          "body": "Breathe deep in our private herbal steam rooms infused with lemongrass, kaffir lime and eucalyptus — opening pores and melting muscle tension."
+        },
+        {
+          "title": "Finnish Sauna",
+          "body": "Dry heat at 80–95°C accelerates circulation, deeply relaxes connective tissue and prepares the body for the next plunge."
+        },
+        {
+          "title": "Cold Plunge",
+          "body": "A 10–15°C cold bath seals the pores, activates the lymphatic system and floods you with a natural rush of clarity."
+        },
+        {
+          "title": "Rest & Float",
+          "body": "Drift in the mineral pool or lie in the garden under palms. Repeat the circuit as many times as you wish — you have the whole day."
+        }
       ],
       "dayPassTitle": "Sauna Day Pass — ฿200 / person",
       "dayPassBody": "Unlimited access to steam, sauna, cold plunge, pool & jacuzzi. Includes herbal tea.",
@@ -73,12 +87,30 @@
       "title": "Everything in one garden.",
       "subtitle": "No need to rush between buildings. Steam, sauna, cold plunge, pool, restaurant, and massage salas are all connected by shaded garden paths — so you flow from one to the next at your own pace.",
       "items": [
-        { "title": "Herbal Steam Room", "body": "Private rooms infused with lemongrass, kaffir lime and eucalyptus." },
-        { "title": "Finnish Sauna", "body": "Dry heat in a traditional wooden cabin — up to 95°C." },
-        { "title": "Cold Plunge Pool", "body": "Crisp 10–15°C immersion to seal the circuit and invigorate the body." },
-        { "title": "Pool & Jacuzzi", "body": "Linger in warm mineral water beneath palms after your circuit." },
-        { "title": "Tropical Garden", "body": "Three rai of bamboo, palms and tropical flowers for pure garden calm." },
-        { "title": "Garden Restaurant", "body": "Healthy Thai and fusion dishes served open-air, all day." }
+        {
+          "title": "Herbal Steam Room",
+          "body": "Private rooms infused with lemongrass, kaffir lime and eucalyptus."
+        },
+        {
+          "title": "Finnish Sauna",
+          "body": "Dry heat in a traditional wooden cabin — up to 95°C."
+        },
+        {
+          "title": "Cold Plunge Pool",
+          "body": "Crisp 10–15°C immersion to seal the circuit and invigorate the body."
+        },
+        {
+          "title": "Pool & Jacuzzi",
+          "body": "Linger in warm mineral water beneath palms after your circuit."
+        },
+        {
+          "title": "Tropical Garden",
+          "body": "Three rai of bamboo, palms and tropical flowers for pure garden calm."
+        },
+        {
+          "title": "Garden Restaurant",
+          "body": "Healthy Thai and fusion dishes served open-air, all day."
+        }
       ]
     },
     "pricing": {
@@ -87,12 +119,26 @@
       "thermalCircuit": "Thermal Circuit",
       "perPerson": "/person",
       "saunaDayPass": "Sauna Day Pass",
-      "dayPassFeatures": ["Full day herbal steam room access", "Finnish sauna (unlimited rounds)", "Cold plunge pool", "Swimming pool & jacuzzi", "Herbal welcome tea", "Locker & towel", "Garden lounge access"],
+      "dayPassFeatures": [
+        "Full day herbal steam room access",
+        "Finnish sauna (unlimited rounds)",
+        "Cold plunge pool",
+        "Swimming pool & jacuzzi",
+        "Herbal welcome tea",
+        "Locker & towel",
+        "Garden lounge access"
+      ],
       "bookNow": "Book Now",
       "addOn": "Add-on",
       "perSession": "/session",
       "iceBath": "Ice Bath",
-      "iceBathFeatures": ["Private ice bath tub", "Fresh ice filled before each session", "Available with or without day pass", "Guided breathing tips on arrival", "Towel & robe provided"],
+      "iceBathFeatures": [
+        "Private ice bath tub",
+        "Fresh ice filled before each session",
+        "Available with or without day pass",
+        "Guided breathing tips on arrival",
+        "Towel & robe provided"
+      ],
       "enquireWhatsapp": "Enquire on WhatsApp",
       "footerNote": "Massage & spa treatments priced separately. See full menu for details."
     },
@@ -109,9 +155,27 @@
       "verifiedReviews": "Verified Reviews",
       "readAll": "Read All Reviews on Google →",
       "items": [
-        { "name": "Sophie L.", "flag": "🇬🇧", "text": "The most beautiful spa garden I have found in Phuket. The circuit — steam, sauna, cold plunge — is incredibly restorative. Unhurried, quiet, genuine.", "stars": 5, "date": "June 2025" },
-        { "name": "Piotr W.", "flag": "🇵🇱", "text": "Excellent Thai massage by a skilled therapist. The open-air sala in the garden is a magical setting. Came back three times in one week!", "stars": 5, "date": "May 2025" },
-        { "name": "Ananya R.", "flag": "🇹🇭", "text": "ดีมากๆ ค่ะ สถานที่ร่มรื่น บรรยากาศดี นวดแรงพอดี สุดประทับใจ จะกลับมาอีกแน่ๆ", "stars": 5, "date": "April 2025" }
+        {
+          "name": "Sophie L.",
+          "flag": "🇬🇧",
+          "text": "The most beautiful spa garden I have found in Phuket. The circuit — steam, sauna, cold plunge — is incredibly restorative. Unhurried, quiet, genuine.",
+          "stars": 5,
+          "date": "June 2025"
+        },
+        {
+          "name": "Piotr W.",
+          "flag": "🇵🇱",
+          "text": "Excellent Thai massage by a skilled therapist. The open-air sala in the garden is a magical setting. Came back three times in one week!",
+          "stars": 5,
+          "date": "May 2025"
+        },
+        {
+          "name": "Ananya R.",
+          "flag": "🇹🇭",
+          "text": "ดีมากๆ ค่ะ สถานที่ร่มรื่น บรรยากาศดี นวดแรงพอดี สุดประทับใจ จะกลับมาอีกแน่ๆ",
+          "stars": 5,
+          "date": "April 2025"
+        }
       ]
     },
     "contact": {
@@ -173,15 +237,37 @@
     "dayGardenHeading": "Spend the day in the thermal garden.",
     "dayGardenText": "The Sauna Day Pass gives you unlimited access to herbal steam, Finnish sauna, cold plunge, pool and jacuzzi — for a full day.",
     "perPersonAllDay": "per person · all day access",
-    "dayPassItems": ["Herbal steam room", "Finnish sauna", "Cold plunge pool", "Swimming pool & jacuzzi", "Herbal welcome tea", "Towel & locker"],
+    "dayPassItems": [
+      "Herbal steam room",
+      "Finnish sauna",
+      "Cold plunge pool",
+      "Swimming pool & jacuzzi",
+      "Herbal welcome tea",
+      "Towel & locker"
+    ],
     "faqLabel": "FAQ",
     "faqHeading": "Booking questions",
     "faq": [
-      { "q": "Do I need to book in advance?", "a": "Walk-ins are welcome but we recommend booking ahead for weekends and public holidays — some time slots fill early. For group bookings of 3+ people, please message us on WhatsApp 24 hours ahead." },
-      { "q": "What is the cancellation policy?", "a": "Cancellations made more than 48 hours before your appointment are fully refunded. Within 24–48 hours, a 50% fee applies. Less than 24 hours is non-refundable. To cancel, message us on WhatsApp." },
-      { "q": "How do I get to Ton Mai Spa?", "a": "We are located on Wiset Road in Rawai — about 5 minutes from Nai Harn Beach and 10 minutes from Chalong. A taxi from Patong takes around 40 minutes. We can share our exact Google Maps pin via WhatsApp." },
-      { "q": "What should I bring?", "a": "Nothing is required — we provide towels, robes, flip-flops and lockers. If you plan to use the pool, bring or purchase a swimsuit. The sauna day pass includes a herbal welcome tea and locker access." },
-      { "q": "Can I combine a massage with the thermal circuit?", "a": "Absolutely — this is the most popular combination. Book a sauna day pass plus a treatment of your choice. We recommend arriving 1 hour before your massage to enjoy the steam, sauna and cold plunge first." }
+      {
+        "q": "Do I need to book in advance?",
+        "a": "Walk-ins are welcome but we recommend booking ahead for weekends and public holidays — some time slots fill early. For group bookings of 3+ people, please message us on WhatsApp 24 hours ahead."
+      },
+      {
+        "q": "What is the cancellation policy?",
+        "a": "Cancellations made more than 48 hours before your appointment are fully refunded. Within 24–48 hours, a 50% fee applies. Less than 24 hours is non-refundable. To cancel, message us on WhatsApp."
+      },
+      {
+        "q": "How do I get to Ton Mai Spa?",
+        "a": "We are located on Wiset Road in Rawai — about 5 minutes from Nai Harn Beach and 10 minutes from Chalong. A taxi from Patong takes around 40 minutes. We can share our exact Google Maps pin via WhatsApp."
+      },
+      {
+        "q": "What should I bring?",
+        "a": "Nothing is required — we provide towels, robes, flip-flops and lockers. If you plan to use the pool, bring or purchase a swimsuit. The sauna day pass includes a herbal welcome tea and locker access."
+      },
+      {
+        "q": "Can I combine a massage with the thermal circuit?",
+        "a": "Absolutely — this is the most popular combination. Book a sauna day pass plus a treatment of your choice. We recommend arriving 1 hour before your massage to enjoy the steam, sauna and cold plunge first."
+      }
     ]
   },
   "legal": {
@@ -191,128 +277,482 @@
   "privacyPage": {
     "title": "Privacy Policy",
     "blocks": [
-      { "type": "h2", "text": "1. Introduction" },
-      { "type": "p", "text": "Ton Mai Spa (“we,” “us,” or “our”), located at 6/11 Moo 2 Wiset Road, Tambon Rawai, Phuket 83130, Thailand, operates the website tonmaispa.com and the spa and restaurant it describes. This policy explains what personal data we collect when you visit our site, book a treatment, or contact us, why we collect it, who we share it with, and the rights available to you." },
-      { "type": "p", "text": "We are the data controller for information collected through this website. This policy is designed to address the requirements of Thailand's Personal Data Protection Act B.E. 2562 (PDPA) — the law that governs us as a Thailand-based business — and, for visitors in the European Economic Area, the UK, or Switzerland, the General Data Protection Regulation (GDPR)." },
-      { "type": "h2", "text": "2. Information We Collect" },
-      { "type": "h3", "text": "Information you provide directly" },
-      { "type": "p", "text": "When you submit a booking or enquiry, message our chatbot, or contact us through the site, we may collect: your name, phone number, email address (optional), preferred treatment and date, party size, and any notes you choose to include (for example, allergies or preferences you mention to our chatbot)." },
-      { "type": "h3", "text": "Information collected automatically" },
-      { "type": "p", "text": "With your consent, given through the cookie banner on your first visit, we use Google Analytics 4 to understand how visitors use our website — pages visited, approximate location from IP address, browser type, and time spent on the site. This data is aggregated and is not used to identify you personally. No analytics cookie is set unless you actively accept it; see “Cookies” below." },
-      { "type": "p", "text": "Our hosting and security providers (Vercel, Cloudflare, Upstash) automatically log technical data such as IP address and request timestamps for the limited purposes of running the site, rate-limiting abusive traffic, and detecting bots on our forms." },
-      { "type": "h2", "text": "3. How We Use Your Information" },
-      { "type": "p", "text": "We use the information you provide to:" },
-      { "type": "ul", "items": [
-        { "text": "Respond to your booking requests and enquiries, and confirm bookings by email and WhatsApp/Line" },
-        { "text": "Operate our AI chatbot, which uses your messages to answer questions and help you book" },
-        { "text": "Maintain records required for tax and business-accounting compliance under Thai law" },
-        { "text": "Detect and prevent spam or abuse of our booking and enquiry forms" },
-        { "text": "Understand and improve our website, only where you have consented to analytics cookies" }
-      ]},
-      { "type": "p", "text": "We do not sell, rent, or share your personal information with third parties for their own marketing purposes, and we do not use advertising or cross-site tracking cookies." },
-      { "type": "h2", "text": "4. Who We Share Your Information With" },
-      { "type": "p", "text": "We use the following sub-processors to run our website and business. Each only receives the data it needs to perform its function:" },
-      { "type": "table", "headers": ["Service", "Purpose", "Data involved"], "rows": [
-        ["Supabase", "Database hosting", "Bookings, enquiries, chat history, cookie consent log"],
-        ["Brevo", "Transactional email", "Name, email, booking details (for confirmation emails only)"],
-        ["Cloudinary", "Image hosting", "Photos of the spa and treatments — no personal guest data"],
-        ["Cloudflare Turnstile", "Bot / spam protection", "Browser signals used to verify you're human; no personal profile is built"],
-        ["Upstash", "Rate limiting", "IP address, used only to count requests and prevent abuse"],
-        ["MiniMax", "AI chatbot replies", "Your chat messages, sent to generate a response"],
-        ["Google Analytics 4", "Website analytics", "Only active after cookie consent — see “Cookies”"],
-        ["Vercel", "Website hosting", "Standard server logs; also provides Vercel Analytics/Speed Insights"],
-        ["WhatsApp / Line", "Guest messaging", "Conversations you choose to have with us on these platforms, governed by their own privacy policies"]
-      ]},
-      { "type": "p", "text": "We may also disclose personal data where required by Thai law, court order, or to protect the rights, property, or safety of Ton Mai Spa, our guests, or the public." },
-      { "type": "h2", "text": "5. International Data Transfers" },
-      { "type": "p", "text": "Several of the services above (including Supabase, Brevo, Cloudinary, Cloudflare, Upstash, MiniMax, Google, and Vercel) process data on servers located outside Thailand, including in the United States and the European Union. Where we transfer personal data internationally, we rely on the standard contractual and security safeguards these providers make available to their customers, consistent with PDPA Section 28–29 requirements for cross-border transfer and, for EEA visitors, the GDPR's transfer mechanisms." },
-      { "type": "h2", "text": "6. Data Retention" },
-      { "type": "p", "text": "We keep personal data only as long as needed for the purposes described in this policy:" },
-      { "type": "ul", "items": [
-        { "bold": "Booking and enquiry records", "text": " — up to 24 months, for guest service and Thai tax/accounting compliance, unless you ask us to delete them sooner." },
-        { "bold": "Chat history", "text": " — retained alongside your booking/enquiry record for the same period, to give context if you contact us again." },
-        { "bold": "Cookie consent log", "text": " — up to 24 months. This record contains only a randomly generated ID, a hashed IP address, your category choices, and a timestamp — never your name or contact details." }
-      ]},
-      { "type": "h2", "text": "7. Your Rights" },
-      { "type": "h3", "text": "If you are in Thailand (PDPA)" },
-      { "type": "p", "text": "Under Sections 30–36 of the PDPA, you have the right to: request access to and a copy of your personal data; request correction of inaccurate data; request deletion, suspension, or anonymisation of your data; object to or restrict our processing; and withdraw consent at any time (which does not affect processing carried out before withdrawal). You also have the right to lodge a complaint with Thailand's Personal Data Protection Committee." },
-      { "type": "h3", "text": "If you are in the EEA, UK, or Switzerland (GDPR)" },
-      { "type": "p", "text": "You have the same core rights as above, described in GDPR terms as the right to access, rectification, erasure, restriction of processing, data portability, and objection. Where we rely on your consent (such as analytics cookies), you may withdraw it at any time without affecting the lawfulness of processing before withdrawal. You also have the right to lodge a complaint with your local data protection authority." },
-      { "type": "p", "text": "To exercise any of these rights, contact us using the details in Section 11. We will respond within the timeframe required by applicable law (30 days under PDPA)." },
-      { "type": "h2", "text": "8. Cookies" },
-      { "type": "p", "text": "When you first visit our site, a banner asks you to choose which cookies to allow. We use two categories:" },
-      { "type": "ul", "items": [
-        { "bold": "Necessary", "text": " — required for the site to work (remembering your cookie choice, session security). These are always on and don't require consent, as they're strictly necessary to provide the service you've requested." },
-        { "bold": "Analytics (Google Analytics)", "text": " — only set if you click “Accept All” or enable it under “Customize.” Nothing is set if you click “Reject Non-Essential.”" }
-      ]},
-      { "type": "p", "text": "We do not use advertising or marketing cookies. You can change your choice at any time via the “Cookie Settings” link in the footer of every page, or by clearing your browser's site data. See Section 6 for how long we keep the record of your decision." },
-      { "type": "h2", "text": "9. Children's Privacy" },
-      { "type": "p", "text": "Our website and spa services are directed at adults. Our thermal circuit (steam, sauna, cold plunge, pool) has a minimum age of 16, and spa treatments have a minimum age of 12, both requiring adult supervision where applicable and as posted at the spa. We do not knowingly collect personal data from children, and we do not offer services to unaccompanied minors. If you believe a child has provided us with personal data, please contact us and we will delete it." },
-      { "type": "h2", "text": "10. Security" },
-      { "type": "p", "text": "We use industry-standard measures to protect your data, including encrypted connections (HTTPS/TLS) between your browser and our servers and database, role-based access controls limiting staff access to the information needed for their role, and reputable, security-audited infrastructure providers (Supabase, Vercel, Cloudflare) for hosting and storage. No method of transmission or storage is 100% secure; if we become aware of a data breach affecting your personal information, we will notify affected individuals and the relevant authority as required by the PDPA and, where applicable, the GDPR." },
-      { "type": "h2", "text": "11. Changes to This Policy" },
-      { "type": "p", "text": "We may update this policy from time to time as our services or legal obligations change. The “Last updated” date at the top of this page reflects the most recent revision. If a change is significant — for example, a new category of data or a new third-party processor — we will highlight it on this page or, where required by law, seek renewed consent." },
-      { "type": "h2", "text": "12. Contact" },
-      { "type": "p", "text": "For any privacy-related questions, requests, or complaints, contact us at:" },
-      { "type": "contact", "lines": ["Ton Mai Spa", "6/11 Moo 2 Wiset Road, Tambon Rawai, Phuket 83130, Thailand", "WhatsApp: +66 63 117 5211", "Line: @tonmaispa"] }
+      {
+        "type": "h2",
+        "text": "1. Introduction"
+      },
+      {
+        "type": "p",
+        "text": "Ton Mai Spa (“we,” “us,” or “our”), located at 6/11 Moo 2 Wiset Road, Tambon Rawai, Phuket 83130, Thailand, operates the website tonmaispa.com and the spa and restaurant it describes. This policy explains what personal data we collect when you visit our site, book a treatment, or contact us, why we collect it, who we share it with, and the rights available to you."
+      },
+      {
+        "type": "p",
+        "text": "We are the data controller for information collected through this website. This policy is designed to address the requirements of Thailand's Personal Data Protection Act B.E. 2562 (PDPA) — the law that governs us as a Thailand-based business — and, for visitors in the European Economic Area, the UK, or Switzerland, the General Data Protection Regulation (GDPR)."
+      },
+      {
+        "type": "h2",
+        "text": "2. Information We Collect"
+      },
+      {
+        "type": "h3",
+        "text": "Information you provide directly"
+      },
+      {
+        "type": "p",
+        "text": "When you submit a booking or enquiry, message our chatbot, or contact us through the site, we may collect: your name, phone number, email address (optional), preferred treatment and date, party size, and any notes you choose to include (for example, allergies or preferences you mention to our chatbot)."
+      },
+      {
+        "type": "h3",
+        "text": "Information collected automatically"
+      },
+      {
+        "type": "p",
+        "text": "With your consent, given through the cookie banner on your first visit, we use Google Analytics 4 to understand how visitors use our website — pages visited, approximate location from IP address, browser type, and time spent on the site. This data is aggregated and is not used to identify you personally. No analytics cookie is set unless you actively accept it; see “Cookies” below."
+      },
+      {
+        "type": "p",
+        "text": "Our hosting and security providers (Vercel, Cloudflare, Upstash) automatically log technical data such as IP address and request timestamps for the limited purposes of running the site, rate-limiting abusive traffic, and detecting bots on our forms."
+      },
+      {
+        "type": "h2",
+        "text": "3. How We Use Your Information"
+      },
+      {
+        "type": "p",
+        "text": "We use the information you provide to:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          {
+            "text": "Respond to your booking requests and enquiries, and confirm bookings by email and WhatsApp/Line"
+          },
+          {
+            "text": "Operate our AI chatbot, which uses your messages to answer questions and help you book"
+          },
+          {
+            "text": "Maintain records required for tax and business-accounting compliance under Thai law"
+          },
+          {
+            "text": "Detect and prevent spam or abuse of our booking and enquiry forms"
+          },
+          {
+            "text": "Understand and improve our website, only where you have consented to analytics cookies"
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "text": "We do not sell, rent, or share your personal information with third parties for their own marketing purposes, and we do not use advertising or cross-site tracking cookies."
+      },
+      {
+        "type": "h2",
+        "text": "4. Who We Share Your Information With"
+      },
+      {
+        "type": "p",
+        "text": "We use the following sub-processors to run our website and business. Each only receives the data it needs to perform its function:"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "Service",
+          "Purpose",
+          "Data involved"
+        ],
+        "rows": [
+          [
+            "Supabase",
+            "Database hosting",
+            "Bookings, enquiries, chat history, cookie consent log"
+          ],
+          [
+            "Brevo",
+            "Transactional email",
+            "Name, email, booking details (for confirmation emails only)"
+          ],
+          [
+            "Cloudinary",
+            "Image hosting",
+            "Photos of the spa and treatments — no personal guest data"
+          ],
+          [
+            "Cloudflare Turnstile",
+            "Bot / spam protection",
+            "Browser signals used to verify you're human; no personal profile is built"
+          ],
+          [
+            "Upstash",
+            "Rate limiting",
+            "IP address, used only to count requests and prevent abuse"
+          ],
+          [
+            "MiniMax",
+            "AI chatbot replies",
+            "Your chat messages, sent to generate a response"
+          ],
+          [
+            "Google Analytics 4",
+            "Website analytics",
+            "Only active after cookie consent — see “Cookies”"
+          ],
+          [
+            "Vercel",
+            "Website hosting",
+            "Standard server logs; also provides Vercel Analytics/Speed Insights"
+          ],
+          [
+            "WhatsApp / Line",
+            "Guest messaging",
+            "Conversations you choose to have with us on these platforms, governed by their own privacy policies"
+          ]
+        ]
+      },
+      {
+        "type": "p",
+        "text": "We may also disclose personal data where required by Thai law, court order, or to protect the rights, property, or safety of Ton Mai Spa, our guests, or the public."
+      },
+      {
+        "type": "h2",
+        "text": "5. International Data Transfers"
+      },
+      {
+        "type": "p",
+        "text": "Several of the services above (including Supabase, Brevo, Cloudinary, Cloudflare, Upstash, MiniMax, Google, and Vercel) process data on servers located outside Thailand, including in the United States and the European Union. Where we transfer personal data internationally, we rely on the standard contractual and security safeguards these providers make available to their customers, consistent with PDPA Section 28–29 requirements for cross-border transfer and, for EEA visitors, the GDPR's transfer mechanisms."
+      },
+      {
+        "type": "h2",
+        "text": "6. Data Retention"
+      },
+      {
+        "type": "p",
+        "text": "We keep personal data only as long as needed for the purposes described in this policy:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          {
+            "bold": "Booking and enquiry records",
+            "text": " — up to 24 months, for guest service and Thai tax/accounting compliance, unless you ask us to delete them sooner."
+          },
+          {
+            "bold": "Chat history",
+            "text": " — retained alongside your booking/enquiry record for the same period, to give context if you contact us again."
+          },
+          {
+            "bold": "Cookie consent log",
+            "text": " — up to 24 months. This record contains only a randomly generated ID, a hashed IP address, your category choices, and a timestamp — never your name or contact details."
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "7. Your Rights"
+      },
+      {
+        "type": "h3",
+        "text": "If you are in Thailand (PDPA)"
+      },
+      {
+        "type": "p",
+        "text": "Under Sections 30–36 of the PDPA, you have the right to: request access to and a copy of your personal data; request correction of inaccurate data; request deletion, suspension, or anonymisation of your data; object to or restrict our processing; and withdraw consent at any time (which does not affect processing carried out before withdrawal). You also have the right to lodge a complaint with Thailand's Personal Data Protection Committee."
+      },
+      {
+        "type": "h3",
+        "text": "If you are in the EEA, UK, or Switzerland (GDPR)"
+      },
+      {
+        "type": "p",
+        "text": "You have the same core rights as above, described in GDPR terms as the right to access, rectification, erasure, restriction of processing, data portability, and objection. Where we rely on your consent (such as analytics cookies), you may withdraw it at any time without affecting the lawfulness of processing before withdrawal. You also have the right to lodge a complaint with your local data protection authority."
+      },
+      {
+        "type": "p",
+        "text": "To exercise any of these rights, contact us using the details in Section 11. We will respond within the timeframe required by applicable law (30 days under PDPA)."
+      },
+      {
+        "type": "h2",
+        "text": "8. Cookies"
+      },
+      {
+        "type": "p",
+        "text": "When you first visit our site, a banner asks you to choose which cookies to allow. We use two categories:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          {
+            "bold": "Necessary",
+            "text": " — required for the site to work (remembering your cookie choice, session security). These are always on and don't require consent, as they're strictly necessary to provide the service you've requested."
+          },
+          {
+            "bold": "Analytics (Google Analytics)",
+            "text": " — only set if you click “Accept All” or enable it under “Customize.” Nothing is set if you click “Reject Non-Essential.”"
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "text": "We do not use advertising or marketing cookies. You can change your choice at any time via the “Cookie Settings” link in the footer of every page, or by clearing your browser's site data. See Section 6 for how long we keep the record of your decision."
+      },
+      {
+        "type": "h2",
+        "text": "9. Children's Privacy"
+      },
+      {
+        "type": "p",
+        "text": "Our website and spa services are directed at adults. Our thermal circuit (steam, sauna, cold plunge, pool) has a minimum age of 16, and spa treatments have a minimum age of 12, both requiring adult supervision where applicable and as posted at the spa. We do not knowingly collect personal data from children, and we do not offer services to unaccompanied minors. If you believe a child has provided us with personal data, please contact us and we will delete it."
+      },
+      {
+        "type": "h2",
+        "text": "10. Security"
+      },
+      {
+        "type": "p",
+        "text": "We use industry-standard measures to protect your data, including encrypted connections (HTTPS/TLS) between your browser and our servers and database, role-based access controls limiting staff access to the information needed for their role, and reputable, security-audited infrastructure providers (Supabase, Vercel, Cloudflare) for hosting and storage. No method of transmission or storage is 100% secure; if we become aware of a data breach affecting your personal information, we will notify affected individuals and the relevant authority as required by the PDPA and, where applicable, the GDPR."
+      },
+      {
+        "type": "h2",
+        "text": "11. Changes to This Policy"
+      },
+      {
+        "type": "p",
+        "text": "We may update this policy from time to time as our services or legal obligations change. The “Last updated” date at the top of this page reflects the most recent revision. If a change is significant — for example, a new category of data or a new third-party processor — we will highlight it on this page or, where required by law, seek renewed consent."
+      },
+      {
+        "type": "h2",
+        "text": "12. Contact"
+      },
+      {
+        "type": "p",
+        "text": "For any privacy-related questions, requests, or complaints, contact us at:"
+      },
+      {
+        "type": "contact",
+        "lines": [
+          "Ton Mai Spa",
+          "6/11 Moo 2 Wiset Road, Tambon Rawai, Phuket 83130, Thailand",
+          "WhatsApp: +66 63 117 5211",
+          "Line: @tonmaispa"
+        ]
+      }
     ]
   },
   "termsPage": {
     "title": "Terms & Conditions",
     "blocks": [
-      { "type": "h2", "text": "1. Agreement to Terms" },
-      { "type": "p", "text": "These Terms & Conditions govern your use of the tonmaispa.com website and your visit to Ton Mai Spa at 6/11 Moo 2 Wiset Road, Tambon Rawai, Phuket 83130, Thailand. By browsing our website, submitting a booking or enquiry, using our chatbot, or visiting the spa, you agree to these terms. If you do not agree, please do not use our website or services." },
-      { "type": "h2", "text": "2. Description of Service" },
-      { "type": "p", "text": "Ton Mai Spa offers Thai massage and spa treatments, a thermal circuit (herbal steam room, sauna, cold plunge pool, swimming pool and jacuzzi), and an open-air garden restaurant, open daily 09:00–23:00. Our website provides information about these services and lets you send a booking request or enquiry, either through a live booking form or a simple WhatsApp/Line message, and to chat with an AI assistant about treatments, prices, and availability." },
-      { "type": "h2", "text": "3. Bookings & Reservations" },
-      { "type": "p", "text": "All treatments can be booked online via our website, by WhatsApp (+66 63 117 5211), Line (@tonmaispa), or by visiting the spa in person. Submitting a request through our website or chatbot is a request to book, not an automatic guarantee — a booking is confirmed once you receive a confirmation message or reference code from our team. Walk-ins are welcome subject to therapist availability." },
-      { "type": "h2", "text": "4. Cancellation & Rescheduling" },
-      { "type": "p", "text": "We understand that plans change. Our cancellation policy is:" },
-      { "type": "ul", "items": [
-        { "bold": "More than 48 hours before your appointment:", "text": " full refund or free reschedule, no charge" },
-        { "bold": "24–48 hours before your appointment:", "text": " 50% charge applies" },
-        { "bold": "Less than 24 hours / no-show:", "text": " full treatment fee applies" }
-      ]},
-      { "type": "p", "text": "To cancel or reschedule, please contact us by WhatsApp or Line at least 48 hours in advance." },
-      { "type": "h2", "text": "5. Arrival & Late Arrival" },
-      { "type": "p", "text": "Please arrive at least 10 minutes before your scheduled appointment to complete a brief consultation and to change if required. Guests arriving late may receive a shortened treatment to avoid disruption for the next booking, with no adjustment to the original price." },
-      { "type": "h2", "text": "6. Health & Medical Conditions" },
-      { "type": "p", "text": "Please inform our staff of any medical conditions, injuries, allergies, skin conditions, or pregnancy before your treatment. Certain treatments may not be suitable for guests with specific health conditions, and it is your responsibility to disclose relevant health information so our therapists can advise you safely. Our therapists reserve the right to modify or decline a treatment in the interest of guest safety." },
-      { "type": "p", "text": "The thermal circuit (steam, sauna, cold plunge) is not recommended for guests who are pregnant, have cardiovascular conditions, uncontrolled high blood pressure, or any condition made worse by extreme heat or cold. When in doubt, consult your physician before visiting. Neither our website content nor our AI chatbot provides medical advice — see Section 13." },
-      { "type": "h2", "text": "7. Age Policy" },
-      { "type": "p", "text": "Guests using the sauna and thermal facilities must be aged 16 or above. The swimming pool is open to all ages under appropriate adult supervision. Treatments are available for guests aged 12 and above; guests under 18 require parental consent." },
-      { "type": "h2", "text": "8. Spa Etiquette" },
-      { "type": "ul", "items": [
-        { "text": "Please speak softly and respect the tranquillity of other guests" },
-        { "text": "Mobile phones should be on silent in all treatment and relaxation areas" },
-        { "text": "Swimwear is required in all pool, cold plunge and outdoor thermal areas" },
-        { "text": "Lockers and changing rooms are provided — please secure your valuables" },
-        { "text": "Ton Mai Spa cannot be held responsible for loss or damage to personal belongings" },
-        { "text": "Please shower before entering the pool and thermal facilities" }
-      ]},
-      { "type": "h2", "text": "9. Sauna Day Pass" },
-      { "type": "p", "text": "The Sauna Day Pass (฿200 per person) grants unlimited access to the herbal steam room, Finnish sauna, cold plunge pool, swimming pool and jacuzzi for the full operating day (09:00–23:00). The day pass does not include meals, beverages or spa treatments unless specifically stated. The pass is non-transferable and valid for one person on the purchased date only." },
-      { "type": "h2", "text": "10. Payments & Prices" },
-      { "type": "p", "text": "All prices are in Thai Baht (THB) and include applicable taxes. Payment is taken in person at the spa — we do not process payments through this website. We accept cash (THB), major credit and debit cards, and PromptPay. Prices are subject to change without notice; the price confirmed at the time of booking will be honoured." },
-      { "type": "h2", "text": "11. Photography" },
-      { "type": "p", "text": "Photography for personal use is welcome in the garden, pool and common areas. Please do not photograph other guests without their consent. Photography is not permitted inside treatment rooms or changing areas." },
-      { "type": "h2", "text": "12. Website Use" },
-      { "type": "p", "text": "You agree to use our website only for its intended purpose — learning about our services and making genuine booking requests or enquiries. You agree not to: submit false or fraudulent booking requests; attempt to interfere with, disrupt, or gain unauthorised access to our website, database, or dashboard; use automated tools to scrape or overload our site; or use our contact forms or chatbot to send spam, abusive content, or unlawful material. We may block access or refuse service to anyone who misuses the site." },
-      { "type": "h2", "text": "13. AI Chatbot" },
-      { "type": "p", "text": "Our website includes an AI-powered chatbot that can answer questions about treatments, pricing, and availability, and may help you start a booking. Responses are generated automatically and, while we aim for accuracy, may occasionally be incomplete, out of date, or incorrect — always confirm booking details, prices, and treatment suitability with our staff directly, especially where health conditions are involved. The chatbot does not provide medical, health, or professional advice, and nothing it says overrides Section 6 (Health & Medical Conditions) or the advice of a qualified physician." },
-      { "type": "h2", "text": "14. Intellectual Property" },
-      { "type": "p", "text": "All content on this website — including text, photographs, logos, and design — is owned by Ton Mai Spa or used with permission, and is protected by copyright and trademark law. You may view and share our content for personal, non-commercial purposes (for example, sharing a link with a friend), but you may not reproduce, modify, or use our content commercially without our written permission." },
-      { "type": "h2", "text": "15. Disclaimers & Limitation of Liability" },
-      { "type": "p", "text": "Our website and its content are provided “as is,” without warranties of any kind, to the fullest extent permitted by Thai law. We do not guarantee that the website will be uninterrupted, error-free, or that booking availability shown online is always accurate in real time." },
-      { "type": "p", "text": "To the fullest extent permitted by law, Ton Mai Spa's total liability for any claim arising from your use of the website or our services is limited to the amount you paid for the specific service giving rise to the claim. We are not liable for indirect, incidental, or consequential damages. Nothing in these terms limits liability that cannot lawfully be limited, such as liability for death or personal injury caused by our negligence." },
-      { "type": "h2", "text": "16. Indemnification" },
-      { "type": "p", "text": "You agree to indemnify and hold Ton Mai Spa harmless from any claims, damages, or expenses (including reasonable legal fees) arising from your misuse of the website, your breach of these terms, or your violation of any law or the rights of a third party." },
-      { "type": "h2", "text": "17. Governing Law & Dispute Resolution" },
-      { "type": "p", "text": "These terms are governed by the laws of the Kingdom of Thailand. Any dispute arising from these terms or your use of our website or services shall first be addressed by contacting us directly (Section 19) so we can attempt to resolve it informally. If not resolved, disputes shall be subject to the exclusive jurisdiction of the courts of Phuket Province, Thailand." },
-      { "type": "h2", "text": "18. Changes to These Terms" },
-      { "type": "p", "text": "We may update these terms from time to time to reflect changes in our services or legal requirements. The “Last updated” date at the top of this page shows the most recent revision. Continuing to use our website or services after an update means you accept the revised terms." },
-      { "type": "h2", "text": "19. Contact" },
-      { "type": "contact", "lines": ["Ton Mai Spa", "6/11 Moo 2 Wiset Road, Rawai, Phuket 83130, Thailand", "WhatsApp: +66 63 117 5211 · Line: @tonmaispa"] }
+      {
+        "type": "h2",
+        "text": "1. Agreement to Terms"
+      },
+      {
+        "type": "p",
+        "text": "These Terms & Conditions govern your use of the tonmaispa.com website and your visit to Ton Mai Spa at 6/11 Moo 2 Wiset Road, Tambon Rawai, Phuket 83130, Thailand. By browsing our website, submitting a booking or enquiry, using our chatbot, or visiting the spa, you agree to these terms. If you do not agree, please do not use our website or services."
+      },
+      {
+        "type": "h2",
+        "text": "2. Description of Service"
+      },
+      {
+        "type": "p",
+        "text": "Ton Mai Spa offers Thai massage and spa treatments, a thermal circuit (herbal steam room, sauna, cold plunge pool, swimming pool and jacuzzi), and an open-air garden restaurant, open daily 09:00–23:00. Our website provides information about these services and lets you send a booking request or enquiry, either through a live booking form or a simple WhatsApp/Line message, and to chat with an AI assistant about treatments, prices, and availability."
+      },
+      {
+        "type": "h2",
+        "text": "3. Bookings & Reservations"
+      },
+      {
+        "type": "p",
+        "text": "All treatments can be booked online via our website, by WhatsApp (+66 63 117 5211), Line (@tonmaispa), or by visiting the spa in person. Submitting a request through our website or chatbot is a request to book, not an automatic guarantee — a booking is confirmed once you receive a confirmation message or reference code from our team. Walk-ins are welcome subject to therapist availability."
+      },
+      {
+        "type": "h2",
+        "text": "4. Cancellation & Rescheduling"
+      },
+      {
+        "type": "p",
+        "text": "We understand that plans change. Our cancellation policy is:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          {
+            "bold": "More than 48 hours before your appointment:",
+            "text": " full refund or free reschedule, no charge"
+          },
+          {
+            "bold": "24–48 hours before your appointment:",
+            "text": " 50% charge applies"
+          },
+          {
+            "bold": "Less than 24 hours / no-show:",
+            "text": " full treatment fee applies"
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "text": "To cancel or reschedule, please contact us by WhatsApp or Line at least 48 hours in advance."
+      },
+      {
+        "type": "h2",
+        "text": "5. Arrival & Late Arrival"
+      },
+      {
+        "type": "p",
+        "text": "Please arrive at least 10 minutes before your scheduled appointment to complete a brief consultation and to change if required. Guests arriving late may receive a shortened treatment to avoid disruption for the next booking, with no adjustment to the original price."
+      },
+      {
+        "type": "h2",
+        "text": "6. Health & Medical Conditions"
+      },
+      {
+        "type": "p",
+        "text": "Please inform our staff of any medical conditions, injuries, allergies, skin conditions, or pregnancy before your treatment. Certain treatments may not be suitable for guests with specific health conditions, and it is your responsibility to disclose relevant health information so our therapists can advise you safely. Our therapists reserve the right to modify or decline a treatment in the interest of guest safety."
+      },
+      {
+        "type": "p",
+        "text": "The thermal circuit (steam, sauna, cold plunge) is not recommended for guests who are pregnant, have cardiovascular conditions, uncontrolled high blood pressure, or any condition made worse by extreme heat or cold. When in doubt, consult your physician before visiting. Neither our website content nor our AI chatbot provides medical advice — see Section 13."
+      },
+      {
+        "type": "h2",
+        "text": "7. Age Policy"
+      },
+      {
+        "type": "p",
+        "text": "Guests using the sauna and thermal facilities must be aged 16 or above. The swimming pool is open to all ages under appropriate adult supervision. Treatments are available for guests aged 12 and above; guests under 18 require parental consent."
+      },
+      {
+        "type": "h2",
+        "text": "8. Spa Etiquette"
+      },
+      {
+        "type": "ul",
+        "items": [
+          {
+            "text": "Please speak softly and respect the tranquillity of other guests"
+          },
+          {
+            "text": "Mobile phones should be on silent in all treatment and relaxation areas"
+          },
+          {
+            "text": "Swimwear is required in all pool, cold plunge and outdoor thermal areas"
+          },
+          {
+            "text": "Lockers and changing rooms are provided — please secure your valuables"
+          },
+          {
+            "text": "Ton Mai Spa cannot be held responsible for loss or damage to personal belongings"
+          },
+          {
+            "text": "Please shower before entering the pool and thermal facilities"
+          }
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "9. Sauna Day Pass"
+      },
+      {
+        "type": "p",
+        "text": "The Sauna Day Pass (฿200 per person) grants unlimited access to the herbal steam room, Finnish sauna, cold plunge pool, swimming pool and jacuzzi for the full operating day (09:00–23:00). The day pass does not include meals, beverages or spa treatments unless specifically stated. The pass is non-transferable and valid for one person on the purchased date only."
+      },
+      {
+        "type": "h2",
+        "text": "10. Payments & Prices"
+      },
+      {
+        "type": "p",
+        "text": "All prices are in Thai Baht (THB) and include applicable taxes. Payment is taken in person at the spa — we do not process payments through this website. We accept cash (THB), major credit and debit cards, and PromptPay. Prices are subject to change without notice; the price confirmed at the time of booking will be honoured."
+      },
+      {
+        "type": "h2",
+        "text": "11. Photography"
+      },
+      {
+        "type": "p",
+        "text": "Photography for personal use is welcome in the garden, pool and common areas. Please do not photograph other guests without their consent. Photography is not permitted inside treatment rooms or changing areas."
+      },
+      {
+        "type": "h2",
+        "text": "12. Website Use"
+      },
+      {
+        "type": "p",
+        "text": "You agree to use our website only for its intended purpose — learning about our services and making genuine booking requests or enquiries. You agree not to: submit false or fraudulent booking requests; attempt to interfere with, disrupt, or gain unauthorised access to our website, database, or dashboard; use automated tools to scrape or overload our site; or use our contact forms or chatbot to send spam, abusive content, or unlawful material. We may block access or refuse service to anyone who misuses the site."
+      },
+      {
+        "type": "h2",
+        "text": "13. AI Chatbot"
+      },
+      {
+        "type": "p",
+        "text": "Our website includes an AI-powered chatbot that can answer questions about treatments, pricing, and availability, and may help you start a booking. Responses are generated automatically and, while we aim for accuracy, may occasionally be incomplete, out of date, or incorrect — always confirm booking details, prices, and treatment suitability with our staff directly, especially where health conditions are involved. The chatbot does not provide medical, health, or professional advice, and nothing it says overrides Section 6 (Health & Medical Conditions) or the advice of a qualified physician."
+      },
+      {
+        "type": "h2",
+        "text": "14. Intellectual Property"
+      },
+      {
+        "type": "p",
+        "text": "All content on this website — including text, photographs, logos, and design — is owned by Ton Mai Spa or used with permission, and is protected by copyright and trademark law. You may view and share our content for personal, non-commercial purposes (for example, sharing a link with a friend), but you may not reproduce, modify, or use our content commercially without our written permission."
+      },
+      {
+        "type": "h2",
+        "text": "15. Disclaimers & Limitation of Liability"
+      },
+      {
+        "type": "p",
+        "text": "Our website and its content are provided “as is,” without warranties of any kind, to the fullest extent permitted by Thai law. We do not guarantee that the website will be uninterrupted, error-free, or that booking availability shown online is always accurate in real time."
+      },
+      {
+        "type": "p",
+        "text": "To the fullest extent permitted by law, Ton Mai Spa's total liability for any claim arising from your use of the website or our services is limited to the amount you paid for the specific service giving rise to the claim. We are not liable for indirect, incidental, or consequential damages. Nothing in these terms limits liability that cannot lawfully be limited, such as liability for death or personal injury caused by our negligence."
+      },
+      {
+        "type": "h2",
+        "text": "16. Indemnification"
+      },
+      {
+        "type": "p",
+        "text": "You agree to indemnify and hold Ton Mai Spa harmless from any claims, damages, or expenses (including reasonable legal fees) arising from your misuse of the website, your breach of these terms, or your violation of any law or the rights of a third party."
+      },
+      {
+        "type": "h2",
+        "text": "17. Governing Law & Dispute Resolution"
+      },
+      {
+        "type": "p",
+        "text": "These terms are governed by the laws of the Kingdom of Thailand. Any dispute arising from these terms or your use of our website or services shall first be addressed by contacting us directly (Section 19) so we can attempt to resolve it informally. If not resolved, disputes shall be subject to the exclusive jurisdiction of the courts of Phuket Province, Thailand."
+      },
+      {
+        "type": "h2",
+        "text": "18. Changes to These Terms"
+      },
+      {
+        "type": "p",
+        "text": "We may update these terms from time to time to reflect changes in our services or legal requirements. The “Last updated” date at the top of this page shows the most recent revision. Continuing to use our website or services after an update means you accept the revised terms."
+      },
+      {
+        "type": "h2",
+        "text": "19. Contact"
+      },
+      {
+        "type": "contact",
+        "lines": [
+          "Ton Mai Spa",
+          "6/11 Moo 2 Wiset Road, Rawai, Phuket 83130, Thailand",
+          "WhatsApp: +66 63 117 5211 · Line: @tonmaispa"
+        ]
+      }
     ]
+  },
+  "blog": {
+    "tonMaiSpa": "Ton Mai Spa",
+    "title": "The Blog",
+    "heroText": "Guides on Thai massage, our thermal wellness circuit, Rawai & Nai Harn, healthy Thai food, and planning your visit.",
+    "noPosts": "We're still writing — check back soon.",
+    "minRead": "min read",
+    "backToBlog": "Back to the Blog",
+    "relatedPosts": "More like this"
   }
 }

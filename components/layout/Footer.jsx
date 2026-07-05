@@ -13,6 +13,7 @@ export default function Footer({ settings = {}, lang = 'en', dict = {} }) {
   const exploreLinks = [
     [`/${lang}/spa-menu`,   t(dict, 'footer.spaMenu')],
     [`/${lang}/restaurant`, t(dict, 'footer.restaurant')],
+    [`/${lang}/blog`,       t(dict, 'footer.blog')],
     [`/${lang}/book`,       t(dict, 'footer.bookNow')],
     [`/${lang}#facilities`, t(dict, 'footer.facilities')],
     [`/${lang}#pricing`,    t(dict, 'footer.pricing')],

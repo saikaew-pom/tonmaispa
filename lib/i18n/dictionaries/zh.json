@@ -6,7 +6,8 @@
     "pricing": "价格",
     "bookNow": "立即预订",
     "ourGarden": "我们的花园",
-    "openHours": "每日开放 · 上午9点 – 晚上11点"
+    "openHours": "每日开放 · 上午9点 – 晚上11点",
+    "blog": "博客"
   },
   "footer": {
     "tagline": "位于普吉岛拉威的泰式疗愈热带花园。蒸汽、桑拿、冷泉、泳池与按摩——每日营业至深夜。",
@@ -23,7 +24,8 @@
     "whatsapp": "WhatsApp",
     "line": "Line",
     "privacy": "隐私政策",
-    "terms": "服务条款"
+    "terms": "服务条款",
+    "blog": "博客"
   },
   "language": {
     "en": "English",
@@ -742,5 +744,14 @@
       "whatsapp": "WhatsApp",
       "line": "Line"
     }
+  },
+  "blog": {
+    "tonMaiSpa": "Ton Mai Spa",
+    "title": "博客",
+    "heroText": "泰式按摩、热疗养生环路、拉威和奈晗、健康泰式美食以及行程规划指南。",
+    "noPosts": "内容正在撰写中，请稍后再来查看。",
+    "minRead": "分钟阅读",
+    "backToBlog": "返回博客",
+    "relatedPosts": "相关文章"
   }
 }
