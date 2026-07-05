@@ -25,6 +25,35 @@ function getWeekStart(date) {
   return d
 }
 
+function daysFromToday(n) {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return toYMD(d)
+}
+
+const DATE_RANGE_OPTIONS = [
+  { value: 'all',      label: 'All dates' },
+  { value: 'today',    label: 'Today' },
+  { value: 'tomorrow', label: 'Tomorrow' },
+  { value: 'next2',    label: 'Next 2 days' },
+  { value: 'next7',    label: 'Next 7 days' },
+  { value: 'custom',   label: 'Custom range…' },
+]
+
+// Table-view-only date filter — calendar view has its own week navigation
+// as its date mechanism, so this doesn't touch it.
+function matchesDateRange(booking, dateRangeFilter, customStart, customEnd) {
+  const todayYMD = toYMD(new Date())
+  switch (dateRangeFilter) {
+    case 'today':    return booking.date === todayYMD
+    case 'tomorrow': return booking.date === daysFromToday(1)
+    case 'next2':    return booking.date >= todayYMD && booking.date <= daysFromToday(2)
+    case 'next7':    return booking.date >= todayYMD && booking.date <= daysFromToday(7)
+    case 'custom':   return (!customStart || booking.date >= customStart) && (!customEnd || booking.date <= customEnd)
+    default:         return true
+  }
+}
+
 const inputSt = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid var(--color-border)', borderRadius: 4, font: '400 13px Inter,sans-serif', color: '#1C1917' }
 const labelSt = { display: 'block', font: '600 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#6B6663', marginBottom: 5 }
 
@@ -42,6 +71,10 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   const [notifyError, setNotifyError] = useState(null)
   const [editingBooking, setEditingBooking] = useState(null)
   const [logsBookingId, setLogsBookingId]   = useState(null)
+  const [dateRangeFilter, setDateRangeFilter] = useState('all')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd]     = useState('')
+  const [sortDir, setSortDir]         = useState('asc') // table view's Date/Time column sort
 
   const patchBooking = (id, fields) => setBookings(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b))
 
@@ -94,6 +127,15 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       return b.guest_name?.toLowerCase().includes(q) || b.guest_phone?.includes(q) || b.ref_code?.toLowerCase().includes(q)
     }), [bookings, statusFilter, treatmentFilter, sourceFilter, search])
 
+  // Table view's own date-range + sort — calendar view keeps its week
+  // navigation as its date mechanism, so this is scoped to the table only.
+  const tableRows = useMemo(() => visible
+    .filter(b => matchesDateRange(b, dateRangeFilter, customStart, customEnd))
+    .sort((a, b) => {
+      const cmp = `${a.date} ${a.time_slot}`.localeCompare(`${b.date} ${b.time_slot}`)
+      return sortDir === 'asc' ? cmp : -cmp
+    }), [visible, dateRangeFilter, customStart, customEnd, sortDir])
+
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d
   }), [weekStart])
@@ -124,6 +166,20 @@ export default function BookingsClient({ initialBookings, treatments, therapists
         <option value="all">All sources</option>
         {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
       </select>
+      {view === 'table' && (
+        <>
+          <select value={dateRangeFilter} onChange={e => setDateRangeFilter(e.target.value)} style={{ ...inputSt, maxWidth: 160, width: 'auto' }}>
+            {DATE_RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {dateRangeFilter === 'custom' && (
+            <>
+              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{ ...inputSt, maxWidth: 150, width: 'auto' }} />
+              <span style={{ color: '#9B9390', font: '400 12px Inter,sans-serif' }}>to</span>
+              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ ...inputSt, maxWidth: 150, width: 'auto' }} />
+            </>
+          )}
+        </>
+      )}
       <div style={{ flex: 1 }} />
       <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: 6, overflow: 'hidden' }}>
         {['calendar', 'table'].map(v => (
@@ -154,7 +210,8 @@ export default function BookingsClient({ initialBookings, treatments, therapists
         <CalendarView weekDays={weekDays} byDate={byDate} onShift={shiftWeek} onToday={() => setWeekStart(getWeekStart(new Date()))}
           savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking} {...notifyProps} />
       ) : (
-        <TableView visible={visible} savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking} {...notifyProps} />
+        <TableView visible={tableRows} savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking}
+          sortDir={sortDir} onToggleSort={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} {...notifyProps} />
       )}
 
       {showNew && (
@@ -284,14 +341,20 @@ function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusCh
 const navBtnSt = { padding: '6px 12px', border: '1px solid var(--color-border)', borderRadius: 4, background: '#fff', font: '500 11px Inter,sans-serif', cursor: 'pointer' }
 
 // ── Table view ───────────────────────────────────────────────────────────────
-function TableView({ visible, savingId, onStatusChange, onEdit, ...notifyProps }) {
+function TableView({ visible, savingId, onStatusChange, onEdit, sortDir, onToggleSort, ...notifyProps }) {
   return (
     <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#FAF6F0', textAlign: 'left' }}>
             {['Ref', 'Guest', 'Treatment', 'Date / Time', 'Source', 'Status', 'Notify'].map(h => (
-              <th key={h} style={{ padding: '10px 14px', font: '600 11px Inter,sans-serif', letterSpacing: 0.5, textTransform: 'uppercase', color: '#9B9390' }}>{h}</th>
+              <th key={h} style={{ padding: '10px 14px', font: '600 11px Inter,sans-serif', letterSpacing: 0.5, textTransform: 'uppercase', color: '#9B9390' }}>
+                {h === 'Date / Time' ? (
+                  <button type="button" onClick={onToggleSort} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {h} <span style={{ fontSize: 10 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>
+                  </button>
+                ) : h}
+              </th>
             ))}
           </tr>
         </thead>
