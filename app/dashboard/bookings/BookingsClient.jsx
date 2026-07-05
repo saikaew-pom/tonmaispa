@@ -32,6 +32,9 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   const [savingId, setSavingId]     = useState(null)
   const [weekStart, setWeekStart]   = useState(() => getWeekStart(new Date()))
   const [showNew, setShowNew]       = useState(false)
+  const [notifyingId, setNotifyingId] = useState(null)
+  const [notifiedId, setNotifiedId]   = useState(null) // brief "Sent ✓" confirmation
+  const [notifyError, setNotifyError] = useState(null)
 
   const updateStatus = async (id, status) => {
     setSavingId(id)
@@ -41,6 +44,23 @@ export default function BookingsClient({ initialBookings, treatments, therapists
     })
     if (res.ok) setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b))
     setSavingId(null)
+  }
+
+  // Nothing emails the guest automatically when status changes — staff
+  // reviews the booking, then explicitly triggers this so a guest is only
+  // ever notified once a human actually looked at their booking.
+  const sendUpdateEmail = async (id) => {
+    setNotifyingId(id)
+    setNotifyError(null)
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}/notify`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setNotifyError(data.error || 'Could not send the email.'); return }
+      setNotifiedId(id)
+      setTimeout(() => setNotifiedId(cur => cur === id ? null : cur), 3000)
+    } finally {
+      setNotifyingId(null)
+    }
   }
 
   const visible = useMemo(() => bookings
@@ -101,11 +121,19 @@ export default function BookingsClient({ initialBookings, treatments, therapists
     <div>
       <FilterBar />
 
+      {notifyError && (
+        <div style={{ background: '#FBEAEA', border: '1px solid #E0B4B4', color: '#C0392B', borderRadius: 6, padding: '10px 14px', font: '500 12px Inter,sans-serif', marginBottom: 12 }}>
+          {notifyError}
+        </div>
+      )}
+
       {view === 'calendar' ? (
         <CalendarView weekDays={weekDays} byDate={byDate} onShift={shiftWeek} onToday={() => setWeekStart(getWeekStart(new Date()))}
-          savingId={savingId} onStatusChange={updateStatus} />
+          savingId={savingId} onStatusChange={updateStatus}
+          notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={sendUpdateEmail} />
       ) : (
-        <TableView visible={visible} savingId={savingId} onStatusChange={updateStatus} />
+        <TableView visible={visible} savingId={savingId} onStatusChange={updateStatus}
+          notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={sendUpdateEmail} />
       )}
 
       {showNew && (
@@ -120,8 +148,32 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   )
 }
 
+// A booking's status only ever gets an update email if a human explicitly
+// sends one — this renders that trigger + its small inline states.
+function SendEmailButton({ booking, notifyingId, notifiedId, onSendEmail, compact }) {
+  if (!['confirmed', 'cancelled'].includes(booking.status) || !booking.guest_email) return null
+  const isSending  = notifyingId === booking.id
+  const wasNotified = notifiedId === booking.id
+  return (
+    <button
+      type="button"
+      disabled={isSending}
+      onClick={() => onSendEmail(booking.id)}
+      style={{
+        marginTop: compact ? 4 : 0, width: compact ? '100%' : 'auto',
+        border: '1px solid #3B5249', borderRadius: 3, background: wasNotified ? '#3B5249' : '#fff',
+        color: wasNotified ? '#fff' : '#3B5249', padding: compact ? '2px 4px' : '5px 10px',
+        font: `500 ${compact ? 10 : 11}px Inter,sans-serif`, cursor: isSending ? 'default' : 'pointer',
+        opacity: isSending ? 0.6 : 1,
+      }}
+    >
+      {wasNotified ? 'Sent ✓' : isSending ? 'Sending…' : 'Send update email'}
+    </button>
+  )
+}
+
 // ── Calendar (7-day week) view ──────────────────────────────────────────────
-function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusChange }) {
+function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusChange, notifyingId, notifiedId, onSendEmail }) {
   const monthLabel = weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const todayYMD = toYMD(new Date())
 
@@ -163,6 +215,7 @@ function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusCh
                     >
                       {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                    <SendEmailButton booking={b} notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={onSendEmail} compact />
                   </div>
                 ))}
               </div>
@@ -177,13 +230,13 @@ function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusCh
 const navBtnSt = { padding: '6px 12px', border: '1px solid var(--color-border)', borderRadius: 4, background: '#fff', font: '500 11px Inter,sans-serif', cursor: 'pointer' }
 
 // ── Table view ───────────────────────────────────────────────────────────────
-function TableView({ visible, savingId, onStatusChange }) {
+function TableView({ visible, savingId, onStatusChange, notifyingId, notifiedId, onSendEmail }) {
   return (
     <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#FAF6F0', textAlign: 'left' }}>
-            {['Ref', 'Guest', 'Treatment', 'Date / Time', 'Source', 'Status'].map(h => (
+            {['Ref', 'Guest', 'Treatment', 'Date / Time', 'Source', 'Status', 'Notify'].map(h => (
               <th key={h} style={{ padding: '10px 14px', font: '600 11px Inter,sans-serif', letterSpacing: 0.5, textTransform: 'uppercase', color: '#9B9390' }}>{h}</th>
             ))}
           </tr>
@@ -213,10 +266,13 @@ function TableView({ visible, savingId, onStatusChange }) {
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </td>
+              <td style={{ padding: '12px 14px' }}>
+                <SendEmailButton booking={b} notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={onSendEmail} />
+              </td>
             </tr>
           ))}
           {visible.length === 0 && (
-            <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No bookings found.</td></tr>
+            <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No bookings found.</td></tr>
           )}
         </tbody>
       </table>

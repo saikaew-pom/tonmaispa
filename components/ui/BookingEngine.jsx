@@ -192,19 +192,25 @@ export default function BookingEngine({ presetSlug }) {
   }, [treatments, popularTreatmentIds])
   const toggleAddon = (id) => setSelectedAddonIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
-  // Fetch slots when date changes
+  // Fetch slots when date changes. A request counter guards against
+  // out-of-order responses — if the user changes treatment/duration again
+  // before an in-flight fetch resolves, a stale reply must never overwrite
+  // a newer one (or a newer request's loading state).
+  const slotsRequestId = useRef(0)
   const fetchSlots = useCallback(async (date) => {
     if (!treatment || !duration) return
+    const requestId = ++slotsRequestId.current
     setSlotsLoading(true)
     setSelSlot('')
     try {
       const res  = await fetch(`/api/bookings/availability?date=${date}&treatment_id=${treatment.id}&duration=${duration}`)
       const json = await res.json()
+      if (requestId !== slotsRequestId.current) return // a newer request has since superseded this one
       setSlots(json.slots ?? [])
     } catch {
-      setSlots([])
+      if (requestId === slotsRequestId.current) setSlots([])
     } finally {
-      setSlotsLoading(false)
+      if (requestId === slotsRequestId.current) setSlotsLoading(false)
     }
   }, [treatment, duration])
 
@@ -212,6 +218,14 @@ export default function BookingEngine({ presetSlug }) {
     setSelDate(date)
     await fetchSlots(date)
   }
+
+  // If the guest already picked a date, then goes back and changes the
+  // treatment or duration, the previously-fetched slots are for the wrong
+  // window and must never be shown as if they still applied — refetch.
+  useEffect(() => {
+    if (selDate) fetchSlots(selDate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treatment?.id, duration])
 
   const prevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }

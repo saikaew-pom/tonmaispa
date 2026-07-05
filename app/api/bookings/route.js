@@ -89,7 +89,7 @@ export async function POST(req) {
   await Promise.allSettled([
     d.guest_email && sendEmail({
       to:      d.guest_email,
-      subject: `Booking Confirmed — ${booking.ref_code} — Ton Mai Spa`,
+      subject: `Booking Received — ${booking.ref_code} — Ton Mai Spa`,
       html:    bookingGuestHtml({
         name:      d.guest_name,
         refCode:   booking.ref_code,
