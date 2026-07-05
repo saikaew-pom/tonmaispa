@@ -460,7 +460,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                   />
                 )}
                 {toolResults.booking && (
-                  <BookingConfirmCard refCode={toolResults.booking.ref_code} />
+                  <BookingConfirmCard refCode={toolResults.booking.ref_code} whatsapp={toolResults.booking.whatsapp} />
                 )}
 
                 <div ref={messagesEndRef} />
@@ -617,7 +617,31 @@ function TypingDots() {
   )
 }
 
-function BookingConfirmCard({ refCode }) {
+const RECEPTIONIST_PHONE = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
+
+// Curated, not exhaustive — covers Thailand (default) plus the countries
+// guests most commonly book from. A guest whose country isn't listed can
+// still pick "Other" and type their own code.
+const COUNTRY_CODES = [
+  { code: '+66', label: 'Thailand (+66)' },
+  { code: '+1',  label: 'US / Canada (+1)' },
+  { code: '+44', label: 'United Kingdom (+44)' },
+  { code: '+61', label: 'Australia (+61)' },
+  { code: '+49', label: 'Germany (+49)' },
+  { code: '+33', label: 'France (+33)' },
+  { code: '+7',  label: 'Russia (+7)' },
+  { code: '+86', label: 'China (+86)' },
+  { code: '+91', label: 'India (+91)' },
+  { code: '+65', label: 'Singapore (+65)' },
+  { code: '+82', label: 'South Korea (+82)' },
+  { code: '+81', label: 'Japan (+81)' },
+  { code: 'other', label: 'Other country code…' },
+]
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function BookingConfirmCard({ refCode, whatsapp }) {
+  const phone = whatsapp || RECEPTIONIST_PHONE
   return (
     <div style={{
       background: '#E8EDE9', border: '1px solid #3B5249',
@@ -626,7 +650,12 @@ function BookingConfirmCard({ refCode }) {
     }}>
       <div style={{ fontWeight: '600', color: '#3B5249', marginBottom: '4px' }}>✓ Booking Request Sent</div>
       <div>Reference: <strong>{refCode}</strong></div>
-      <div style={{ marginTop: '4px', color: '#6B6663' }}>The team will confirm via WhatsApp shortly.</div>
+      <div style={{ marginTop: '4px', color: '#6B6663', lineHeight: '1.45' }}>
+        This is <strong>pending confirmation</strong> — our team will contact you shortly, or you can wait for the confirmation email.
+      </div>
+      <div style={{ marginTop: '6px', color: '#6B6663', lineHeight: '1.45' }}>
+        Want to speak with us right away? Call or WhatsApp <strong>+{phone}</strong>.
+      </div>
     </div>
   )
 }
@@ -634,10 +663,21 @@ function BookingConfirmCard({ refCode }) {
 function BookingDraftCard({ draft, sessionId, onConfirmed }) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [error, setError] = useState('')
+  const [countryCode, setCountryCode] = useState('+66')
+  const [customCode, setCustomCode] = useState('')
+  const [localPhone, setLocalPhone] = useState('')
+  const [email, setEmail] = useState('')
   const summary = draft.summary ?? {}
 
+  const resolvedCode = countryCode === 'other' ? customCode.trim() : countryCode
+  const digitsOnly = localPhone.replace(/\D/g, '')
+  const codeValid = /^\+[1-9]\d{0,3}$/.test(resolvedCode)
+  const phoneValid = codeValid && digitsOnly.length >= 6 && digitsOnly.length <= 12
+  const emailValid = EMAIL_RE.test(email.trim())
+  const canConfirm = phoneValid && emailValid && !isConfirming
+
   const confirmBooking = async () => {
-    if (isConfirming || !sessionId || !draft.token) return
+    if (!canConfirm || !sessionId || !draft.token) return
     setIsConfirming(true)
     setError('')
 
@@ -645,7 +685,12 @@ function BookingDraftCard({ draft, sessionId, onConfirmed }) {
       const res = await fetch('/api/chat/confirm-booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, token: draft.token }),
+        body: JSON.stringify({
+          sessionId,
+          token: draft.token,
+          guest_phone: `${resolvedCode}${digitsOnly}`,
+          guest_email: email.trim(),
+        }),
       })
       const result = await res.json()
       if (!res.ok || !result.ok) {
@@ -662,6 +707,9 @@ function BookingDraftCard({ draft, sessionId, onConfirmed }) {
     }
   }
 
+  const fieldSt = { width: '100%', boxSizing: 'border-box', padding: '7px 9px', border: '1px solid #D6D0C8', borderRadius: '5px', font: '400 12px Inter,sans-serif', color: '#1C1917' }
+  const labelSt = { display: 'block', fontSize: '10px', fontWeight: '600', color: '#6B6663', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }
+
   return (
     <div style={{
       background: '#fff', border: '1px solid #C4924A',
@@ -676,20 +724,59 @@ function BookingDraftCard({ draft, sessionId, onConfirmed }) {
         <span style={{ color: '#6B6663' }}>Duration</span><span>{summary.duration} minutes</span>
         {summary.price != null && <><span style={{ color: '#6B6663' }}>Price</span><span>{summary.price} THB</span></>}
         <span style={{ color: '#6B6663' }}>Guest</span><span>{summary.guest_name}</span>
-        <span style={{ color: '#6B6663' }}>Phone</span><span>{summary.guest_phone}</span>
       </div>
+
+      <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #F0ECE6' }}>
+        <div style={{ fontSize: '11px', fontWeight: '600', color: '#1C1917', marginBottom: '8px' }}>
+          Confirm your contact details
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div>
+            <label style={labelSt}>Country code</label>
+            <select value={countryCode} onChange={e => setCountryCode(e.target.value)} style={fieldSt}>
+              {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+            </select>
+            {countryCode === 'other' && (
+              <input
+                type="text" placeholder="+xx" value={customCode}
+                onChange={e => setCustomCode(e.target.value)}
+                style={{ ...fieldSt, marginTop: '6px' }}
+              />
+            )}
+          </div>
+          <div>
+            <label style={labelSt}>Phone number</label>
+            <input
+              type="tel" placeholder="8x xxx xxxx" value={localPhone}
+              onChange={e => setLocalPhone(e.target.value)}
+              style={fieldSt}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginTop: '8px' }}>
+          <label style={labelSt}>Email</label>
+          <input
+            type="email" placeholder="you@example.com" value={email}
+            onChange={e => setEmail(e.target.value)}
+            style={fieldSt}
+          />
+        </div>
+      </div>
+
       <div style={{ marginTop: '9px', color: '#6B6663', lineHeight: '1.45' }}>
-        Nothing is booked until you press the button below. The spa team will confirm the pending request via WhatsApp.
+        Nothing is booked until you press the button below. Your request will be pending until the spa team confirms it.
       </div>
       <button
         type="button"
         onClick={confirmBooking}
-        disabled={isConfirming}
+        disabled={!canConfirm}
         style={{
           width: '100%', marginTop: '10px', padding: '9px 12px',
-          border: 'none', borderRadius: '7px', background: isConfirming ? '#9EA9A4' : '#3B5249',
+          border: 'none', borderRadius: '7px', background: !canConfirm ? '#C8C3BC' : '#3B5249',
           color: '#fff', fontSize: '12px', fontWeight: '700',
-          fontFamily: 'Inter, sans-serif', cursor: isConfirming ? 'wait' : 'pointer',
+          fontFamily: 'Inter, sans-serif', cursor: !canConfirm ? (isConfirming ? 'wait' : 'not-allowed') : 'pointer',
         }}
       >
         {isConfirming ? 'Confirming…' : 'Confirm booking'}

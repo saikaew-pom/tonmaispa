@@ -6,6 +6,11 @@ import { confirmBookingDraft } from '@/lib/chat-booking'
 const confirmationSchema = z.object({
   sessionId: z.string().uuid(),
   token: z.string().uuid(),
+  // Composed client-side from an explicit country-code selector + local
+  // number, and a required email — collected in the review card right
+  // before this request, never trusted from AI-parsed chat text.
+  guest_phone: z.string().trim().min(7).max(20),
+  guest_email: z.string().trim().min(3).max(200),
 })
 
 export async function POST(req) {
