@@ -25,6 +25,10 @@ export default function ChatWidget({ chatbotEnabled = true }) {
   const [unread,      setUnread]      = useState(0)
   const [toolResults, setToolResults] = useState({}) // {messageIndex: toolResult}
   const [clearStickyBar, setClearStickyBar] = useState(false)
+  // Carries phone/email forward from the last confirmed booking so a
+  // booker preparing a second booking for a companion doesn't have to
+  // retype the same contact details — the name field always starts blank.
+  const [lastContact, setLastContact] = useState(null) // { countryCode, localPhone, email }
 
   const messagesEndRef = useRef(null)
   const inputRef       = useRef(null)
@@ -453,8 +457,10 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                   <BookingDraftCard
                     draft={toolResults.draft}
                     sessionId={sessionId}
-                    onConfirmed={(booking) => {
+                    lastContact={lastContact}
+                    onConfirmed={(booking, contact) => {
                       setToolResults(prev => ({ ...prev, draft: null, booking }))
+                      setLastContact(contact)
                       if (window.gtag) window.gtag('event', 'booking_complete', { method: 'chatbot' })
                     }}
                   />
@@ -656,25 +662,30 @@ function BookingConfirmCard({ refCode, whatsapp }) {
       <div style={{ marginTop: '6px', color: '#6B6663', lineHeight: '1.45' }}>
         Want to speak with us right away? Call or WhatsApp <strong>+{phone}</strong>.
       </div>
+      <div style={{ marginTop: '6px', color: '#6B6663', lineHeight: '1.45' }}>
+        Booking for someone else too? Just tell me the next treatment and time.
+      </div>
     </div>
   )
 }
 
-function BookingDraftCard({ draft, sessionId, onConfirmed }) {
+function BookingDraftCard({ draft, sessionId, lastContact, onConfirmed }) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [error, setError] = useState('')
-  const [countryCode, setCountryCode] = useState('+66')
+  const [guestName, setGuestName] = useState('') // always starts blank — a companion's booking needs their own name
+  const [countryCode, setCountryCode] = useState(lastContact?.countryCode ?? '+66')
   const [customCode, setCustomCode] = useState('')
-  const [localPhone, setLocalPhone] = useState('')
-  const [email, setEmail] = useState('')
+  const [localPhone, setLocalPhone] = useState(lastContact?.localPhone ?? '')
+  const [email, setEmail] = useState(lastContact?.email ?? '')
   const summary = draft.summary ?? {}
 
   const resolvedCode = countryCode === 'other' ? customCode.trim() : countryCode
   const digitsOnly = localPhone.replace(/\D/g, '')
   const codeValid = /^\+[1-9]\d{0,3}$/.test(resolvedCode)
+  const nameValid = guestName.trim().length >= 2
   const phoneValid = codeValid && digitsOnly.length >= 6 && digitsOnly.length <= 12
   const emailValid = EMAIL_RE.test(email.trim())
-  const canConfirm = phoneValid && emailValid && !isConfirming
+  const canConfirm = nameValid && phoneValid && emailValid && !isConfirming
 
   const confirmBooking = async () => {
     if (!canConfirm || !sessionId || !draft.token) return
@@ -688,6 +699,7 @@ function BookingDraftCard({ draft, sessionId, onConfirmed }) {
         body: JSON.stringify({
           sessionId,
           token: draft.token,
+          guest_name: guestName.trim(),
           guest_phone: `${resolvedCode}${digitsOnly}`,
           guest_email: email.trim(),
         }),
@@ -699,7 +711,7 @@ function BookingDraftCard({ draft, sessionId, onConfirmed }) {
           : ''
         throw new Error(`${result.error || 'Could not confirm this booking.'}${alternatives}`)
       }
-      onConfirmed(result)
+      onConfirmed(result, { countryCode, localPhone, email })
     } catch (err) {
       setError(err.message || 'Could not confirm this booking. Please try again.')
     } finally {
@@ -723,12 +735,21 @@ function BookingDraftCard({ draft, sessionId, onConfirmed }) {
         <span style={{ color: '#6B6663' }}>Time</span><span>{summary.time}</span>
         <span style={{ color: '#6B6663' }}>Duration</span><span>{summary.duration} minutes</span>
         {summary.price != null && <><span style={{ color: '#6B6663' }}>Price</span><span>{summary.price} THB</span></>}
-        <span style={{ color: '#6B6663' }}>Guest</span><span>{summary.guest_name}</span>
       </div>
 
       <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #F0ECE6' }}>
         <div style={{ fontSize: '11px', fontWeight: '600', color: '#1C1917', marginBottom: '8px' }}>
-          Confirm your contact details
+          Who is this booking for?
+        </div>
+        <label style={labelSt}>Guest name</label>
+        <input
+          type="text" placeholder="Full name" value={guestName}
+          onChange={e => setGuestName(e.target.value)}
+          style={fieldSt}
+        />
+
+        <div style={{ fontSize: '11px', fontWeight: '600', color: '#1C1917', margin: '10px 0 8px' }}>
+          Contact details
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -763,6 +784,11 @@ function BookingDraftCard({ draft, sessionId, onConfirmed }) {
             style={fieldSt}
           />
         </div>
+        {lastContact && (
+          <div style={{ marginTop: '6px', fontSize: '10px', color: '#9B9390' }}>
+            Phone/email carried over from your last booking — change them if this is for someone else.
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: '9px', color: '#6B6663', lineHeight: '1.45' }}>
