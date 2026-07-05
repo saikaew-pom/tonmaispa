@@ -50,10 +50,16 @@ async function getRelatedPosts(post, lang) {
   return related
 }
 
+// Only pre-render English at build time. Translating a full blog post body
+// (long HTML, not a short field like a treatment description) is slow and
+// unreliable enough under MiniMax's variable latency to have taken down an
+// entire deploy once already (see lib/translate.js's hard timeout note) —
+// th/ru/zh render on-demand on first request instead (dynamicParams above),
+// then get cached for `revalidate` seconds like any other ISR page.
 export async function generateStaticParams() {
   const admin = createSupabaseAdminClient()
   const { data } = await admin.from('blog_posts').select('slug').eq('is_published', true)
-  return LOCALES.flatMap(lang => (data ?? []).map(p => ({ lang, slug: p.slug })))
+  return (data ?? []).map(p => ({ lang: 'en', slug: p.slug }))
 }
 
 export async function generateMetadata({ params }) {
