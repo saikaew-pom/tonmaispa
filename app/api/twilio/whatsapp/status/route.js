@@ -74,6 +74,10 @@ export async function POST(request) {
       updated_at: new Date().toISOString(),
       ...timestamps,
     }, { onConflict: 'twilio_message_sid' })
+
+    await admin.from('conversation_messages')
+      .update({ delivery_status: nextStatus, ...timestamps })
+      .eq('twilio_message_sid', messageSid)
   }
 
   await admin.from('twilio_webhook_events')

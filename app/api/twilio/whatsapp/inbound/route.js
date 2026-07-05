@@ -1,7 +1,15 @@
+import { after } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { emptyTwimlResponse, parseAndValidateTwilioWebhook } from '@/lib/twilio'
+import {
+  appendConversationMessage,
+  createReplyJob,
+  getOrCreateWhatsAppThread,
+} from '@/lib/conversations'
+import { processWhatsAppReply } from '@/lib/whatsapp-chatbot'
 
 export const runtime = 'nodejs'
+export const maxDuration = 60
 
 function collectMedia(params) {
   const count = Number.parseInt(params.NumMedia || '0', 10)
@@ -36,13 +44,12 @@ export async function POST(request) {
     processing_status: 'received',
   })
 
-  if (eventError?.code === '23505') return emptyTwimlResponse()
-  if (eventError) {
+  if (eventError && eventError.code !== '23505') {
     console.error('[twilio/inbound] failed to store webhook event:', eventError.message)
     return Response.json({ error: 'Could not record webhook' }, { status: 500 })
   }
 
-  const { error: messageError } = await admin.from('twilio_messages').insert({
+  const { error: messageError } = await admin.from('twilio_messages').upsert({
     twilio_message_sid: messageSid,
     direction: 'inbound',
     from_address: params.From,
@@ -51,7 +58,7 @@ export async function POST(request) {
     media: collectMedia(params),
     status: 'received',
     raw_payload: params,
-  })
+  }, { onConflict: 'twilio_message_sid', ignoreDuplicates: true })
 
   if (messageError && messageError.code !== '23505') {
     await admin.from('twilio_webhook_events')
@@ -61,11 +68,40 @@ export async function POST(request) {
     return Response.json({ error: 'Could not record message' }, { status: 500 })
   }
 
+  let thread
+  try {
+    thread = await getOrCreateWhatsAppThread(admin, params.From)
+    await appendConversationMessage(admin, {
+      threadId: thread.id,
+      senderType: 'customer',
+      channel: 'whatsapp',
+      body: params.Body || null,
+      twilioMessageSid: messageSid,
+      dedupeKey: `twilio:${messageSid}`,
+      deliveryStatus: 'received',
+      metadata: { media: collectMedia(params) },
+    })
+    await createReplyJob(admin, { threadId: thread.id, messageSid })
+  } catch (conversationError) {
+    await admin.from('twilio_webhook_events')
+      .update({ processing_status: 'failed', processing_error: conversationError.message })
+      .eq('event_key', eventKey)
+    console.error('[twilio/inbound] failed to build conversation timeline:', conversationError)
+    return Response.json({ error: 'Could not record conversation' }, { status: 500 })
+  }
+
   await admin.from('twilio_webhook_events')
     .update({ processing_status: 'stored', processed_at: new Date().toISOString() })
     .eq('event_key', eventKey)
 
-  // Chatbot processing is deliberately added in Phase 3. Returning an empty
-  // TwiML response acknowledges this webhook without sending an accidental reply.
+  // Twilio receives its acknowledgement immediately. The durable reply job is
+  // claimed after the response, so webhook retries cannot create two replies.
+  after(() => processWhatsAppReply({
+    messageSid,
+    threadId: thread.id,
+    fromAddress: params.From,
+    body: params.Body || '',
+  }))
+
   return emptyTwimlResponse()
 }

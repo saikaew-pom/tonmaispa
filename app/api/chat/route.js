@@ -13,6 +13,7 @@ import { getAvailableSlots, getBookableTreatmentsAt } from '@/lib/scheduling'
 import { chatMessageSchema } from '@/lib/schemas'
 import { prepareModelMessages, prepareStoredMessages } from '@/lib/chat-history'
 import { prepareBookingDraft } from '@/lib/chat-booking'
+import { recordWebExchange } from '@/lib/conversations'
 
 export const maxDuration = 60
 
@@ -329,14 +330,29 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
 async function persistSession({ admin, sessionId, messages, assistantText }) {
   const updatedMessages = prepareStoredMessages(messages, assistantText)
 
-  await admin.from('chat_sessions').upsert(
+  const { data: session, error } = await admin.from('chat_sessions').upsert(
     {
       session_id:  sessionId,
       messages:    updatedMessages,
       last_active: new Date().toISOString(),
     },
     { onConflict: 'session_id' }
-  )
+  ).select('customer_id').single()
+  if (error) throw error
+
+  // Dual-write during the migration period: the legacy JSON keeps existing
+  // website restore behaviour stable while the normalized rows become the
+  // shared web/WhatsApp/staff timeline.
+  try {
+    await recordWebExchange(admin, {
+      sessionId,
+      customerId: session?.customer_id,
+      messages,
+      assistantText,
+    })
+  } catch (timelineError) {
+    console.error('[chat] unified timeline write failed:', timelineError)
+  }
 }
 
 function buildEnquiryMessage(input) {

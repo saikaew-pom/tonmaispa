@@ -34,11 +34,12 @@ export async function DELETE(req) {
   }
 
   const admin = createSupabaseAdminClient()
-  const { error } = await admin
-    .from('chat_sessions')
-    .delete()
-    .eq('session_id', sessionId)
+  const [{ error }, { error: threadError }] = await Promise.all([
+    admin.from('chat_sessions').delete().eq('session_id', sessionId),
+    // Messages and pending reply jobs are removed by the thread's cascade.
+    admin.from('conversation_threads').delete().eq('web_session_id', sessionId),
+  ])
 
-  if (error) return Response.json({ error: 'Unable to clear conversation' }, { status: 500 })
+  if (error || threadError) return Response.json({ error: 'Unable to clear conversation' }, { status: 500 })
   return Response.json({ ok: true })
 }

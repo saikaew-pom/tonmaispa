@@ -9,6 +9,7 @@ const BOOLEAN_KEYS = [
   'settings.insights_enabled',
   'settings.campaigns_enabled',
   'settings.twilio_whatsapp_enabled',
+  'settings.whatsapp_chatbot_enabled',
 ]
 
 // Toggles whose stored value is a pair of words rather than 'true'/'false'
@@ -48,6 +49,7 @@ const FULL_GROUPS = [
       'settings.booking_engine_enabled', 'settings.chatbot_enabled', 'settings.chatbot_booking_mode',
       'settings.insights_enabled', 'settings.campaigns_enabled',
       'settings.twilio_whatsapp_enabled',
+      'settings.whatsapp_chatbot_enabled',
       'settings.maintenance_mode',
     ],
   },
@@ -80,6 +82,7 @@ const LABELS = {
   'settings.insights_enabled':            'Revenue & Marketing Advisor enabled',
   'settings.campaigns_enabled':           'AI Campaign Planner enabled',
   'settings.twilio_whatsapp_enabled':     'WhatsApp booking updates (via Twilio)',
+  'settings.whatsapp_chatbot_enabled':    'WhatsApp chatbot replies enabled',
   'settings.maintenance_mode':            'Maintenance mode',
 }
 
@@ -87,6 +90,7 @@ const HINTS = {
   'settings.homepage_facilities_eyebrow': 'The photos themselves are managed on the Facilities dashboard page, not here.',
   'settings.insights_enabled':      'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
   'settings.campaigns_enabled':     'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
+  'settings.whatsapp_chatbot_enabled': 'Premium feature — automatically answers inbound WhatsApp messages and stores them in the unified conversation timeline. Turn this off to stop bot replies immediately.',
   'settings.chatbot_booking_mode':  'Off = chatbot only captures name/phone for staff follow-up. On = chatbot checks real availability and books directly. Requires "Booking engine enabled" above to also be on.',
   'settings.twilio_whatsapp_enabled': 'Lets staff send a booking confirmation/cancellation update via WhatsApp from the Bookings page. Also requires Twilio credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and a messaging service or WhatsApp sender) configured on the server — this toggle alone won\'t work without those.',
 }

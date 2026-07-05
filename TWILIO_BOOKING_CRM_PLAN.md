@@ -3,6 +3,16 @@
 **Prepared:** 4 July 2026  
 **Purpose:** Consolidated plan from the discussion beginning around 12:22 AM about using Twilio for chatbot booking, CRM, automation, staff handoff and cross-device customer memory.
 
+## Pilot verification — 5 July 2026
+
+- [x] Live WhatsApp Sandbox inbound message received by Twilio
+- [x] Signed Vercel webhook accepted the message
+- [x] Message stored in `twilio_messages`
+- [x] Matching idempotent event stored in `twilio_webhook_events`
+- Test body: `TONMAI-SANDBOX-TEST-20260705-3`
+- Twilio message SID: `SM810bd263c026f0e58e976082c72d4709`
+- No bot reply was expected; chatbot processing remains the next phase
+
 ## 1. Executive summary
 
 Ton Mai Spa should keep its existing application as the operational centre:
@@ -372,26 +382,47 @@ Payloads must be validated server-side. Never trust booking details received dir
 - Retry transient failures safely.
 - Never send a cancelled booking reminder.
 
-## 11. WhatsApp templates
+## 11. WhatsApp templates and journey customization
 
-Outside WhatsApp's 24-hour customer-service window, business-initiated messages require approved templates. Prepare these utility templates early:
+Use a hybrid management model:
 
-- `booking_received`
-- `booking_confirmed`
-- `booking_changed`
-- `booking_cancelled`
-- `appointment_reminder_24h`
-- `appointment_reminder_2h`
-- `staff_followup_requested`
-- `post_visit_feedback`
+| Location | Responsibility |
+|---|---|
+| Twilio Content Template Builder/API | Fixed wording, language, WhatsApp category, buttons, variables, sample values and approval status |
+| Ton Mai backend | Journey event, enable/disable, schedule, language selection, approved `ContentSid`, guest variables, preview, test send, delivery state and cost |
 
-Possible later marketing templates, used only with consent:
+Outside WhatsApp's 24-hour customer-service window, the application must send an approved template using `ContentSid` and `ContentVariables`. During an open service window, ordinary free-form replies are allowed, but approved templates should still be used for predictable automated journeys.
 
-- `welcome_back_offer`
-- `birthday_offer`
-- `lapsed_customer_offer`
+### Transactional/utility candidates
 
-Prepare language variants for English and Thai first, then Russian and Chinese according to customer demand.
+- `booking_received_en_v1` / `booking_received_th_v1`
+- `booking_confirmed_en_v1` / `booking_confirmed_th_v1`
+- `booking_changed_en_v1` / `booking_changed_th_v1`
+- `booking_cancelled_en_v1` / `booking_cancelled_th_v1`
+- `booking_reminder_24h_en_v1` / `booking_reminder_24h_th_v1`
+- `booking_reminder_2h_en_v1` / `booking_reminder_2h_th_v1`
+- `visit_thank_you_en_v1` / `visit_thank_you_th_v1`
+
+Keep the thank-you message strictly connected to the completed visit and free of promotions or survey requests. Meta makes the final category decision.
+
+### Marketing templates requiring separate consent
+
+- `survey_request_en_v1` / `survey_request_th_v1`
+- `welcome_back_offer_en_v1` / `welcome_back_offer_th_v1`
+- `birthday_offer_en_v1` / `birthday_offer_th_v1`
+- `lapsed_customer_offer_en_v1` / `lapsed_customer_offer_th_v1`
+
+Do not combine the thank-you and survey. Combining them can cause the whole message to be classified and charged as marketing.
+
+### Personalization variables
+
+Use approved placeholders for guest name, treatment, local date/time, duration, guest count, booking reference and approved action links. Staff may select journey settings and preview the final message, but must not freely rewrite approved out-of-window wording for one guest. Material wording changes must remain inactive until WhatsApp approval is confirmed.
+
+Store template mappings separately from journey rules. Record the mapping version, resolved variables and rendered message snapshot for every send so the audit history remains correct after later edits.
+
+The Twilio Sandbox supports only its limited pre-approved templates. Ton Mai's custom journey templates require an approved production WhatsApp sender.
+
+Prepare English and Thai first, then add Russian and Chinese according to demonstrated customer demand.
 
 ## 12. Automation opportunities
 
@@ -515,18 +546,33 @@ Use Supabase Realtime so website customers receive staff messages without refres
 
 ### Phase 2 — Unified conversation storage
 
-- Add customer, identity, thread, message, summary and handoff tables.
-- Migrate website chat to row-per-message storage.
-- Preserve current `chat_sessions` compatibility during migration.
-- Build the staff shared inbox.
+- [Implemented locally 2026-07-05] Add channel-neutral conversation thread and row-per-message tables.
+- [Implemented locally 2026-07-05] Dual-write website chat while preserving `chat_sessions` compatibility.
+- [Implemented locally 2026-07-05] Link a website thread to its CRM customer after confirmed chatbot booking.
+- [Implemented locally 2026-07-05] Store WhatsApp inbound and outbound messages in the same timeline model.
+- Add identity verification, summaries and handoff records in their dedicated phases below.
+- Build the staff shared inbox in Phase 4.
 
 ### Phase 3 — WhatsApp booking
 
+- [Implemented locally 2026-07-05] Answer ordinary WhatsApp questions with the existing safe, live-data chatbot prompt.
+- [Implemented locally 2026-07-05] Add duplicate-safe background reply jobs, a Super Admin kill switch, rate limiting and delivery/read synchronization.
+- [Safety boundary] WhatsApp booking tools remain disabled until explicit review/confirmation controls are built.
 - Connect WhatsApp messages to existing chatbot tools.
 - Add availability quick replies.
 - Add booking review and confirmation buttons.
 - Reuse the existing server-side booking-confirmation service.
 - Add reschedule and cancellation requests.
+
+### Current deployment gate — 2026-07-05
+
+The unified timeline and basic WhatsApp reply code passes the production build locally. Before it is live:
+
+1. [Completed 2026-07-05] Run `023_unified_conversations.sql` in Supabase. Verified all three tables exist and five historical conversation threads were backfilled.
+2. Commit and push the application changes to `main`.
+3. Wait for the Vercel production deployment to become Ready.
+4. Send a new Sandbox question and verify exactly one inbound row, one completed reply job, one outbound row and a delivered/read status update.
+5. Test the Super Admin switch by turning WhatsApp replies off and confirming the inbound message is stored without a bot reply.
 
 ### Phase 4 — Staff handoff
 
