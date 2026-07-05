@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 
 const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled']
@@ -9,6 +9,12 @@ const STATUS_COLORS = { pending: '#C4924A', confirmed: '#3B5249', completed: '#6
 
 const pad = n => String(n).padStart(2, '0')
 const toYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+function formatSentAt(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+}
 
 function getWeekStart(date) {
   const d = new Date(date)
@@ -22,7 +28,7 @@ function getWeekStart(date) {
 const inputSt = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid var(--color-border)', borderRadius: 4, font: '400 13px Inter,sans-serif', color: '#1C1917' }
 const labelSt = { display: 'block', font: '600 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#6B6663', marginBottom: 5 }
 
-export default function BookingsClient({ initialBookings, treatments, therapists }) {
+export default function BookingsClient({ initialBookings, treatments, therapists, twilioEnabled = false }) {
   const [bookings, setBookings]     = useState(initialBookings)
   const [view, setView]             = useState('calendar') // 'calendar' | 'table'
   const [statusFilter, setStatusFilter]     = useState('all')
@@ -32,9 +38,12 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   const [savingId, setSavingId]     = useState(null)
   const [weekStart, setWeekStart]   = useState(() => getWeekStart(new Date()))
   const [showNew, setShowNew]       = useState(false)
-  const [notifyingId, setNotifyingId] = useState(null)
-  const [notifiedId, setNotifiedId]   = useState(null) // brief "Sent ✓" confirmation
+  const [notifyingId, setNotifyingId] = useState(null) // `${id}:email` | `${id}:whatsapp`
   const [notifyError, setNotifyError] = useState(null)
+  const [editingBooking, setEditingBooking] = useState(null)
+  const [logsBookingId, setLogsBookingId]   = useState(null)
+
+  const patchBooking = (id, fields) => setBookings(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b))
 
   const updateStatus = async (id, status) => {
     setSavingId(id)
@@ -42,22 +51,34 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
-    if (res.ok) setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b))
+    if (res.ok) patchBooking(id, { status })
     setSavingId(null)
   }
 
-  // Nothing emails the guest automatically when status changes — staff
-  // reviews the booking, then explicitly triggers this so a guest is only
-  // ever notified once a human actually looked at their booking.
+  // Nothing notifies the guest automatically when status changes — staff
+  // reviews the booking, then explicitly triggers a send so a guest is only
+  // ever contacted once a human actually looked at it.
   const sendUpdateEmail = async (id) => {
-    setNotifyingId(id)
+    setNotifyingId(`${id}:email`)
     setNotifyError(null)
     try {
       const res = await fetch(`/api/admin/bookings/${id}/notify`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { setNotifyError(data.error || 'Could not send the email.'); return }
-      setNotifiedId(id)
-      setTimeout(() => setNotifiedId(cur => cur === id ? null : cur), 3000)
+      patchBooking(id, { last_email_sent_at: data.last_email_sent_at, last_email_status: data.last_email_status })
+    } finally {
+      setNotifyingId(null)
+    }
+  }
+
+  const sendWhatsApp = async (id) => {
+    setNotifyingId(`${id}:whatsapp`)
+    setNotifyError(null)
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}/whatsapp`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setNotifyError(data.error || 'Could not send the WhatsApp message.'); return }
+      patchBooking(id, { last_whatsapp_sent_at: data.last_whatsapp_sent_at })
     } finally {
       setNotifyingId(null)
     }
@@ -117,6 +138,8 @@ export default function BookingsClient({ initialBookings, treatments, therapists
     </div>
   )
 
+  const notifyProps = { notifyingId, twilioEnabled, onSendEmail: sendUpdateEmail, onSendWhatsApp: sendWhatsApp, onViewLogs: setLogsBookingId }
+
   return (
     <div>
       <FilterBar />
@@ -129,11 +152,9 @@ export default function BookingsClient({ initialBookings, treatments, therapists
 
       {view === 'calendar' ? (
         <CalendarView weekDays={weekDays} byDate={byDate} onShift={shiftWeek} onToday={() => setWeekStart(getWeekStart(new Date()))}
-          savingId={savingId} onStatusChange={updateStatus}
-          notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={sendUpdateEmail} />
+          savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking} {...notifyProps} />
       ) : (
-        <TableView visible={visible} savingId={savingId} onStatusChange={updateStatus}
-          notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={sendUpdateEmail} />
+        <TableView visible={visible} savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking} {...notifyProps} />
       )}
 
       {showNew && (
@@ -144,36 +165,66 @@ export default function BookingsClient({ initialBookings, treatments, therapists
           onCreated={b => { addBooking(b); setShowNew(false) }}
         />
       )}
+
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          treatments={treatments}
+          therapists={therapists}
+          onClose={() => setEditingBooking(null)}
+          onSaved={b => { patchBooking(b.id, b); setEditingBooking(null) }}
+        />
+      )}
+
+      {logsBookingId && (
+        <LogsModal bookingId={logsBookingId} onClose={() => setLogsBookingId(null)} />
+      )}
     </div>
   )
 }
 
-// A booking's status only ever gets an update email if a human explicitly
-// sends one — this renders that trigger + its small inline states.
-function SendEmailButton({ booking, notifyingId, notifiedId, onSendEmail, compact }) {
-  if (!['confirmed', 'cancelled'].includes(booking.status) || !booking.guest_email) return null
-  const isSending  = notifyingId === booking.id
-  const wasNotified = notifiedId === booking.id
+// Send-email / send-WhatsApp / view-logs actions for one booking. Sent state
+// is read straight off the booking row (persisted server-side), not local
+// component state, so it survives a page reload.
+function NotifyCell({ booking, notifyingId, twilioEnabled, onSendEmail, onSendWhatsApp, onViewLogs, compact }) {
+  const canNotify = ['confirmed', 'cancelled'].includes(booking.status)
+  const emailSending = notifyingId === `${booking.id}:email`
+  const whatsappSending = notifyingId === `${booking.id}:whatsapp`
+  const emailSentAt = formatSentAt(booking.last_email_sent_at)
+  const whatsappSentAt = formatSentAt(booking.last_whatsapp_sent_at)
+
+  const btnSt = {
+    border: '1px solid #3B5249', borderRadius: 3, background: '#fff', color: '#3B5249',
+    padding: compact ? '2px 4px' : '4px 9px', font: `500 ${compact ? 10 : 11}px Inter,sans-serif`,
+    cursor: 'pointer', width: compact ? '100%' : 'auto',
+  }
+  const sentSt = { fontSize: compact ? 10 : 11, color: '#6B6663', lineHeight: 1.3 }
+
   return (
-    <button
-      type="button"
-      disabled={isSending}
-      onClick={() => onSendEmail(booking.id)}
-      style={{
-        marginTop: compact ? 4 : 0, width: compact ? '100%' : 'auto',
-        border: '1px solid #3B5249', borderRadius: 3, background: wasNotified ? '#3B5249' : '#fff',
-        color: wasNotified ? '#fff' : '#3B5249', padding: compact ? '2px 4px' : '5px 10px',
-        font: `500 ${compact ? 10 : 11}px Inter,sans-serif`, cursor: isSending ? 'default' : 'pointer',
-        opacity: isSending ? 0.6 : 1,
-      }}
-    >
-      {wasNotified ? 'Sent ✓' : isSending ? 'Sending…' : 'Send update email'}
-    </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: compact ? 4 : 0, alignItems: compact ? 'stretch' : 'flex-start' }}>
+      {canNotify && booking.guest_email && (
+        emailSentAt
+          ? <div style={sentSt}>✓ Email sent {emailSentAt}</div>
+          : <button type="button" disabled={emailSending} onClick={() => onSendEmail(booking.id)} style={{ ...btnSt, opacity: emailSending ? 0.6 : 1 }}>
+              {emailSending ? 'Sending…' : 'Send update email'}
+            </button>
+      )}
+      {canNotify && twilioEnabled && booking.guest_phone && (
+        whatsappSentAt
+          ? <div style={sentSt}>✓ WhatsApp sent {whatsappSentAt}</div>
+          : <button type="button" disabled={whatsappSending} onClick={() => onSendWhatsApp(booking.id)} style={{ ...btnSt, opacity: whatsappSending ? 0.6 : 1 }}>
+              {whatsappSending ? 'Sending…' : 'Send via WhatsApp'}
+            </button>
+      )}
+      <button type="button" onClick={() => onViewLogs(booking.id)} style={{ ...btnSt, border: '1px solid var(--color-border)', color: '#6B6663' }}>
+        View logs
+      </button>
+    </div>
   )
 }
 
 // ── Calendar (7-day week) view ──────────────────────────────────────────────
-function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusChange, notifyingId, notifiedId, onSendEmail }) {
+function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusChange, onEdit, ...notifyProps }) {
   const monthLabel = weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const todayYMD = toYMD(new Date())
 
@@ -204,18 +255,21 @@ function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusCh
                   <div style={{ font: '400 11px Inter,sans-serif', color: '#C8C3BC', padding: '6px 4px' }}>—</div>
                 )}
                 {dayBookings.map(b => (
-                  <div key={b.id} style={{ background: '#FAF6F0', borderLeft: `3px solid ${STATUS_COLORS[b.status]}`, borderRadius: 4, padding: '6px 8px' }}>
+                  <div key={b.id} onClick={() => onEdit(b)} style={{ cursor: 'pointer', background: '#FAF6F0', borderLeft: `3px solid ${STATUS_COLORS[b.status]}`, borderRadius: 4, padding: '6px 8px' }}>
                     <div style={{ font: '600 11px Inter,sans-serif', color: '#1C1917' }}>{b.time_slot?.slice(0, 5)} · {b.guest_name}</div>
                     <div style={{ font: '400 10px Inter,sans-serif', color: '#6B6663', marginTop: 1 }}>{b.spa_treatments?.name ?? '—'}</div>
                     <select
                       value={b.status}
                       disabled={savingId === b.id}
+                      onClick={e => e.stopPropagation()}
                       onChange={e => onStatusChange(b.id, e.target.value)}
                       style={{ marginTop: 4, width: '100%', border: '1px solid var(--color-border)', borderRadius: 3, padding: '2px 4px', font: '500 10px Inter,sans-serif', textTransform: 'capitalize', background: '#fff' }}
                     >
                       {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <SendEmailButton booking={b} notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={onSendEmail} compact />
+                    <div onClick={e => e.stopPropagation()}>
+                      <NotifyCell booking={b} compact {...notifyProps} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -230,7 +284,7 @@ function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusCh
 const navBtnSt = { padding: '6px 12px', border: '1px solid var(--color-border)', borderRadius: 4, background: '#fff', font: '500 11px Inter,sans-serif', cursor: 'pointer' }
 
 // ── Table view ───────────────────────────────────────────────────────────────
-function TableView({ visible, savingId, onStatusChange, notifyingId, notifiedId, onSendEmail }) {
+function TableView({ visible, savingId, onStatusChange, onEdit, ...notifyProps }) {
   return (
     <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -243,9 +297,9 @@ function TableView({ visible, savingId, onStatusChange, notifyingId, notifiedId,
         </thead>
         <tbody>
           {visible.map(b => (
-            <tr key={b.id} style={{ borderTop: '1px solid #F0ECE6' }}>
+            <tr key={b.id} onClick={() => onEdit(b)} style={{ borderTop: '1px solid #F0ECE6', cursor: 'pointer' }}>
               <td style={{ padding: '12px 14px', font: '600 12px Inter,sans-serif', color: '#3B5249' }}>{b.ref_code}</td>
-              <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>
+              <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }} onClick={e => b.customer_id && e.stopPropagation()}>
                 {b.customer_id ? (
                   <Link href={`/dashboard/customers?id=${b.customer_id}`} style={{ fontWeight: 600, color: '#3B5249', textDecoration: 'none' }}>{b.guest_name}</Link>
                 ) : (
@@ -256,7 +310,7 @@ function TableView({ visible, savingId, onStatusChange, notifyingId, notifiedId,
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>{b.spa_treatments?.name ?? '—'} <span style={{ color: '#9B9390' }}>({b.duration}min)</span></td>
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>{b.date} · {b.time_slot?.slice(0,5)}</td>
               <td style={{ padding: '12px 14px', font: '400 12px Inter,sans-serif', color: '#6B6663', textTransform: 'capitalize' }}>{b.source}</td>
-              <td style={{ padding: '12px 14px' }}>
+              <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
                 <select
                   value={b.status}
                   disabled={savingId === b.id}
@@ -266,8 +320,8 @@ function TableView({ visible, savingId, onStatusChange, notifyingId, notifiedId,
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </td>
-              <td style={{ padding: '12px 14px' }}>
-                <SendEmailButton booking={b} notifyingId={notifyingId} notifiedId={notifiedId} onSendEmail={onSendEmail} />
+              <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
+                <NotifyCell booking={b} {...notifyProps} />
               </td>
             </tr>
           ))}
@@ -276,6 +330,50 @@ function TableView({ visible, savingId, onStatusChange, notifyingId, notifiedId,
           )}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ── Booking audit log modal ─────────────────────────────────────────────────
+function LogsModal({ bookingId, onClose }) {
+  const [logs, setLogs]       = useState(null)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/admin/bookings/${bookingId}/logs`)
+      .then(res => res.json())
+      .then(data => { if (!cancelled) setLogs(data.logs ?? []) })
+      .catch(() => { if (!cancelled) setError('Could not load the activity log.') })
+    return () => { cancelled = true }
+  }, [bookingId])
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,25,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 10, padding: 24, maxWidth: 480, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ font: '400 20px Cormorant Garamond,serif', color: '#1C1917' }}>Booking Activity</div>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9B9390', lineHeight: 1 }}>×</button>
+        </div>
+
+        {error && <p style={{ color: '#C0392B', font: '400 12px Inter,sans-serif' }}>{error}</p>}
+        {!error && logs === null && <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>Loading…</p>}
+        {logs?.length === 0 && <p style={{ color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No activity recorded yet.</p>}
+
+        {logs?.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {logs.map(log => (
+              <div key={log.id} style={{ borderLeft: '2px solid #E5E0D8', paddingLeft: 12 }}>
+                <div style={{ font: '600 12px Inter,sans-serif', color: '#1C1917', textTransform: 'capitalize' }}>{log.action.replace(/_/g, ' ')}</div>
+                {log.detail && <div style={{ font: '400 12px Inter,sans-serif', color: '#6B6663', marginTop: 2 }}>{log.detail}</div>}
+                <div style={{ font: '400 11px Inter,sans-serif', color: '#9B9390', marginTop: 3 }}>
+                  {log.actor_email ?? 'System'} · {new Date(log.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -422,6 +520,160 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
             <button type="button" disabled={saving} onClick={e => handleSubmit(e, true)}
               style={{ background: '#fff', color: '#C0392B', border: '1px solid #C0392B', borderRadius: 6, padding: '10px 0', font: '600 12px Inter,sans-serif', cursor: saving ? 'wait' : 'pointer' }}>
               Book anyway (overbook this slot)
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// ── Edit existing booking modal — click any booking to open ────────────────
+function EditBookingModal({ booking, treatments, therapists, onClose, onSaved }) {
+  const [guestName, setGuestName]   = useState(booking.guest_name ?? '')
+  const [guestPhone, setGuestPhone] = useState(booking.guest_phone ?? '')
+  const [guestEmail, setGuestEmail] = useState(booking.guest_email ?? '')
+  const [treatmentId, setTreatmentId] = useState(booking.treatment_id ?? treatments[0]?.id ?? '')
+  const [duration, setDuration]     = useState(booking.duration)
+  const [therapistId, setTherapistId] = useState(booking.therapist_id ?? '')
+  const [date, setDate]             = useState(booking.date)
+  const [time, setTime]             = useState(booking.time_slot?.slice(0, 5) ?? '10:00')
+  const [status, setStatus]         = useState(booking.status)
+  const [source, setSource]         = useState(booking.source ?? 'phone')
+  const [notes, setNotes]           = useState(booking.notes ?? '')
+  const [staffNotes, setStaffNotes] = useState(booking.staff_notes ?? '')
+  const [saving, setSaving]         = useState(false)
+  const [err, setErr]               = useState('')
+  const [slotFull, setSlotFull]     = useState(false)
+
+  const treatment = treatments.find(t => t.id === treatmentId)
+  const durationOptions = treatment?.duration_options ?? [60]
+
+  const handleTreatmentChange = (id) => {
+    setSlotFull(false)
+    setTreatmentId(id)
+    const t = treatments.find(x => x.id === id)
+    if (t && !(t.duration_options ?? []).includes(duration)) setDuration(t.duration_options?.[0] ?? 60)
+  }
+
+  const handleSubmit = async (e, overbook = false) => {
+    e.preventDefault()
+    setSaving(true)
+    setErr('')
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guest_name: guestName, guest_phone: guestPhone, guest_email: guestEmail || null,
+          treatment_id: treatmentId, therapist_id: therapistId || null,
+          date, time_slot: time, duration, status, source,
+          notes, staff_notes: staffNotes,
+          overbook,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        if (json.code === 'SLOT_FULL') setSlotFull(true)
+        throw new Error(json.error || 'Could not save changes')
+      }
+      onSaved(json.booking)
+    } catch (e2) {
+      setErr(e2.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,25,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+      <form onClick={e => e.stopPropagation()} onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 10, padding: 28, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#1C1917' }}>Edit Booking · {booking.ref_code}</div>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9B9390', lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <label style={labelSt}>Guest name</label>
+            <input required value={guestName} onChange={e => setGuestName(e.target.value)} style={inputSt} />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Phone</label>
+              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} style={inputSt} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Email</label>
+              <input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} style={inputSt} />
+            </div>
+          </div>
+
+          <div>
+            <label style={labelSt}>Treatment</label>
+            <select required value={treatmentId} onChange={e => handleTreatmentChange(e.target.value)} style={inputSt}>
+              {treatments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Duration</label>
+              <select value={duration} onChange={e => { setSlotFull(false); setDuration(parseInt(e.target.value, 10)) }} style={inputSt}>
+                {durationOptions.map(d => <option key={d} value={d}>{d} min{treatment?.prices?.[String(d)] ? ` · ฿${treatment.prices[String(d)]}` : ''}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Therapist (optional)</label>
+              <select value={therapistId} onChange={e => setTherapistId(e.target.value)} style={inputSt}>
+                <option value="">Unassigned</option>
+                {therapists.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Date</label>
+              <input required type="date" value={date} onChange={e => { setSlotFull(false); setDate(e.target.value) }} style={inputSt} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Time</label>
+              <input required type="time" value={time} onChange={e => { setSlotFull(false); setTime(e.target.value) }} style={inputSt} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Status</label>
+              <select value={status} onChange={e => setStatus(e.target.value)} style={inputSt}>
+                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelSt}>Source</label>
+              <select value={source} onChange={e => setSource(e.target.value)} style={inputSt}>
+                {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelSt}>Guest notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{ ...inputSt, resize: 'vertical' }} />
+          </div>
+          <div>
+            <label style={labelSt}>Staff note (internal only)</label>
+            <textarea value={staffNotes} onChange={e => setStaffNotes(e.target.value)} rows={2} placeholder="Not visible to the guest…" style={{ ...inputSt, resize: 'vertical' }} />
+          </div>
+
+          {err && <p style={{ color: '#C0392B', font: '400 12px Inter,sans-serif', margin: 0 }}>{err}</p>}
+
+          <button type="submit" disabled={saving} style={{ marginTop: 6, background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '11px 0', font: '600 12px Inter,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+          {slotFull && (
+            <button type="button" disabled={saving} onClick={e => handleSubmit(e, true)}
+              style={{ background: '#fff', color: '#C0392B', border: '1px solid #C0392B', borderRadius: 6, padding: '10px 0', font: '600 12px Inter,sans-serif', cursor: saving ? 'wait' : 'pointer' }}>
+              Save anyway (overbook this slot)
             </button>
           )}
         </div>

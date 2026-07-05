@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/require-admin'
 import { sendEmail, bookingConfirmedHtml, bookingCancelledHtml } from '@/lib/brevo'
+import { logBookingAction } from '@/lib/booking-logs'
 
 // POST /api/admin/bookings/[id]/notify — staff-triggered email to the guest
 // reflecting the booking's CURRENT status. Nothing sends automatically on a
@@ -44,5 +45,19 @@ export async function POST(req, { params }) {
   })
 
   if (!result.ok) return Response.json({ error: 'Could not send the email. Please try again.' }, { status: 502 })
-  return Response.json({ ok: true })
+
+  const sentAt = new Date().toISOString()
+  await auth.admin.from('bookings').update({
+    last_email_sent_at: sentAt,
+    last_email_status: booking.status,
+  }).eq('id', id)
+
+  await logBookingAction(auth.admin, {
+    bookingId: id,
+    actorEmail: auth.session.user.email,
+    action: 'email_sent',
+    detail: `${isConfirmed ? 'Confirmed' : 'Cancelled'} email sent to ${booking.guest_email}`,
+  })
+
+  return Response.json({ ok: true, last_email_sent_at: sentAt, last_email_status: booking.status })
 }

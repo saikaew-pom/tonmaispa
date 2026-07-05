@@ -8,6 +8,7 @@ const BOOLEAN_KEYS = [
   'settings.maintenance_mode',
   'settings.insights_enabled',
   'settings.campaigns_enabled',
+  'settings.twilio_whatsapp_enabled',
 ]
 
 // Toggles whose stored value is a pair of words rather than 'true'/'false'
@@ -46,6 +47,7 @@ const FULL_GROUPS = [
     keys: [
       'settings.booking_engine_enabled', 'settings.chatbot_enabled', 'settings.chatbot_booking_mode',
       'settings.insights_enabled', 'settings.campaigns_enabled',
+      'settings.twilio_whatsapp_enabled',
       'settings.maintenance_mode',
     ],
   },
@@ -77,6 +79,7 @@ const LABELS = {
   'settings.chatbot_booking_mode':        'Chatbot full booking mode',
   'settings.insights_enabled':            'Revenue & Marketing Advisor enabled',
   'settings.campaigns_enabled':           'AI Campaign Planner enabled',
+  'settings.twilio_whatsapp_enabled':     'WhatsApp booking updates (via Twilio)',
   'settings.maintenance_mode':            'Maintenance mode',
 }
 
@@ -85,6 +88,7 @@ const HINTS = {
   'settings.insights_enabled':      'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
   'settings.campaigns_enabled':     'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
   'settings.chatbot_booking_mode':  'Off = chatbot only captures name/phone for staff follow-up. On = chatbot checks real availability and books directly. Requires "Booking engine enabled" above to also be on.',
+  'settings.twilio_whatsapp_enabled': 'Lets staff send a booking confirmation/cancellation update via WhatsApp from the Bookings page. Also requires Twilio credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and a messaging service or WhatsApp sender) configured on the server — this toggle alone won\'t work without those.',
 }
 
 function ToggleSwitch({ checked, onChange }) {
