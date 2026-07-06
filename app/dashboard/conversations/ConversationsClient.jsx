@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const MODE_LABELS = {
@@ -74,14 +74,35 @@ function MessageBubble({ message }) {
 
 export default function ConversationsClient({ initialThreads, activeId, initialMessages }) {
   const router = useRouter()
+  const messagesRef = useRef(null)
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(() => new Date())
 
   const activeThread = useMemo(
     () => initialThreads.find(thread => thread.id === activeId) ?? initialThreads[0] ?? null,
     [initialThreads, activeId],
   )
+
+  const refreshInbox = useCallback(() => {
+    setLastRefreshedAt(new Date())
+    router.refresh()
+  }, [router])
+
+  useEffect(() => {
+    const node = messagesRef.current
+    if (!node) return
+    node.scrollTop = node.scrollHeight
+  }, [activeThread?.id, initialMessages.length])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (busy || reply.trim() || document.visibilityState !== 'visible') return
+      refreshInbox()
+    }, 6000)
+    return () => window.clearInterval(interval)
+  }, [busy, refreshInbox, reply])
 
   const selectThread = id => router.push(`/dashboard/conversations?thread=${id}`)
 
@@ -96,7 +117,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
     })
     const body = await res.json().catch(() => ({}))
     if (!res.ok) setError(body.error || 'Could not update the conversation.')
-    else router.refresh()
+    else refreshInbox()
     setBusy(false)
   }
 
@@ -114,7 +135,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
     if (!res.ok) setError(body.error || 'Could not send the reply.')
     else {
       setReply('')
-      router.refresh()
+      refreshInbox()
     }
     setBusy(false)
   }
@@ -123,8 +144,15 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
       <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ padding: 14, borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ font: '700 12px Inter,sans-serif', color: '#1C1917' }}>Recent threads</div>
-          <div style={{ marginTop: 3, font: '400 11px Inter,sans-serif', color: '#9B9390' }}>{initialThreads.length} latest conversations</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+            <div>
+              <div style={{ font: '700 12px Inter,sans-serif', color: '#1C1917' }}>Recent threads</div>
+              <div style={{ marginTop: 3, font: '400 11px Inter,sans-serif', color: '#9B9390' }}>
+                {initialThreads.length} latest conversations · refreshed {lastRefreshedAt.toLocaleTimeString()}
+              </div>
+            </div>
+            <button onClick={refreshInbox} disabled={busy} style={{ ...btnGhost, padding: '7px 10px', fontSize: 11 }}>Refresh</button>
+          </div>
         </div>
         <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
           {initialThreads.map(thread => {
@@ -179,13 +207,13 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button disabled={busy} onClick={() => setMode('human')} style={btnPrimary}>Take over</button>
-                <button disabled={busy} onClick={() => setMode('bot')} style={btnGhost}>Return to bot</button>
-                <button disabled={busy} onClick={() => setMode('closed')} style={btnGhost}>Close</button>
+                <button disabled={busy || activeThread.mode === 'human'} onClick={() => setMode('human')} style={busy || activeThread.mode === 'human' ? btnDisabled : btnPrimary}>Take over</button>
+                <button disabled={busy || activeThread.mode === 'bot'} onClick={() => setMode('bot')} style={busy || activeThread.mode === 'bot' ? btnDisabled : btnGhost}>Return to bot</button>
+                <button disabled={busy || activeThread.mode === 'closed'} onClick={() => setMode('closed')} style={busy || activeThread.mode === 'closed' ? btnDisabled : btnGhost}>Close</button>
               </div>
             </div>
 
-            <div style={{ padding: 16, background: '#FBF8F3', minHeight: 360, maxHeight: '56vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div ref={messagesRef} style={{ padding: 16, background: '#FBF8F3', minHeight: 360, maxHeight: '56vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 12, scrollBehavior: 'smooth' }}>
               {initialMessages.map(message => <MessageBubble key={message.id} message={message} />)}
               {initialMessages.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 30, color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No messages in this thread yet.</div>
@@ -238,4 +266,14 @@ const btnGhost = {
   padding: '9px 13px',
   font: '700 12px Inter,sans-serif',
   cursor: 'pointer',
+}
+
+const btnDisabled = {
+  border: '1px solid var(--color-border)',
+  borderRadius: 6,
+  background: '#EFEAE3',
+  color: '#9B9390',
+  padding: '9px 13px',
+  font: '700 12px Inter,sans-serif',
+  cursor: 'not-allowed',
 }
