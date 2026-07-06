@@ -65,7 +65,9 @@ export async function POST(req) {
   const price = treatment?.prices?.[String(duration)] ?? null
 
   if (!capacity.ok && !overbook) {
-    const reason = capacity.reason === 'no_room'
+    const reason = capacity.reason === 'closed'
+      ? 'The spa is marked closed on this date (see Availability → blocked dates).'
+      : capacity.reason === 'no_room'
       ? 'All treatment rooms are occupied at this time.'
       : 'No qualified therapist is free at this time.'
     return Response.json({

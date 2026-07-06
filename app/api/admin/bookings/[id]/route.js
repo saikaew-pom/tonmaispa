@@ -86,7 +86,9 @@ export async function PATCH(req, { params }) {
       excludeBookingId: id,
     })
     if (!capacity.ok) {
-      const reason = capacity.reason === 'no_room'
+      const reason = capacity.reason === 'closed'
+        ? 'The spa is marked closed on this date (see Availability → blocked dates).'
+        : capacity.reason === 'no_room'
         ? 'All treatment rooms are occupied at this new time.'
         : 'No qualified therapist is free at this new time.'
       return Response.json({
