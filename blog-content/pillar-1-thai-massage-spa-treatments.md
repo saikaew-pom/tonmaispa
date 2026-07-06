@@ -50,19 +50,19 @@ There's no universally "better" option here — only the one that matches what y
 - You prefer oil and a table over stretching and joint work
 - You want firmer, more sustained pressure than Thai-style rhythmic compression offers
 
-Plenty of guests who visit Ton Mai Spa more than once end up alternating between the two depending on the day — Traditional Thai after a long walk around Rawai or before our [thermal wellness circuit](#), Deep Tissue when one particular shoulder has clearly had enough.
+Plenty of guests who visit Ton Mai Spa more than once end up alternating between the two depending on the day — Traditional Thai after a long walk around Rawai or before our [thermal wellness circuit](/blog/thermal-circuit-steam-sauna-cold-plunge-explained), Deep Tissue when one particular shoulder has clearly had enough and started sending formal complaints to the rest of the body.
 
 #### A Note on Pressure and Communication
 
 Whichever style you pick, pressure preference is deeply personal, and a good therapist will always check in before starting and periodically throughout. If something feels too intense — or, honestly, not intense enough — say something. Gritting your teeth in silence earns you no prize. Thai massage in particular should never veer into sharp, joint-level pain during a stretch; a mild ache during deep compression is normal, but if you find yourself holding your breath and mentally rehearsing an exit strategy, speak up.
 
-If you genuinely have no idea which to book, our front desk team (or the chat assistant on this site) is happy to help — and "I don't know what's wrong, I just feel tight everywhere" is a perfectly respectable starting point for a recommendation. We've heard worse. We've heard much more specific.
+If you genuinely have no idea which to book, our front desk team (or the chat assistant on this site) is happy to help — and "I don't know what's wrong, I just feel tight everywhere" is a perfectly respectable starting point for a recommendation. We've heard worse. We've heard much more specific. For a fuller decision framework covering the whole menu, not just these two, our guide on [choosing the right treatment for your first visit](/blog/how-to-choose-right-treatment-first-visit) walks through it option by option.
 
 #### Combining Both Over a Longer Stay
 
 If you're in Phuket for more than a few days, you genuinely don't have to pick a side. A common — and very effective — pattern is Traditional Thai early in the trip, to loosen up, get the blood moving, and mentally clock out of "regular life" mode, followed by Deep Tissue later on, once you've figured out exactly which body part is holding a grudge after days of walking, swimming, and sitting in beach chairs a little longer than intended.
 
-Whichever you choose, both pair beautifully with time in our steam room, sauna, and cold plunge circuit — heat and stretching are old friends, and a proper cool-down afterward helps that loose, reset feeling actually stick, instead of leaving you pleasantly limp for the rest of the day.
+Whichever you choose, both pair beautifully with time in our [steam room, sauna, and cold plunge circuit](/blog/thermal-circuit-steam-sauna-cold-plunge-explained) — heat and stretching are old friends, and a proper cool-down afterward helps that loose, reset feeling actually stick, instead of evaporating somewhere between the changing room and the parking lot.
 
 ---
 
@@ -98,11 +98,11 @@ Recipes shift from region to region and spa to spa, but a traditional Thai herba
 - **Thai plai (Cassumunar ginger)** — a specific ginger variety long used in Thai massage for muscle-related discomfort
 - **Camphor and prai oil** — small amounts, for that distinctive cool-then-warm sensation on skin
 
-At Ton Mai Spa, our blend leans on lemongrass, kaffir lime, and eucalyptus — the same aromatic profile as our steam room — so if you fell in love with that scent in the thermal circuit, the compress massage is basically the concentrated, hands-on version of the same crush.
+At Ton Mai Spa, our blend leans on lemongrass, kaffir lime, and eucalyptus — the same aromatic profile as our steam room — so if you fell in love with that scent in the thermal circuit, the compress massage is basically the concentrated, hands-on version of the same crush. If you want to actually know what these herbs are beyond "smells amazing, would inhale again," our [beginner's guide to Thai herbs](/blog/beginners-guide-thai-herbs) covers each one properly.
 
 #### What a Session Actually Feels Like
 
-A herbal compress massage usually rides alongside or after a base of Traditional Thai or oil massage — it's rarely the whole show by itself, more often a 30-60 minute feature or the star of a longer signature treatment. The therapist keeps it warm in a bedside steamer (it cools within minutes of use) and works it over tension zones — shoulders, lower back, calves — with a pressing-and-rolling motion rather than sharp, pointed pressure.
+A herbal compress massage usually rides alongside or after a base of [Traditional Thai or oil massage](/blog/traditional-thai-massage-vs-deep-tissue) — it's rarely the whole show by itself, more often a 30-60 minute feature or the star of a longer signature treatment. Think of it as the excellent supporting actor who occasionally steals the scene. The therapist keeps it warm in a bedside steamer (it cools within minutes of use) and works it over tension zones — shoulders, lower back, calves — with a pressing-and-rolling motion rather than sharp, pointed pressure.
 
 The heat is immediately obvious and, for most people, deeply relaxing — closer to a moving heat pack with gentle compression than to oil massage alone. Since the temperature runs hotter than a therapist's bare hand, expect an extra layer of cloth on the first few passes before it's applied more directly, once your skin has had a chance to acclimate.
 
@@ -154,7 +154,7 @@ That said, "safe" always depends on the individual. Anyone with a high-risk preg
 
 #### What Actually Changes in a Prenatal Massage
 
-A properly adapted prenatal massage isn't just a regular massage performed on someone who happens to be pregnant — the technique itself shifts in several concrete ways:
+A properly adapted prenatal massage isn't just a [regular massage](/blog/traditional-thai-massage-vs-deep-tissue) performed on someone who happens to be pregnant — the technique itself shifts in several concrete ways:
 
 **Positioning.** Lying flat on your back for extended stretches can, later in pregnancy, compress a major blood vessel (the inferior vena cava) and reduce blood flow — not ideal. Most prenatal-trained therapists use side-lying positioning with supportive pillows, or a table with a proper cutout system, rather than standard face-down or flat-on-back positioning.
 
@@ -187,7 +187,7 @@ In practice, a spa day while pregnant often looks like: a properly adapted prena
 
 If you're traveling while pregnant and want a spa visit in the mix:
 
-1. **Mention it when booking, not on arrival** — this lets the spa assign an experienced therapist and prep the setup (pillows, positioning) ahead of time.
+1. **Mention it when booking, not on arrival** — this lets the spa assign an experienced therapist and prep the setup (pillows, positioning) ahead of time. Our general [guide to booking a spa day in Phuket](/blog/how-to-book-a-spa-day-phuket) covers the rest of the booking basics.
 2. **Bring your own comfort items if you have preferences** — most spas have their own pregnancy pillow, but ask ahead if you have a strong opinion about it.
 3. **Don't skip hydration** — Phuket's heat and humidity plus pregnancy both raise your fluid needs considerably; drink more than you think you need.
 4. **Time it thoughtfully** — later in the day, once you've recovered from travel, tends to feel much better than right after a long flight or a full day of sightseeing.
@@ -214,7 +214,7 @@ Of everything on a typical Thai spa menu, body scrubs are easily the most photog
 
 #### Breaking Down the Three Core Ingredients
 
-**Turmeric.** The same golden root that shows up in Thai (and broader Southeast Asian) cooking has long been a cornerstone of regional beauty rituals — traditionally used on brides before their wedding day for its brightening effect on skin tone, which is either very sweet or mildly terrifying depending on how you feel about pre-wedding beauty pressure. The active compound, curcumin, has a growing pile of research behind its anti-inflammatory and antioxidant properties. Most of that research looks at curcumin taken internally rather than rubbed on, but topical use has centuries of tradition behind it and a smaller, real body of supporting skin-specific research too.
+**Turmeric.** The same golden root that shows up in Thai (and broader Southeast Asian) cooking — and throughout our [beginner's guide to Thai herbs](/blog/beginners-guide-thai-herbs) — has long been a cornerstone of regional beauty rituals: traditionally used on brides before their wedding day for its brightening effect on skin tone, which is either very sweet or mildly terrifying depending on how you feel about pre-wedding beauty pressure. The active compound, curcumin, has a growing pile of research behind its anti-inflammatory and antioxidant properties. Most of that research looks at curcumin taken internally rather than rubbed on, but topical use has centuries of tradition behind it and a smaller, real body of supporting skin-specific research too.
 
 **Salt (usually sea salt).** The workhorse exfoliant — coarse granules physically buff away dead skin, leaving things smoother and more ready to soak up whatever's applied next. This is the one part of the treatment that's straightforwardly, unglamorously provable: exfoliation works because it's mechanical, not because of any ingredient's mystique.
 
@@ -255,7 +255,7 @@ A body scrub and wrap works best as either the opener or the closer of a longer 
 
 A popular combo among guests booking a full day: massage first (while muscles are the priority), body scrub and wrap second (as the finishing, restorative note), then a slow wind-down in the garden with something from the restaurant — letting the coconut milk fully absorb and the whole day settle before heading back out into the world.
 
-If you're now weirdly fond of turmeric specifically, try our turmeric latte at the restaurant too — same golden root, completely different angle, and a nice way to carry the theme of your spa day from skin all the way to plate.
+If you're now weirdly fond of turmeric specifically — it happens, there's no support group — try our [turmeric latte at the restaurant](/blog/turmeric-latte-ton-mai-explained) too. Same golden root, completely different angle, and a nice way to carry the theme of your spa day from skin all the way to plate.
 
 ---
 
@@ -284,7 +284,7 @@ There's no real medical downside to a massage every single day if your schedule 
 
 #### If You Live in Phuket (Or Are Here Long-Term)
 
-For residents, long-stay digital nomads, or anyone measuring their time here in months rather than days, the math changes completely — this becomes ongoing wellness maintenance, not vacation indulgence, and the research on massage frequency for stress and chronic tension actually starts to matter.
+For residents, long-stay digital nomads, or anyone measuring their time here in months rather than days, the math changes completely — this becomes ongoing wellness maintenance, not vacation indulgence, and the research on massage frequency for stress and chronic tension actually starts to matter. (We wrote a whole separate guide on [wellness routines for long-stay visitors](/blog/phuket-long-stay-wellness-routines), because this crowd kept asking.)
 
 General wellness guidance (see the Mayo Clinic's overview on massage benefits, for one) suggests that for people using massage mainly for stress reduction and general wellbeing — rather than treating a specific injury — once every 2-4 weeks provides meaningful, sustained benefit without demanding an unreasonable chunk of time or money. For chronic muscular tension, common among desk-bound remote workers, weekly or biweekly sessions tend to work better, ideally paired with the kind of movement and stretching that stops tension from fully rebuilding between visits.
 
@@ -314,4 +314,4 @@ The most sustainable approach, whether you're here for a week or living on the i
 - **Living in Phuket, general wellness goal:** every 2-4 weeks as a baseline, more often if managing specific chronic tension
 - **Living in Phuket, active recovery/chronic condition:** guided by symptoms, ideally alongside any other care you're already receiving
 
-Whatever rhythm fits, pairing massage with our thermal circuit — steam, sauna, cold plunge — tends to stretch out how long that loose, reset feeling lasts. Heat before massage helps muscles respond better to pressure, and a proper cool-down afterward helps the body settle rather than staying keyed up. If you're building a longer-term rhythm rather than a single visit, our front desk team is genuinely happy to help you map out something realistic for your goals and your time in Phuket.
+Whatever rhythm fits, pairing massage with our thermal circuit — steam, sauna, cold plunge — tends to stretch out how long that loose, reset feeling lasts. Heat before massage helps muscles respond better to pressure, and a proper cool-down afterward helps the body settle rather than staying keyed up. If you're weighing the economics of frequent visits, our [day pass vs. single treatment](/blog/day-pass-vs-single-treatment-value) breakdown does the baht-per-relaxation math for you. And if you're building a longer-term rhythm rather than a single visit, our front desk team is genuinely happy to help you map out something realistic for your goals and your time in Phuket.

@@ -41,15 +41,15 @@ We're not claiming to have reinvented Thai cuisine — nobody needs us for that,
 
 #### Garden-to-Table as Part of the Wellness Philosophy
 
-Beyond the menu itself, where and how ingredients are sourced matters to the overall wellness intention behind the restaurant — covered in more detail in our garden-to-table article — but the short version is that fresher ingredients, sourced with real intention rather than pure convenience, tend to both taste better and align more genuinely with a wellness-focused visit than food that wasn't given the same thought.
+Beyond the menu itself, where and how ingredients are sourced matters to the overall wellness intention behind the restaurant — covered in more detail in our [garden-to-table article](/blog/garden-to-table-ingredient-sourcing) — but the short version is that fresher ingredients, sourced with real intention rather than pure convenience, tend to both taste better and align more genuinely with a wellness-focused visit than food that wasn't given the same thought.
 
 #### A Practical Guide to Timing Your Meal Around Treatments
 
-If you're planning a spa day and want to think through food timing deliberately rather than leaving it to chance:
+If you're planning a spa day and want to think through food timing deliberately rather than leaving it to chance (our full [what-to-eat guide](/blog/what-to-eat-before-after-massage-sauna) goes deeper, right down to the coconut water):
 
 **Before treatments:** A lighter meal or substantial snack 1-2 hours beforehand tends to work best — enough that you're not arriving genuinely hungry (which undermines relaxation and heat tolerance more than people expect), without a heavy meal actively competing with digestion during your treatment.
 
-**Immediately before entering the thermal circuit specifically:** Avoid eating in the 30-60 minutes directly before heat exposure if you can — a very full stomach and significant heat together tend to feel uncomfortable for most people, and not in an interesting way.
+**Immediately before entering the thermal circuit specifically:** Avoid eating in the 30-60 minutes directly before heat exposure if you can — a very full stomach and significant heat together tend to feel uncomfortable for most people, and not in an interesting way. (For the full choreography of heat, massage, and meals, our [spa day sequencing guide](/blog/sauna-before-or-after-massage) has you covered.)
 
 **After treatments:** This is where a more substantial, restorative meal makes the most sense, and honestly, the part most guests look forward to anyway — your body has genuinely expended energy and fluid through massage and heat exposure, and refueling properly, with real attention to hydration and nutrient-dense food, extends the benefits of the treatments themselves.
 
@@ -57,7 +57,7 @@ If you're planning a spa day and want to think through food timing deliberately 
 
 Even setting the physiology aside, there's a simpler case here: ending a day of massage and thermal circuit relaxation with a rushed, low-quality convenience meal genuinely undercuts the whole experience. A slow, unhurried meal in the same garden setting, prepared with the same care as the treatments themselves, keeps the sense of a complete, intentional wellness day going rather than having it end abruptly the second your massage does.
 
-That's ultimately the simplest version of why we built a full restaurant instead of treating food as incidental: a spa day is a complete experience, and food is genuinely part of it, not a footnote at the end.
+That's ultimately the simplest version of why we built a full restaurant instead of treating food as incidental: a spa day is a complete experience, and food is genuinely part of it, not a footnote at the end. If you're building that complete day from scratch, our [half-day in Rawai itinerary](/blog/half-day-rawai-beach-spa-itinerary) shows how the beach, spa, and dinner pieces fit together.
 
 ---
 
@@ -78,7 +78,7 @@ Thai cuisine's distinctive flavor profile — bright, aromatic, layered with cit
 
 #### Lemongrass (Takrai)
 
-Perhaps the most immediately recognizable Thai aromatic, lemongrass is a tall, fibrous grass with a bright, citrusy scent and flavor, used both in cooking (typically bruised or finely sliced — the fibrous stalk itself is not a chewing experience anyone should attempt) and throughout traditional Thai wellness practices. It's the primary aromatic in our herbal steam room and a core ingredient in our herbal compress massage blend.
+Perhaps the most immediately recognizable Thai aromatic, lemongrass is a tall, fibrous grass with a bright, citrusy scent and flavor, used both in cooking (typically bruised or finely sliced — the fibrous stalk itself is not a chewing experience anyone should attempt) and throughout traditional Thai wellness practices. It's the primary aromatic in our herbal steam room and a core ingredient in our [herbal compress massage](/blog/herbal-compress-massage-explained) blend.
 
 Beyond its distinctive flavor and scent, lemongrass has a long history in traditional medicine practices across Southeast Asia, and ongoing research (searchable through databases like PubMed) continues to investigate its compounds for potential antimicrobial and anti-inflammatory properties, though as with most traditional botanicals, the strength of formal clinical evidence varies by specific claim.
 
@@ -108,7 +108,7 @@ Both are used generously and fresh, typically added late in cooking or as a garn
 
 #### Turmeric (Khamin)
 
-Covered in more depth in our dedicated turmeric articles (both the body scrub and our turmeric latte), turmeric earns a mention here as a foundational Thai culinary and traditional-medicine ingredient in its own right — used throughout southern Thai cooking specifically (more so than in some other Thai regional cuisines) for both its distinctive golden color and warm, slightly bitter flavor.
+Covered in more depth in our dedicated turmeric articles (both the [body scrub](/blog/body-scrub-wrap-turmeric-salt-coconut-milk) and our [turmeric latte](/blog/turmeric-latte-ton-mai-explained) — yes, we've written about this root twice, it earned it), turmeric earns a mention here as a foundational Thai culinary and traditional-medicine ingredient in its own right — used throughout southern Thai cooking specifically (more so than in some other Thai regional cuisines) for both its distinctive golden color and warm, slightly bitter flavor.
 
 #### How These Herbs Connect Food and Wellness at Ton Mai Spa
 
@@ -160,7 +160,7 @@ Good post-treatment choices emphasize:
 - **Protein for muscle recovery** — particularly relevant after a deep tissue session, where muscle tissue has been actively worked over
 - **Whole, nutrient-dense foods generally** — vegetables, whole grains, healthy fats — rather than reaching for whatever's fastest simply because you're now ravenous
 
-This is genuinely where our restaurant's approach — healthy Thai food, prepared with real ingredients and thoughtful technique — becomes directly practical rather than purely a nice-to-have: a meal built around fresh vegetables, lean protein, and genuinely hydrating ingredients (coconut, citrus, herbs) is close to an ideal post-treatment meal almost by design.
+This is genuinely where [our restaurant's approach](/blog/why-we-pair-healthy-thai-food-with-spa) — healthy Thai food, prepared with real ingredients and thoughtful technique — becomes directly practical rather than purely a nice-to-have: a meal built around fresh vegetables, lean protein, and genuinely hydrating ingredients (coconut, citrus, herbs) is close to an ideal post-treatment meal almost by design.
 
 #### A Specific Note on Alcohol
 
@@ -173,7 +173,7 @@ If a drink is part of your ideal spa day, we'd suggest saving it for your after-
 If you're planning a longer visit combining massage and thermal circuit use, here's a practical meal-timing framework:
 
 1. **Light meal or substantial snack**, 1-2 hours before your first treatment
-2. **Treatments** (massage, thermal circuit, or both, in whatever order you prefer)
+2. **Treatments** — massage, thermal circuit, or both, in [whatever order suits you](/blog/sauna-before-or-after-massage)
 3. **Rehydration immediately after**, before eating anything substantial
 4. **A proper, substantial meal** once treatments are complete, ideally allowing 20-30 minutes of general rest first if you've just finished intense heat exposure or a deep tissue session
 
@@ -198,7 +198,7 @@ Our turmeric latte has quietly become one of the most-ordered items on the resta
 
 #### What's Actually in Our Turmeric Latte
 
-Our recipe centers on fresh, real turmeric root (not just powder alone, though a quality powder does form part of the base too) combined with a warm milk base — we offer both dairy and plant-based options, since the specific type of milk matters less to the core turmeric benefit than most people assume — along with a small amount of black pepper, a touch of natural sweetener, and warming spices like cinnamon and ginger that round out turmeric's flavor.
+Our recipe centers on fresh, real turmeric root (not just powder alone, though a quality powder does form part of the base too — more on turmeric's whole family tree in our [Thai herbs guide](/blog/beginners-guide-thai-herbs)) combined with a warm milk base — we offer both dairy and plant-based options, since the specific type of milk matters less to the core turmeric benefit than most people assume — along with a small amount of black pepper, a touch of natural sweetener, and warming spices like cinnamon and ginger that round out turmeric's flavor.
 
 The black pepper is deliberate, not just a flavor flourish: piperine, the active compound in black pepper, has documented research (searchable through PubMed and similar databases) showing it significantly increases the body's absorption of curcumin, turmeric's primary active compound, which is otherwise pretty poorly absorbed on its own. This is genuinely well-established curcumin research, not a wellness-trend guess — a turmeric drink with no black pepper or fat content is basically turmeric wearing a costume, missing the part that makes it actually worth drinking for its properties.
 
@@ -216,7 +216,7 @@ Despite Phuket's heat making an iced version tempting on paper, we serve our tur
 
 #### Pairing It With Your Spa Visit
 
-The turmeric latte connects naturally to another element of a Ton Mai Spa visit, if you're curious about the ingredient beyond just the taste: our turmeric-salt body scrub uses the same root from a completely different angle (topical rather than ingested), and trying both — the scrub during treatment, the latte at the restaurant — gives you a fuller sense of how the same ingredient shows up across different corners of Thai wellness tradition.
+The turmeric latte connects naturally to another element of a Ton Mai Spa visit, if you're curious about the ingredient beyond just the taste: our [turmeric-salt body scrub](/blog/body-scrub-wrap-turmeric-salt-coconut-milk) uses the same root from a completely different angle (topical rather than ingested), and trying both — the scrub during treatment, the latte at the restaurant — gives you a fuller sense of how the same ingredient shows up across different corners of Thai wellness tradition. Drinking it and wearing it in the same afternoon is, we'd argue, peak turmeric appreciation.
 
 It's also, simply, a genuinely pleasant way to end (or begin) a spa visit — a warm, gently spiced drink that fits the unhurried, garden-set atmosphere we're going for, whether or not you're motivated by the research or just enjoy the flavor. Both reasons are perfectly valid.
 
@@ -255,7 +255,7 @@ For ingredients beyond what our own garden provides, we prioritize working with 
 
 #### Why This Connects to Our Broader Wellness Philosophy
 
-There's a meaningful thread connecting how we think about ingredient sourcing and how we think about the rest of the spa experience — both come down to a preference for genuine, intentional practice over convenience-driven shortcuts, even when the shortcut would be easier or cheaper. Just as we built a genuine, properly-designed thermal circuit rather than a single, slightly apologetic sauna, and use real traditional herbal blends rather than generic aromatherapy, we've extended that same intentionality to how our restaurant sources what it serves.
+There's a meaningful thread connecting how we think about ingredient sourcing and how we think about the rest of the spa experience — both come down to a preference for genuine, intentional practice over convenience-driven shortcuts, even when the shortcut would be easier or cheaper. Just as we built a genuine, properly-designed thermal circuit rather than a single, slightly apologetic sauna, and [pair the food with treatments deliberately](/blog/why-we-pair-healthy-thai-food-with-spa) rather than as an afterthought, we've extended that same intentionality to how our restaurant sources what it serves.
 
 This also connects to a broader global shift in wellness tourism, tracked by organizations like the Global Wellness Institute, toward more integrated, sustainability-conscious experiences — travelers increasingly expect (reasonably) that a wellness-focused destination's food reflects the same values as its treatments, rather than existing as a disconnected commercial add-on that happens to be located nearby.
 
@@ -265,4 +265,4 @@ We'd rather be straightforward than oversell this: we're a spa with an integrate
 
 #### What This Means for Your Visit
 
-Practically, this means that when you're eating at our restaurant — particularly dishes with prominent fresh herb components — there's a genuine chance some of what's on your plate was growing in the same garden you walked through on your way from the steam room to the sauna, harvested that same day rather than days prior. Small detail in the scope of a full spa visit, but one we think reflects the same underlying philosophy running through everything else here: real ingredients, real technique, and a preference for doing things properly over doing them merely adequately.
+Practically, this means that when you're eating at our restaurant — particularly dishes with prominent fresh herb components — there's a genuine chance some of what's on your plate was growing in the same garden you walked through on your way from the steam room to the sauna, harvested that same day rather than days prior. Small detail in the scope of [a full Rawai spa day](/blog/half-day-rawai-beach-spa-itinerary), but one we think reflects the same underlying philosophy running through everything else here: real ingredients, real technique, and a preference for doing things properly over doing them merely adequately.

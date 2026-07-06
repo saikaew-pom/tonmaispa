@@ -53,7 +53,7 @@ Most guests run through the sequence once or twice per visit, with a proper rest
 
 The thermal circuit isn't universally right for everyone, and it's worth saying that plainly rather than pretending it's risk-free for all guests:
 
-- **Pregnant guests** are generally advised to avoid or significantly limit sauna and steam room heat — see our full article on prenatal massage safety, and check with your own doctor before any heat-based treatment during pregnancy.
+- **Pregnant guests** are generally advised to avoid or significantly limit sauna and steam room heat — see our full article on [prenatal massage safety](/blog/prenatal-massage-safety-phuket), and check with your own doctor before any heat-based treatment during pregnancy.
 - **Anyone with cardiovascular conditions, uncontrolled high blood pressure, or a history of heart problems** should get clearance from their doctor before the cold plunge specifically — the sudden vasoconstriction response is a genuine cardiovascular event, not just an intense sensation.
 - **Anyone dehydrated, recently drinking, or feeling unwell** should skip the circuit entirely that day — heat exposure while dehydrated meaningfully raises the risk of dizziness or fainting.
 - **Guests with certain skin conditions** should ask staff whether steam or sauna heat might aggravate their specific situation before diving in.
@@ -72,9 +72,9 @@ A few practical notes that quietly make the whole experience better:
 
 #### Combining the Circuit With Other Treatments
 
-The circuit pairs beautifully with massage, before or after, depending on what you're after. Doing it before massage warms and loosens muscles, so your therapist can work effectively from minute one instead of spending the opening stretch just warming tissue with their hands. Doing it after extends and deepens the relaxation the massage already built — though give it at least 20-30 minutes after a deep tissue session specifically before diving into intense heat or cold, just to let your body settle first.
+The circuit pairs beautifully with [massage](/blog/traditional-thai-massage-vs-deep-tissue), before or after, depending on what you're after. Doing it before massage warms and loosens muscles, so your therapist can work effectively from minute one instead of spending the opening stretch just warming tissue with their hands. Doing it after extends and deepens the relaxation the massage already built — though give it at least 20-30 minutes after a deep tissue session specifically before diving into intense heat or cold, just to let your body settle first. (We've written a whole [sequencing guide](/blog/sauna-before-or-after-massage) for the truly committed planners among you.)
 
-However you sequence it, the thermal circuit is meant to be the actual differentiator of a Ton Mai Spa visit — not a bonus round, but a core part of the experience, and consistently the thing repeat guests tell us brought them back.
+However you sequence it, the thermal circuit is meant to be the actual differentiator of a Ton Mai Spa visit — not a bonus round, but a core part of the experience, and consistently the thing repeat guests tell us brought them back. If you want the practical details — price, what's included, how the day pass works — [that guide is here](/blog/whats-included-wellness-circuit-day-pass).
 
 ---
 
@@ -91,7 +91,7 @@ However you sequence it, the thermal circuit is meant to be the actual different
 
 ### Article
 
-Cold plunging has gone from niche wellness practice to full-blown global trend over the past few years, and Phuket — being reliably, relentlessly warm — is actually a great place to try it. The contrast between the air outside and the water in the pool feels more dramatic (and satisfying) here than in climates that are already a bit chilly to begin with. Still, it's worth separating the genuine, research-backed benefits from the more breathless wellness-influencer claims before you commit to your first plunge.
+Cold plunging has gone from niche wellness practice to full-blown global trend over the past few years, and Phuket — being [reliably, relentlessly warm](/blog/best-time-to-visit-rawai-nai-harn) — is actually a great place to try it. The contrast between the air outside and the water in the pool feels more dramatic (and satisfying) here than in climates that are already a bit chilly to begin with; plunging into cold water in Helsinki is brave, but plunging into it when it's 33°C outside is just good sense. Still, it's worth separating the genuine, research-backed benefits from the more breathless wellness-influencer claims before you commit to your first plunge.
 
 #### What Cold Plunging Actually Does to the Body
 
@@ -144,7 +144,7 @@ Cleared and ready? Here's how to make it (mostly) painless:
 
 For guests who visit often or live in Phuket long-term and want cold plunging as an ongoing habit rather than a one-time party trick, consistency beats intensity — a shorter, regular plunge (1-2 minutes, 2-3 times a week) builds real tolerance and benefit more reliably than one big dramatic session every so often. Pairing it consistently with the sauna beforehand, same sequence each time, also seems to help most regular guests settle into a rhythm rather than treating each visit like round one of a fight they might lose.
 
-Whatever your relationship with the cold plunge ends up being, it's entirely optional in our circuit — guests are always welcome to enjoy the steam room and sauna without ever touching the cold water, and skipping it doesn't make for an incomplete visit. Some things just aren't for everyone, and that's fine.
+Whatever your relationship with the cold plunge ends up being, it's entirely optional in [our circuit](/blog/thermal-circuit-steam-sauna-cold-plunge-explained) — guests are always welcome to enjoy the steam room and sauna without ever touching the cold water, and skipping it doesn't make for an incomplete visit. Some things just aren't for everyone, and that's fine. The cold plunge will not take it personally.
 
 ---
 
@@ -185,7 +185,7 @@ In a steam room, that evaporative cooling is largely shut off by the humidity, w
 
 **Herbal Steam Room:**
 - Moist heat that sinks into skin faster thanks to humidity
-- At Ton Mai Spa, infused with lemongrass, kaffir lime, and eucalyptus — so there's a genuine aromatherapy layer on top of the heat itself
+- At Ton Mai Spa, infused with lemongrass, kaffir lime, and eucalyptus — the same blend as our [herbal compress massage](/blog/herbal-compress-massage-explained), so there's a genuine aromatherapy layer on top of the heat itself
 - Often feels gentler to start, making it a good entry point before the more intense dry heat
 - The humidity can feel genuinely good for respiratory comfort — similar logic to why steam inhalation is a classic home remedy for congestion, though obviously this is a wellness environment, not a clinic
 
@@ -197,7 +197,7 @@ If your visit only leaves time for one, not the full circuit:
 
 **Choose the sauna if** you want a more traditional, vigorous heat experience, you're interested in the cardiovascular research increasingly tied to regular sauna use, dry heat is just easier for you to sit with longer, or you're building toward the cold plunge and want the sharpest possible contrast.
 
-Given the choice within the full circuit, most guests end up doing both anyway — starting gentle in the steam room, then stepping up into sauna heat, letting the body acclimate progressively rather than going straight for the most intense option available.
+Given the choice within [the full circuit](/blog/thermal-circuit-steam-sauna-cold-plunge-explained), most guests end up doing both anyway — starting gentle in the steam room, then stepping up into sauna heat, letting the body acclimate progressively rather than going straight for the most intense option available. This is spa strategy, not indecision.
 
 #### A Note on Session Length and Listening to Your Body
 
@@ -230,7 +230,7 @@ One of the most practical, slightly agonized questions guests ask when planning 
 
 #### The Case for Sauna (or Steam) Before Massage
 
-Heat before massage has real physiological logic behind it: warming muscles and boosting blood flow makes tissue more pliable, which usually lets a therapist work effectively from the very first minute rather than spending the opening stretch just warming you up with their hands alone.
+Heat before massage has real physiological logic behind it: warming muscles and boosting blood flow makes tissue more pliable, which usually lets a therapist work effectively from the very first minute rather than spending the opening stretch just warming you up with their hands alone. (Not sure whether to pick [sauna or steam](/blog/finnish-sauna-vs-herbal-steam-room) for this? Either works — that guide covers the difference.)
 
 This works especially well before deep tissue massage specifically — the goal there is working into deeper muscle layers, and pre-warmed tissue simply responds better to sustained, targeted pressure than cold tissue does.
 
@@ -268,7 +268,7 @@ For guests building a complete half-day or full-day visit combining massage and 
 2. Herbal steam room, 10-15 minutes, easing in
 3. Finnish sauna, 10-15 minutes, building intensity
 4. Brief rest and rehydration, 5-10 minutes
-5. Massage (Traditional Thai, Deep Tissue, or herbal compress, depending on the day's goal)
+5. Massage — Traditional Thai, Deep Tissue, or herbal compress, depending on the day's goal ([undecided? start here](/blog/how-to-choose-right-treatment-first-visit))
 6. Rest, 15-20 minutes, before any further heat
 7. Optional: a shorter second round of steam/sauna
 8. Cold plunge, as the grand finale, followed by proper rest
@@ -301,11 +301,11 @@ Most spa menus in Phuket look remarkably alike: a list of massage styles, maybe 
 
 Phuket's spa industry is enormous and genuinely excellent in many respects — the quality of massage therapy training here, rooted in Thailand's deep traditional practice, is world-class, full stop. But most spas, understandably, optimize for what's most immediately profitable and space-efficient: treatment rooms for massage and beauty services. A real thermal circuit — an actual steam room, a proper Finnish sauna, a genuine cold plunge, all connected and designed to be used in sequence — takes meaningfully more space, infrastructure, and ongoing investment than a corridor of massage rooms.
 
-So visitors chasing a complete contrast-therapy experience, increasingly popular as global wellness research catches up with what people already suspected, often had to pick: excellent massage (widely available) or a genuine thermal circuit (much harder to find, especially one actually designed around the sequence rather than one lonely sauna bolted on as an afterthought).
+So visitors chasing a complete [contrast-therapy experience](/blog/thermal-circuit-steam-sauna-cold-plunge-explained), increasingly popular as global wellness research catches up with what people already suspected, often had to pick: excellent massage (widely available) or a genuine thermal circuit (much harder to find, especially one actually designed around the sequence rather than one lonely sauna bolted on as an afterthought).
 
 #### What "Built With Intention" Actually Means
 
-It would've been cheaper and easier to install one generic sauna and call it done. Instead, we built three distinct thermal environments — herbal steam room, Finnish sauna, cold plunge pool — physically linked by shaded garden paths, so the walk between stages feels like part of the experience rather than an administrative errand between amenities.
+It would've been cheaper and easier to install one generic sauna and call it done. Instead, we built three distinct thermal environments — [herbal steam room, Finnish sauna](/blog/finnish-sauna-vs-herbal-steam-room), and [cold plunge pool](/blog/cold-plunge-benefits-and-risks) — physically linked by shaded garden paths, so the walk between stages feels like part of the experience rather than an administrative errand between amenities.
 
 The steam room's aromatic profile (lemongrass, kaffir lime, eucalyptus) wasn't picked at random — it matches our herbal compress massage exactly, giving a genuine thread of consistency across a guest's visit instead of every treatment feeling like a separate, unrelated product. The Finnish sauna uses traditional wood paneling rather than a slicker modern design, because the scent of heated wood and the warmth underfoot are genuinely part of what makes sauna culture what it is — we weren't willing to trade that away for a more "Instagrammable" look.
 
@@ -327,6 +327,6 @@ Weather does occasionally have opinions about this — Phuket's rainy season bri
 
 Because the circuit is genuinely central to what we offer, we'd encourage first-timers to build real time into their visit for it, rather than squeezing it in as an afterthought around a massage booking. A rushed 15-minute dash through the circuit misses most of the point — the progressive warming, the properly timed cold plunge, the rest periods that let each stage actually land.
 
-If you're deciding how to structure your first visit, our day pass (details in our guide to what's included) is built specifically around unhurried circuit use — full access to steam, sauna, and cold plunge for the day, with no pressure to cram the sequence into a fixed treatment-room slot.
+If you're deciding how to structure your first visit, our day pass ([full details on what's included here](/blog/whats-included-wellness-circuit-day-pass)) is built specifically around unhurried circuit use — full access to steam, sauna, and cold plunge for the day, with no pressure to cram the sequence into a fixed treatment-room slot.
 
 We didn't build this circuit because it was the easiest or most immediately profitable route available. We built it because we genuinely believe it's a better, more complete version of what a wellness-focused spa visit in Phuket should be — and the guests who come back specifically for the circuit, sometimes even more than for any single massage, are the clearest sign we got the core idea right.

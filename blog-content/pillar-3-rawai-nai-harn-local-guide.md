@@ -27,7 +27,7 @@ If island-hopping interests you, Rawai's pier is one of the easier departure poi
 
 #### Late Morning: The Short Trip Inland
 
-Ton Mai Spa sits about five minutes by car or scooter inland from Rawai's beachfront, tucked into a quieter residential stretch that feels a world away from the beach despite the short distance. That's on purpose — close enough for an easy half-day combination like this one, far enough to actually be quiet, without beach noise wandering into a garden spa setting uninvited.
+Ton Mai Spa sits about five minutes by car or scooter inland from Rawai's beachfront ([full directions, parking and landmarks here](/blog/getting-to-ton-mai-spa-directions)), tucked into a quieter residential stretch that feels a world away from the beach despite the short distance. That's on purpose — close enough for an easy half-day combination like this one, far enough to actually be quiet, without beach noise wandering into a garden spa setting uninvited.
 
 By scooter — a common, practical way to get around Rawai — the drive inland is simple and well-signed. By taxi or ride-hailing app, travel times can stretch a bit during peak season traffic, so building in a little buffer time is sensible, especially if you've got a specific treatment slot booked and don't want to arrive flustered instead of relaxed.
 
@@ -36,9 +36,9 @@ By scooter — a common, practical way to get around Rawai — the drive inland 
 This is where the whole day changes gears. After a morning of beach walking, sun, and salt air, stepping into our garden setting — shaded pathways, the thermal circuit's steam and cold plunge, and a massage — tends to feel like a genuinely earned contrast rather than just another item on the itinerary.
 
 For a half-day combination like this, we'd suggest:
-- A massage booking (Traditional Thai for a full-body reset after beach walking, Deep Tissue if the sun and activity have picked a specific fight with your shoulders)
-- Time in the thermal circuit if your schedule allows — even a shortened version, steam room plus a quick cold plunge, is a genuinely different sensory experience from the beach morning
-- A meal at our garden restaurant to close things out, rather than bolting the moment your treatment ends
+- A [massage booking](/blog/traditional-thai-massage-vs-deep-tissue) (Traditional Thai for a full-body reset after beach walking, Deep Tissue if the sun and activity have picked a specific fight with your shoulders)
+- Time in the [thermal circuit](/blog/thermal-circuit-steam-sauna-cold-plunge-explained) if your schedule allows — even a shortened version, steam room plus a quick cold plunge, is a genuinely different sensory experience from the beach morning
+- A meal at our [garden restaurant](/blog/why-we-pair-healthy-thai-food-with-spa) to close things out, rather than bolting the moment your treatment ends — your massage worked hard, let it settle
 
 #### Why This Combination Works Particularly Well
 
@@ -105,7 +105,7 @@ This is where local knowledge diverges hard from the standard tourist assumption
 - Dramatic afternoon storms that plenty of visitors actually enjoy rather than dread — mornings are frequently clear, with storms rolling in later in the day, like clockwork
 - Rougher, less swimmable conditions at Nai Harn specifically, so it's not the season to prioritize if beach swimming is the whole plan
 
-It's also, genuinely, an excellent season for a wellness-focused trip specifically. If beach swimming isn't your top priority and spa treatments, our thermal circuit, and generally quieter conditions are more your speed, rainy season delivers real value without the beach-first compromises. There's also something specifically satisfying about a hot steam room session on a rainy afternoon that a lot of guests swear beats the same treatment on a blazing dry-season day.
+It's also, genuinely, an excellent season for a wellness-focused trip specifically. If beach swimming isn't your top priority and spa treatments, our thermal circuit, and generally quieter conditions are more your speed, rainy season delivers real value without the beach-first compromises. There's also something specifically satisfying about a hot steam room session on a rainy afternoon that a lot of guests swear beats the same treatment on a blazing dry-season day — and if the sea's too rough for swimming, [our cold plunge](/blog/cold-plunge-benefits-and-risks) is happy to provide the cold-water thrill with none of the currents.
 
 #### Shoulder Periods Worth Knowing
 
@@ -123,7 +123,7 @@ Thailand's traditional New Year, Songkran, falls in mid-April and brings a genui
 
 **If you want the best overall balance:** the shoulder periods (late April-May, October-November) tend to reward travelers most consistently, with a bit less certainty than peak dry season but noticeably better value.
 
-Whatever season brings you here, our garden spa setting — covered walkways, indoor and outdoor treatment areas — is built to handle Phuket's full weather range, so a spa afternoon stays a solid, enjoyable option no matter what the sky is doing that day.
+Whatever season brings you here, our garden spa setting — covered walkways, indoor and outdoor treatment areas — is built to handle Phuket's full weather range, so a spa afternoon stays a solid, enjoyable option no matter what the sky is doing that day. And if the trip in question is a honeymoon or anniversary, our guide to [couples spa packages](/blog/best-couples-spa-packages-phuket) covers the seasonal timing question from the romantic angle too.
 
 ---
 
@@ -181,7 +181,7 @@ Rawai and Patong sit at opposite ends of the island's southern-to-central west c
 
 #### The Bottom Line
 
-There's no universally correct answer between Rawai and Patong — it depends entirely on what you're actually after from your Phuket trip. If wellness, quiet, and a genuinely local atmosphere are the priority, Rawai (and a stop at Ton Mai Spa) fits naturally. If nightlife, restaurant variety, and being in the middle of the action matter more, Patong remains Phuket's obvious answer for that kind of trip. Plenty of our own guests, notably, are staying in Patong or elsewhere and specifically travel down to Rawai for a day precisely because it's the contrast to wherever they're based — proof these two areas work as well together as they do apart.
+There's no universally correct answer between Rawai and Patong — it depends entirely on what you're actually after from your Phuket trip. If wellness, quiet, and a genuinely local atmosphere are the priority, Rawai (and [a stop at Ton Mai Spa](/blog/how-to-book-a-spa-day-phuket)) fits naturally. If nightlife, restaurant variety, and being in the middle of the action matter more, Patong remains Phuket's obvious answer for that kind of trip. Plenty of our own guests, notably, are staying in Patong or elsewhere and specifically travel down to Rawai for a day — [here's how that half-day usually looks](/blog/half-day-rawai-beach-spa-itinerary) — precisely because it's the contrast to wherever they're based. Proof these two areas work as well together as they do apart, like a very loud friend and a very calm one.
 
 ---
 
@@ -208,13 +208,13 @@ This is where well-intentioned long-stay visitors tend to go wrong early on — 
 
 #### Building a Realistic Massage and Spa Rhythm
 
-As covered in more detail in our guide to massage frequency, long-term residents generally do best with a baseline of roughly every 2-4 weeks for general wellness, adjusted up if you're dealing with chronic desk-work tension and down if your day-to-day here is genuinely low-stress and physically comfortable.
+As covered in more detail in our guide to [massage frequency](/blog/how-often-should-you-get-a-massage), long-term residents generally do best with a baseline of roughly every 2-4 weeks for general wellness, adjusted up if you're dealing with chronic desk-work tension and down if your day-to-day here is genuinely low-stress and physically comfortable.
 
 The mistake to dodge: treating every single visit as maximum indulgence — full thermal circuit, longest massage on the menu, every add-on — simply because it's still cheaper here than at home. That pattern is genuinely unsustainable for both budget and body over months, and tends to produce diminishing enjoyment as the novelty wears thin. A steadier, more measured rhythm — even shorter or simpler visits than an occasional splurge — tends to serve you better long-term and stays something you actually look forward to, rather than something that quietly turns into a chore.
 
 #### The Thermal Circuit as an Ongoing Practice, Not a Novelty
 
-For long-stay visitors, our thermal circuit deserves a different mindset than a first-time tourist would bring. Rather than a novelty one-off, regular use — even without a massage attached — can become a genuine, sustainable habit, much like sauna culture functions as an ongoing part of daily life in countries like Finland, not an occasional treat.
+For long-stay visitors, [our thermal circuit](/blog/why-we-built-a-full-wellness-circuit) deserves a different mindset than a first-time tourist would bring. Rather than a novelty one-off, regular use — even without a massage attached — can become a genuine, sustainable habit, much like sauna culture functions as an ongoing part of daily life in countries like Finland, not an occasional treat.
 
 Cold plunge tolerance specifically benefits enormously from consistency rather than the occasional heroic attempt — long-stay visitors who build a regular (even weekly) habit report meaningfully better experiences than someone who tries it once on vacation and judges the entire practice off one bracing afternoon.
 
@@ -263,7 +263,7 @@ A couple of scooter-specific notes worth taking seriously: Thailand requires a v
 
 Driving yourself, or taking a taxi or ride-hailing app (Grab is the go-to across Phuket)? Same Wiset Road route applies, and sharing our exact address or a map pin with the driver is the most reliable way to get a direct route, since not every driver knows every specific business on a quiet residential stretch.
 
-We've got on-site parking for guests arriving by car — if you're visiting during a busier period or bringing a larger group, mention the group size when booking so we can plan around it.
+We've got on-site parking for guests arriving by car — if you're visiting during a busier period or bringing a larger group, mention the group size [when booking](/blog/how-to-book-a-spa-day-phuket) so we can plan around it.
 
 #### From Phuket International Airport
 
@@ -275,7 +275,7 @@ The airport sits up north, Rawai is all the way down south — a genuine cross-i
 
 **From Kata or Karon:** A moderate 15-25 minutes depending on traffic, making a combined beach-and-spa day from either quite doable.
 
-**From Patong:** As covered in our comparison guide, a proper cross-island trip — 30-45 minutes — worth factoring in if you're day-tripping down specifically for a spa visit.
+**From Patong:** As covered in our [Rawai vs. Patong comparison](/blog/rawai-vs-patong-phuket-comparison), a proper cross-island trip — 30-45 minutes — worth factoring in if you're day-tripping down specifically for a spa visit.
 
 **From Chalong or Kata Noi:** Both fairly close, roughly 10-20 minutes.
 
@@ -291,6 +291,6 @@ We're open daily from 9am to 11pm, so evening arrivals are entirely normal and w
 
 #### A Practical Tip for First-Time Visitors
 
-If you're combining a spa visit with other Rawai plans that day — the beach, the seafood market, an island boat trip — it's worth mapping the full day's route in advance rather than figuring it out stop by stop. Rawai's roads aren't complicated, but they're not always intuitive for first-timers either, and a little advance planning (even just screenshotting a map with your stops) makes for a noticeably smoother, less frazzled day than improvising directions between each activity in real time.
+If you're combining a spa visit with other Rawai plans that day — the beach, the seafood market, an island boat trip ([our half-day itinerary](/blog/half-day-rawai-beach-spa-itinerary) maps a well-tested version) — it's worth planning the full route in advance rather than figuring it out stop by stop. Rawai's roads aren't complicated, but they're not always intuitive for first-timers either, and a little advance planning (even just screenshotting a map with your stops) makes for a noticeably smoother, less frazzled day than improvising directions between each activity in real time.
 
 However you're arriving — scooter, car, taxi, or a longer cross-island trip — we genuinely think the short journey inland from Rawai's beachfront is part of what makes this place feel distinct: a real, deliberate shift from lively beach energy to quiet, garden-set calm, rather than the two blurring into each other without you noticing.
