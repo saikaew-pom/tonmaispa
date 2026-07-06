@@ -3,6 +3,14 @@ import ConversationsClient from './ConversationsClient'
 
 export const dynamic = 'force-dynamic'
 
+function threadNeedsAttention(thread) {
+  if (thread.mode === 'closed') return false
+  if (thread.mode === 'waiting_for_staff') return true
+  if (!thread.last_inbound_at) return false
+  if (!thread.last_outbound_at) return true
+  return new Date(thread.last_inbound_at).getTime() > new Date(thread.last_outbound_at).getTime()
+}
+
 async function getThreads(selectedId) {
   const admin = createSupabaseAdminClient()
 
@@ -35,7 +43,12 @@ async function getThreads(selectedId) {
     .order('last_active_at', { ascending: false })
     .limit(80)
 
-  const list = threads ?? []
+  const list = (threads ?? []).sort((a, b) => {
+    const aAttention = threadNeedsAttention(a)
+    const bAttention = threadNeedsAttention(b)
+    if (aAttention !== bAttention) return aAttention ? -1 : 1
+    return new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime()
+  })
   const activeId = selectedId || list[0]?.id || null
 
   let messages = []

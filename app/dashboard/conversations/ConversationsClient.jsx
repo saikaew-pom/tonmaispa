@@ -35,6 +35,14 @@ function timeAgo(value) {
   return new Date(value).toLocaleDateString()
 }
 
+function needsAttention(thread) {
+  if (thread.mode === 'closed') return false
+  if (thread.mode === 'waiting_for_staff') return true
+  if (!thread.last_inbound_at) return false
+  if (!thread.last_outbound_at) return true
+  return new Date(thread.last_inbound_at).getTime() > new Date(thread.last_outbound_at).getTime()
+}
+
 function MessageBubble({ message }) {
   const isGuest = message.sender_type === 'customer'
   const isSystem = message.sender_type === 'system'
@@ -83,6 +91,11 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
   const activeThread = useMemo(
     () => initialThreads.find(thread => thread.id === activeId) ?? initialThreads[0] ?? null,
     [initialThreads, activeId],
+  )
+
+  const attentionCount = useMemo(
+    () => initialThreads.filter(needsAttention).length,
+    [initialThreads],
   )
 
   const refreshInbox = useCallback(() => {
@@ -151,7 +164,10 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
         <div style={{ padding: 14, borderBottom: '1px solid var(--color-border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
             <div>
-              <div style={{ font: '700 12px Inter,sans-serif', color: '#1C1917' }}>Recent threads</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ font: '700 12px Inter,sans-serif', color: '#1C1917' }}>Recent threads</span>
+                {attentionCount > 0 && <span style={attentionPill}>{attentionCount} need attention</span>}
+              </div>
               <div style={{ marginTop: 3, font: '400 11px Inter,sans-serif', color: '#9B9390' }}>
                 {initialThreads.length} latest conversations · refreshed {lastRefreshedAt.toLocaleTimeString()}
               </div>
@@ -162,6 +178,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
         <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
           {initialThreads.map(thread => {
             const active = thread.id === activeThread?.id
+            const attention = needsAttention(thread)
             return (
               <button
                 key={thread.id}
@@ -171,17 +188,22 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                   textAlign: 'left',
                   border: 0,
                   borderBottom: '1px solid var(--color-border)',
-                  background: active ? '#F6EFE4' : '#fff',
+                  background: active ? '#F6EFE4' : attention ? '#FFF9EC' : '#fff',
                   padding: 14,
                   cursor: 'pointer',
+                  position: 'relative',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <div style={{ font: '700 13px Inter,sans-serif', color: '#1C1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guestName(thread)}</div>
-                  <div style={{ flexShrink: 0, font: '500 10px Inter,sans-serif', color: '#9B9390' }}>{timeAgo(thread.last_active_at)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                    {attention && <span aria-label="Needs attention" title="New customer message needs staff attention" style={attentionDot} />}
+                    <div style={{ font: attention ? '800 13px Inter,sans-serif' : '700 13px Inter,sans-serif', color: '#1C1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guestName(thread)}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, font: attention ? '800 10px Inter,sans-serif' : '500 10px Inter,sans-serif', color: attention ? '#C4924A' : '#9B9390' }}>{timeAgo(thread.last_active_at)}</div>
                 </div>
                 <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                   <span style={{ font: '700 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#6B6663' }}>{thread.channel}</span>
+                  {attention && <span style={attentionBadge}>Unread</span>}
                   <span style={{
                     borderRadius: 999,
                     padding: '3px 8px',
@@ -210,6 +232,12 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                   {activeThread.customers?.email ? ` · ${activeThread.customers.email}` : ''}
                   {activeThread.profiles?.full_name ? ` · Assigned to ${activeThread.profiles.full_name}` : ''}
                 </div>
+                {needsAttention(activeThread) && (
+                  <div style={{ display: 'inline-flex', marginTop: 10, alignItems: 'center', gap: 7, borderRadius: 999, padding: '5px 10px', background: '#FFF3D8', color: '#8A5B13', font: '800 11px Inter,sans-serif' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 999, background: '#C4924A' }} />
+                    New customer message needs attention
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <button disabled={busy} onClick={() => activeThread.mode !== 'human' && setMode('human')} style={modeButtonStyle('human')} aria-pressed={activeThread.mode === 'human'}>Take over</button>
@@ -266,6 +294,31 @@ const btnPrimary = {
 const btnActiveMode = {
   ...btnPrimary,
   boxShadow: '0 0 0 3px rgba(59,82,73,0.12)',
+}
+
+const attentionPill = {
+  borderRadius: 999,
+  padding: '3px 8px',
+  background: '#FFF3D8',
+  color: '#8A5B13',
+  font: '800 10px Inter,sans-serif',
+}
+
+const attentionDot = {
+  width: 9,
+  height: 9,
+  borderRadius: 999,
+  background: '#C4924A',
+  boxShadow: '0 0 0 3px rgba(196,146,74,0.16)',
+  flexShrink: 0,
+}
+
+const attentionBadge = {
+  borderRadius: 999,
+  padding: '3px 8px',
+  background: '#C4924A',
+  color: '#fff',
+  font: '800 10px Inter,sans-serif',
 }
 
 const btnGhost = {
