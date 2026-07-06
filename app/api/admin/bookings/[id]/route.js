@@ -21,6 +21,22 @@ function addMinutes(time, mins) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim())
+}
+
+function isValidE164Phone(value) {
+  return /^\+[1-9]\d{6,14}$/.test(String(value ?? '').trim())
+}
+
+function missingConfirmationFields(booking) {
+  const missing = []
+  if (!String(booking.guest_name ?? '').trim()) missing.push('guest name')
+  if (!isValidE164Phone(booking.guest_phone)) missing.push('phone with country code, e.g. +66869643159')
+  if (!isValidEmail(booking.guest_email)) missing.push('valid email')
+  return missing
+}
+
 export async function GET(req, { params }) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
@@ -70,6 +86,14 @@ export async function PATCH(req, { params }) {
         error: `${reason} Tick "save anyway" to overbook this slot deliberately.`,
         code: 'SLOT_FULL',
       }, { status: 409 })
+    }
+  }
+
+  const mergedForValidation = { ...before, ...updates }
+  if (mergedForValidation.status === 'confirmed') {
+    const missing = missingConfirmationFields(mergedForValidation)
+    if (missing.length) {
+      return Response.json({ error: `Cannot confirm booking yet. Required: ${missing.join(', ')}.` }, { status: 400 })
     }
   }
 

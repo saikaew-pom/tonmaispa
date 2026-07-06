@@ -57,7 +57,19 @@ function matchesDateRange(booking, dateRangeFilter, customStart, customEnd) {
 const inputSt = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid var(--color-border)', borderRadius: 4, font: '400 13px Inter,sans-serif', color: '#1C1917' }
 const labelSt = { display: 'block', font: '600 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#6B6663', marginBottom: 5 }
 
-export default function BookingsClient({ initialBookings, treatments, therapists, twilioEnabled = false }) {
+function looksLikeE164(phone) {
+  return /^\+[1-9]\d{6,14}$/.test(String(phone ?? '').trim())
+}
+
+function missingConfirmationFields({ guestName, guestPhone, guestEmail }) {
+  const missing = []
+  if (!guestName?.trim()) missing.push('guest name')
+  if (!looksLikeE164(guestPhone)) missing.push('phone with country code, e.g. +66869643159')
+  if (!guestEmail?.trim()) missing.push('email')
+  return missing
+}
+
+export default function BookingsClient({ initialBookings, treatments, therapists, twilioEnabled = false, prefill = {} }) {
   const [bookings, setBookings]     = useState(initialBookings)
   const [view, setView]             = useState('calendar') // 'calendar' | 'table'
   const [statusFilter, setStatusFilter]     = useState('all')
@@ -66,7 +78,7 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   const [search, setSearch]         = useState('')
   const [savingId, setSavingId]     = useState(null)
   const [weekStart, setWeekStart]   = useState(() => getWeekStart(new Date()))
-  const [showNew, setShowNew]       = useState(false)
+  const [showNew, setShowNew]       = useState(Boolean(prefill?.fromConversation))
   const [notifyingId, setNotifyingId] = useState(null) // `${id}:email` | `${id}:whatsapp`
   const [notifyError, setNotifyError] = useState(null)
   const [editingBooking, setEditingBooking] = useState(null)
@@ -198,6 +210,17 @@ export default function BookingsClient({ initialBookings, treatments, therapists
 
   return (
     <div>
+      {prefill?.fromConversation && (
+        <div style={{ background: '#F6EFE4', border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+          <div style={{ font: '700 12px Inter,sans-serif', color: '#3B5249' }}>
+            Creating booking from WhatsApp conversation{prefill.guestName ? ` with ${prefill.guestName}` : ''}
+          </div>
+          <div style={{ marginTop: 3, font: '400 12px Inter,sans-serif', color: '#6B6663' }}>
+            Name, email, and full phone number with country code are required before a booking can be confirmed.
+          </div>
+        </div>
+      )}
+
       <FilterBar />
 
       {notifyError && (
@@ -218,6 +241,7 @@ export default function BookingsClient({ initialBookings, treatments, therapists
         <NewBookingModal
           treatments={treatments}
           therapists={therapists}
+          prefill={prefill}
           onClose={() => setShowNew(false)}
           onCreated={b => { addBooking(b); setShowNew(false) }}
         />
@@ -445,17 +469,17 @@ function LogsModal({ bookingId, onClose }) {
 }
 
 // ── Manual booking creation modal ───────────────────────────────────────────
-function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
-  const [guestName, setGuestName]   = useState('')
-  const [guestPhone, setGuestPhone] = useState('')
-  const [guestEmail, setGuestEmail] = useState('')
+function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCreated }) {
+  const [guestName, setGuestName]   = useState(prefill.guestName ?? '')
+  const [guestPhone, setGuestPhone] = useState(prefill.guestPhone ?? '')
+  const [guestEmail, setGuestEmail] = useState(prefill.guestEmail ?? '')
   const [treatmentId, setTreatmentId] = useState(treatments[0]?.id ?? '')
   const [duration, setDuration]     = useState(treatments[0]?.duration_options?.[0] ?? 60)
   const [therapistId, setTherapistId] = useState('')
   const [date, setDate]             = useState(() => toYMD(new Date()))
   const [time, setTime]             = useState('10:00')
   const [status, setStatus]         = useState('confirmed')
-  const [source, setSource]         = useState('phone')
+  const [source, setSource]         = useState(prefill.fromConversation ? 'chatbot' : 'phone')
   const [notes, setNotes]           = useState('')
   const [saving, setSaving]         = useState(false)
   const [err, setErr]               = useState('')
@@ -475,6 +499,11 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
 
   const handleSubmit = async (e, overbook = false) => {
     e.preventDefault()
+    const missing = status === 'confirmed' ? missingConfirmationFields({ guestName, guestPhone, guestEmail }) : []
+    if (missing.length) {
+      setErr(`Cannot confirm booking yet. Required: ${missing.join(', ')}.`)
+      return
+    }
     setSaving(true)
     setErr('')
     try {
@@ -504,7 +533,12 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,25,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
       <form onClick={e => e.stopPropagation()} onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 10, padding: 28, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#1C1917' }}>New Booking</div>
+          <div>
+            <div style={{ font: '400 22px Cormorant Garamond,serif', color: '#1C1917' }}>New Booking</div>
+            {prefill.fromConversation && (
+              <div style={{ marginTop: 4, font: '500 11px Inter,sans-serif', color: '#C4924A' }}>From WhatsApp conversation</div>
+            )}
+          </div>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9B9390', lineHeight: 1 }}>×</button>
         </div>
 
@@ -516,12 +550,15 @@ function NewBookingModal({ treatments, therapists, onClose, onCreated }) {
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Phone</label>
-              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} style={inputSt} />
+              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} pattern="^\\+[1-9]\\d{6,14}$" title="Use full country code format, e.g. +66869643159" style={inputSt} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelSt}>Email (optional)</label>
-              <input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} style={inputSt} />
+              <label style={labelSt}>Email</label>
+              <input required type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} style={inputSt} />
             </div>
+          </div>
+          <div style={{ marginTop: -6, font: '400 11px/1.5 Inter,sans-serif', color: '#9B9390' }}>
+            Confirmed bookings require guest name, email, and phone with country code.
           </div>
 
           <div>
@@ -624,6 +661,11 @@ function EditBookingModal({ booking, treatments, therapists, onClose, onSaved })
 
   const handleSubmit = async (e, overbook = false) => {
     e.preventDefault()
+    const missing = status === 'confirmed' ? missingConfirmationFields({ guestName, guestPhone, guestEmail }) : []
+    if (missing.length) {
+      setErr(`Cannot confirm booking yet. Required: ${missing.join(', ')}.`)
+      return
+    }
     setSaving(true)
     setErr('')
     try {
@@ -666,12 +708,15 @@ function EditBookingModal({ booking, treatments, therapists, onClose, onSaved })
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Phone</label>
-              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} style={inputSt} />
+              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} pattern="^\\+[1-9]\\d{6,14}$" title="Use full country code format, e.g. +66869643159" style={inputSt} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Email</label>
-              <input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} style={inputSt} />
+              <input required={status === 'confirmed'} type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} style={inputSt} />
             </div>
+          </div>
+          <div style={{ marginTop: -6, font: '400 11px/1.5 Inter,sans-serif', color: '#9B9390' }}>
+            Confirmed bookings require guest name, email, and phone with country code.
           </div>
 
           <div>

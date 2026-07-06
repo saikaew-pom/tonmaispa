@@ -37,12 +37,26 @@ async function getData() {
   }
 }
 
-export default async function BookingsPage() {
+function stringParam(params, key) {
+  const value = params?.[key]
+  return Array.isArray(value) ? value[0] : value
+}
+
+export default async function BookingsPage({ searchParams }) {
+  const params = await searchParams
   const { bookings, treatments, therapists, twilioEnabled } = await getData()
+  const prefill = {
+    fromConversation: stringParam(params, 'fromConversation') === '1',
+    conversationId: stringParam(params, 'conversationId') || '',
+    guestName: stringParam(params, 'guestName') || '',
+    guestPhone: stringParam(params, 'guestPhone') || '',
+    guestEmail: stringParam(params, 'guestEmail') || '',
+    customerId: stringParam(params, 'customerId') || '',
+  }
   return (
     <div>
       <h1 style={{ font: '400 32px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 24px' }}>Bookings</h1>
-      <BookingsClient initialBookings={bookings} treatments={treatments} therapists={therapists} twilioEnabled={twilioEnabled} />
+      <BookingsClient initialBookings={bookings} treatments={treatments} therapists={therapists} twilioEnabled={twilioEnabled} prefill={prefill} />
     </div>
   )
 }

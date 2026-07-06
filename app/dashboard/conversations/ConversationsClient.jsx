@@ -67,6 +67,18 @@ function assignmentLabel(thread, currentStaffId) {
   return 'Assigned to staff'
 }
 
+function conversationBookingUrl(thread) {
+  const params = new URLSearchParams()
+  params.set('fromConversation', '1')
+  params.set('conversationId', thread.id)
+  if (thread.customers?.id) params.set('customerId', thread.customers.id)
+  if (thread.customers?.display_name) params.set('guestName', thread.customers.display_name)
+  if (thread.customers?.email) params.set('guestEmail', thread.customers.email)
+  const phone = thread.customers?.primary_phone_e164 || thread.whatsapp_address?.replace(/^whatsapp:/, '')
+  if (phone) params.set('guestPhone', phone)
+  return `/dashboard/bookings?${params.toString()}`
+}
+
 function MessageBubble({ message }) {
   const isGuest = message.sender_type === 'customer'
   const isSystem = message.sender_type === 'system'
@@ -306,6 +318,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <a href={conversationBookingUrl(activeThread)} style={{ ...btnGhost, textDecoration: 'none', display: 'inline-block' }}>Create booking</a>
                 <button disabled={busy} onClick={() => activeThread.mode !== 'human' && setMode('human')} style={modeButtonStyle('human')} aria-pressed={activeThread.mode === 'human'}>Take over</button>
                 <button disabled={busy} onClick={() => activeThread.mode !== 'bot' && setMode('bot')} style={modeButtonStyle('bot')} aria-pressed={activeThread.mode === 'bot'}>Return to bot</button>
                 <button disabled={busy} onClick={() => activeThread.mode !== 'closed' && setMode('closed')} style={modeButtonStyle('closed')} aria-pressed={activeThread.mode === 'closed'}>Close</button>

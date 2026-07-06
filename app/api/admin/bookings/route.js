@@ -8,6 +8,22 @@ function addMinutes(time, mins) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim())
+}
+
+function isValidE164Phone(value) {
+  return /^\+[1-9]\d{6,14}$/.test(String(value ?? '').trim())
+}
+
+function missingConfirmationFields({ guest_name, guest_phone, guest_email }) {
+  const missing = []
+  if (!String(guest_name ?? '').trim()) missing.push('guest name')
+  if (!isValidE164Phone(guest_phone)) missing.push('phone with country code, e.g. +66869643159')
+  if (!isValidEmail(guest_email)) missing.push('valid email')
+  return missing
+}
+
 // POST /api/admin/bookings — staff-created bookings (phone, walk-in, etc).
 // Unlike the public /api/bookings route, this skips Turnstile/rate-limiting
 // (already behind requireAdmin). Slot capacity (qualified therapist free +
@@ -23,6 +39,14 @@ export async function POST(req) {
 
   if (!guest_name || !guest_phone || !treatment_id || !date || !time_slot || !duration) {
     return Response.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  const requestedStatus = status || 'confirmed'
+  if (requestedStatus === 'confirmed') {
+    const missing = missingConfirmationFields({ guest_name, guest_phone, guest_email })
+    if (missing.length) {
+      return Response.json({ error: `Cannot confirm booking yet. Required: ${missing.join(', ')}.` }, { status: 400 })
+    }
   }
 
   const [{ data: treatment }, capacity] = await Promise.all([
@@ -63,7 +87,7 @@ export async function POST(req) {
       time_slot,
       duration,
       price,
-      status:       status || 'confirmed',
+      status:       requestedStatus,
       source:       source || 'phone',
       notes:        notes || null,
     })
