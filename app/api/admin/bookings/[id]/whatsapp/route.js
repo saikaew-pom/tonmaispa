@@ -51,7 +51,7 @@ export async function POST(req, { params }) {
     return Response.json({ error: `No update message defined for status "${booking.status}".` }, { status: 400 })
   }
 
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66822866058'
   const body = messageFor(booking.status, {
     refCode: booking.ref_code,
     treatment: booking.spa_treatments?.name ?? 'Spa Treatment',

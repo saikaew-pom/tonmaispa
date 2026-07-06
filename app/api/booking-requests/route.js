@@ -141,7 +141,7 @@ export async function POST(req) {
     },
   })
 
-  const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
+  const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66822866058'
   let whatsappStatus = null
   try {
     const message = requestReceivedMessage({

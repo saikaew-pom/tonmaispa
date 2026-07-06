@@ -55,7 +55,7 @@ export default async function SpaMenuPage({ params }) {
   const { lang } = await params
   const [{ grouped, settings }, dict] = await Promise.all([getData(lang), getDictionary(lang)])
   const categories = Object.keys(grouped)
-  const wa   = settings['settings.whatsapp_number'] ?? '66631175211'
+  const wa   = settings['settings.whatsapp_number'] ?? '66822866058'
   const waMsg = encodeURIComponent("Hi, I'd like to book a treatment at Ton Mai Spa")
 
   return (

@@ -3,7 +3,7 @@ import BookingCTA from '@/components/ui/BookingCTA'
 import { t } from '@/lib/i18n/t'
 
 export default function ContactSection({ settings = {}, dict = {} }) {
-  const wa     = settings['settings.whatsapp_number'] ?? '66631175211'
+  const wa     = settings['settings.whatsapp_number'] ?? '66822866058'
   const lineId = settings['settings.line_id']         ?? '@tonmaispa'
 
   return (

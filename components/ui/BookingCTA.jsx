@@ -10,7 +10,7 @@ const BookingEngine = dynamic(() => import('./BookingEngine'), {
   ssr:     false,
 })
 
-const wa     = (settings) => settings['settings.whatsapp_number'] ?? '66631175211'
+const wa     = (settings) => settings['settings.whatsapp_number'] ?? '66822866058'
 const lineId = (settings) => settings['settings.line_id']         ?? '@tonmaispa'
 const waMsg  = encodeURIComponent("Hi, I'd like to book at Ton Mai Spa")
 

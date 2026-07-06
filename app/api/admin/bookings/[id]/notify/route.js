@@ -25,7 +25,7 @@ export async function POST(req, { params }) {
     return Response.json({ error: `No update email defined for status "${booking.status}".` }, { status: 400 })
   }
 
-  const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
+  const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66822866058'
   const templateArgs = {
     name:      booking.guest_name,
     refCode:   booking.ref_code,

@@ -5,7 +5,7 @@ import { t } from '@/lib/i18n/t'
 
 export default function StickyBookingBar({ settings = {}, dict = {} }) {
   const [visible, setVisible] = useState(false)
-  const wa   = settings['settings.whatsapp_number'] ?? '66631175211'
+  const wa   = settings['settings.whatsapp_number'] ?? '66822866058'
   const waMsg = encodeURIComponent("Hi, I'd like to book at Ton Mai Spa")
 
   useEffect(() => {

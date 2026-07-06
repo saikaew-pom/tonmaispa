@@ -5,7 +5,7 @@ import { t } from '@/lib/i18n/t'
 export default function PricingSection({ settings = {}, dict = {} }) {
   const dayPass = settings['settings.day_pass_price']    ?? '200'
   const iceBath = settings['settings.ice_bath_price']    ?? '100'
-  const wa      = settings['settings.whatsapp_number']   ?? '66631175211'
+  const wa      = settings['settings.whatsapp_number']   ?? '66822866058'
   const waMsg   = encodeURIComponent('Hi, I\'d like to enquire about the day pass at Ton Mai Spa')
   const dayPassFeatures = dict.home?.pricing?.dayPassFeatures ?? []
   const iceBathFeatures = dict.home?.pricing?.iceBathFeatures ?? []

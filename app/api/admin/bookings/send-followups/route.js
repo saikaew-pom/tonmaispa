@@ -64,7 +64,7 @@ async function runFollowupSend({ admin, actorEmail = null, actorId = null }) {
 
   if (error) throw followupError(error.message, 400)
 
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66822866058'
   const sent = []
   const skipped = []
   const failed = []

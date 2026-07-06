@@ -5,7 +5,7 @@ import CookieSettingsLink from '@/components/ui/CookieSettingsLink'
 import { t } from '@/lib/i18n/t'
 
 export default function Footer({ settings = {}, lang = 'en', dict = {} }) {
-  const wa   = settings['settings.whatsapp_number'] ?? '66631175211'
+  const wa   = settings['settings.whatsapp_number'] ?? '66822866058'
   const line = settings['settings.line_id']         ?? '@tonmaispa'
   const ig   = settings['settings.instagram_url']   ?? 'https://www.instagram.com/tonmai.spa/'
   const fb   = settings['settings.facebook_url']    ?? 'https://www.facebook.com/tonmai.spa'

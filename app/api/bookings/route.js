@@ -84,7 +84,7 @@ export async function POST(req) {
 
   const treatmentName = treatment?.name ?? 'Spa Treatment'
   const ownerEmail    = process.env.INQUIRY_EMAIL
-  const whatsapp      = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
+  const whatsapp      = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66822866058'
 
   await Promise.allSettled([
     d.guest_email && sendEmail({

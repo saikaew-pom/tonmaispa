@@ -12,7 +12,12 @@ import { sendEmail, enquiryOwnerHtml } from '@/lib/brevo'
 import { getAvailableSlots, getBookableTreatmentsAt } from '@/lib/scheduling'
 import { chatMessageSchema } from '@/lib/schemas'
 import { prepareModelMessages, prepareStoredMessages } from '@/lib/chat-history'
-import { prepareBookingDraft } from '@/lib/chat-booking'
+import {
+  getRescheduleAvailability,
+  listSessionBookings,
+  prepareBookingDraft,
+  prepareRescheduleDraft,
+} from '@/lib/chat-booking'
 import { recordWebExchange } from '@/lib/conversations'
 
 export const maxDuration = 60
@@ -316,6 +321,37 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
     case 'prepare_booking': {
       if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
       return prepareBookingDraft(admin, sessionId, input)
+    }
+
+    case 'find_my_bookings': {
+      if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
+      return listSessionBookings(admin, sessionId)
+    }
+
+    case 'start_booking_lookup': {
+      if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
+      const { data: session } = await admin.from('chat_sessions')
+        .select('metadata').eq('session_id', sessionId).maybeSingle()
+      const access = session?.metadata?.booking_access
+      if (access?.customer_id && access.expires_at && Date.parse(access.expires_at) > Date.now()) {
+        const existing = await listSessionBookings(admin, sessionId)
+        return { ok: true, lookup_ready: true, already_verified: true, bookings: existing.bookings ?? [] }
+      }
+      return {
+        ok: true,
+        lookup_ready: true,
+        message: 'Secure booking lookup is ready. Ask the guest to use the card and never request their verification code in chat.',
+      }
+    }
+
+    case 'check_reschedule_availability': {
+      if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
+      return getRescheduleAvailability(admin, sessionId, input)
+    }
+
+    case 'prepare_reschedule': {
+      if (!bookingEngineEnabled) return { ok: false, error: 'Booking engine is not active' }
+      return prepareRescheduleDraft(admin, sessionId, input)
     }
 
     default:

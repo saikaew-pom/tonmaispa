@@ -108,6 +108,14 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           },
         }))
       }
+      if (session.metadata?.reschedule_draft) {
+        setToolResults(prev => ({
+          ...prev,
+          rescheduleDraft: session.metadata.reschedule_draft,
+          draft: null,
+          booking: null,
+        }))
+      }
 
       // Personalise greeting based on time since last visit
       const lastActive = new Date(session.last_active)
@@ -232,7 +240,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           const updated = [...prev]
           updated[updated.length - 1] = {
             ...updated[updated.length - 1],
-            content: err.userMessage || "I'm having a moment — please try again, or WhatsApp us directly at +66 63 117 5211 🙏",
+            content: err.userMessage || "I'm having a moment — please try again, or WhatsApp us directly at +66 82 286 6058 🙏",
             isError: true,
           }
           return updated
@@ -262,7 +270,13 @@ export default function ChatWidget({ chatbotEnabled = true }) {
       setToolResults(prev => ({ ...prev, availability: result }))
     }
     if (tool === 'prepare_booking' && result.ok) {
-      setToolResults(prev => ({ ...prev, draft: result, booking: null }))
+      setToolResults(prev => ({ ...prev, draft: result, booking: null, rescheduleDraft: null, reschedule: null }))
+    }
+    if (tool === 'prepare_reschedule' && result.ok) {
+      setToolResults(prev => ({ ...prev, rescheduleDraft: result, reschedule: null, draft: null, booking: null }))
+    }
+    if (tool === 'start_booking_lookup' && result.ok) {
+      setToolResults(prev => ({ ...prev, bookingLookup: result, draft: null, booking: null, rescheduleDraft: null, reschedule: null }))
     }
   }
 
@@ -453,6 +467,16 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                 ))}
 
                 {/* Booking review and confirmation cards */}
+                {toolResults.bookingLookup && (
+                  <BookingLookupCard
+                    sessionId={sessionId}
+                    initialResult={toolResults.bookingLookup}
+                    onSelectBooking={booking => {
+                      setToolResults(prev => ({ ...prev, bookingLookup: null }))
+                      sendMessage(`I want to reschedule booking ${booking.ref_code}.`)
+                    }}
+                  />
+                )}
                 {toolResults.draft && !toolResults.booking && (
                   <BookingDraftCard
                     draft={toolResults.draft}
@@ -467,6 +491,18 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                 )}
                 {toolResults.booking && (
                   <BookingConfirmCard refCode={toolResults.booking.ref_code} whatsapp={toolResults.booking.whatsapp} />
+                )}
+                {toolResults.rescheduleDraft && !toolResults.reschedule && (
+                  <RescheduleDraftCard
+                    draft={toolResults.rescheduleDraft}
+                    sessionId={sessionId}
+                    onConfirmed={reschedule => {
+                      setToolResults(prev => ({ ...prev, rescheduleDraft: null, reschedule, draft: null, booking: null }))
+                    }}
+                  />
+                )}
+                {toolResults.reschedule && (
+                  <RescheduleConfirmCard result={toolResults.reschedule} />
                 )}
 
                 <div ref={messagesEndRef} />
@@ -538,7 +574,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                 textAlign: 'center', padding: '6px 14px 10px',
                 fontSize: '10px', color: '#B8B5B3',
               }}>
-                Powered by Ton Mai Spa · <a href="https://wa.me/66631175211" target="_blank" rel="noopener noreferrer" style={{ color: '#3B5249' }}>WhatsApp us</a>
+                Powered by Ton Mai Spa · <a href="https://wa.me/66822866058" target="_blank" rel="noopener noreferrer" style={{ color: '#3B5249' }}>WhatsApp us</a>
               </div>
             </>
           )}
@@ -623,7 +659,7 @@ function TypingDots() {
   )
 }
 
-const RECEPTIONIST_PHONE = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
+const RECEPTIONIST_PHONE = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66822866058'
 
 // Curated, not exhaustive — covers Thailand (default) plus the countries
 // guests most commonly book from. A guest whose country isn't listed can
@@ -645,6 +681,198 @@ const COUNTRY_CODES = [
 ]
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function BookingLookupCard({ sessionId, initialResult, onSelectBooking }) {
+  const [step, setStep] = useState(initialResult?.already_verified ? 'bookings' : 'details')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [bookings, setBookings] = useState(initialResult?.bookings ?? [])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  const requestCode = async () => {
+    if (!sessionId || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch('/api/chat/phone-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request', sessionId, phone, email }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.ok) throw new Error(result.error || 'Could not send a verification code.')
+      setNotice(result.message)
+      setStep('code')
+    } catch (err) {
+      setError(err.message || 'Could not send a verification code.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const verifyCode = async () => {
+    if (!sessionId || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch('/api/chat/phone-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', sessionId, code }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.ok) throw new Error(result.error || 'Could not verify this code.')
+      setBookings(result.bookings ?? [])
+      setStep('bookings')
+    } catch (err) {
+      setError(err.message || 'Could not verify this code.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const inputStyle = {
+    width: '100%', boxSizing: 'border-box', padding: '8px 9px', border: '1px solid #D6D0C8',
+    borderRadius: '6px', font: '400 12px Inter,sans-serif', color: '#1C1917', background: '#fff',
+  }
+  const buttonStyle = {
+    width: '100%', marginTop: '9px', padding: '9px 12px', border: 'none', borderRadius: '7px',
+    background: busy ? '#C8C3BC' : '#3B5249', color: '#fff', font: '700 12px Inter,sans-serif',
+    cursor: busy ? 'wait' : 'pointer',
+  }
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #C4924A', borderRadius: '8px', padding: '12px 14px', fontSize: '12px' }}>
+      <div style={{ fontWeight: '700', color: '#3B5249', marginBottom: '5px' }}>Find my booking securely</div>
+      {step === 'details' && (
+        <>
+          <div style={{ color: '#6B6663', lineHeight: 1.45, marginBottom: 9 }}>
+            Enter the phone number and email used for the booking. We’ll email a one-time code before showing any details.
+          </div>
+          <input aria-label="Booking phone number" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+66…" style={inputStyle} />
+          <input aria-label="Booking email address" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" style={{ ...inputStyle, marginTop: 7 }} />
+          <button type="button" disabled={busy || !phone.trim() || !EMAIL_RE.test(email.trim())} onClick={requestCode} style={{ ...buttonStyle, opacity: !phone.trim() || !EMAIL_RE.test(email.trim()) ? 0.55 : 1 }}>
+            {busy ? 'Sending…' : 'Email my verification code'}
+          </button>
+        </>
+      )}
+      {step === 'code' && (
+        <>
+          <div style={{ color: '#6B6663', lineHeight: 1.45, marginBottom: 9 }}>{notice}</div>
+          <input aria-label="Six-digit verification code" inputMode="numeric" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ''))} placeholder="000000" style={{ ...inputStyle, textAlign: 'center', letterSpacing: 5, fontWeight: 700 }} />
+          <button type="button" disabled={busy || code.length !== 6} onClick={verifyCode} style={{ ...buttonStyle, opacity: code.length !== 6 ? 0.55 : 1 }}>
+            {busy ? 'Verifying…' : 'Verify and show bookings'}
+          </button>
+          <button type="button" disabled={busy} onClick={() => { setStep('details'); setCode(''); setError('') }} style={{ ...buttonStyle, background: 'transparent', color: '#3B5249', border: '1px solid #D6D0C8' }}>
+            Use different details
+          </button>
+        </>
+      )}
+      {step === 'bookings' && (
+        <>
+          <div style={{ color: '#3B5249', fontWeight: 700, marginBottom: 8 }}>✓ Identity verified</div>
+          {!bookings.length && <div style={{ color: '#6B6663' }}>There are no pending or confirmed bookings on this profile.</div>}
+          <div style={{ display: 'grid', gap: 7 }}>
+            {bookings.map(booking => (
+              <div key={booking.booking_id} style={{ border: '1px solid #E0D9D0', borderRadius: 7, padding: 9 }}>
+                <div style={{ fontWeight: 700 }}>{booking.ref_code} · {booking.treatment}</div>
+                <div style={{ color: '#6B6663', marginTop: 3 }}>{formatBookingDate(booking.date)} at {booking.time} · {booking.duration} min · {booking.status}</div>
+                {booking.price != null && <div style={{ color: '#6B6663', marginTop: 2 }}>{booking.price} THB</div>}
+                <button type="button" onClick={() => onSelectBooking(booking)} style={{ ...buttonStyle, marginTop: 7 }}>Change this booking</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {error && <div role="alert" style={{ marginTop: 8, color: '#A33A2B', lineHeight: 1.45 }}>{error}</div>}
+    </div>
+  )
+}
+
+function RescheduleDraftCard({ draft, sessionId, onConfirmed }) {
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [error, setError] = useState('')
+
+  const confirmReschedule = async () => {
+    if (!sessionId || !draft.token || isConfirming) return
+    setIsConfirming(true)
+    setError('')
+    try {
+      const res = await fetch('/api/chat/confirm-reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, token: draft.token }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.ok) throw new Error(result.error || 'Could not reschedule this booking.')
+      onConfirmed(result)
+    } catch (err) {
+      setError(err.message || 'Could not reschedule this booking. Please try again.')
+    } finally {
+      setIsConfirming(false)
+    }
+  }
+
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #C4924A', borderRadius: '8px',
+      padding: '12px 14px', fontSize: '12px', color: '#1C1917',
+    }}>
+      <div style={{ fontWeight: '700', color: '#3B5249', marginBottom: '4px' }}>Review your booking change</div>
+      <div style={{ color: '#6B6663', marginBottom: '10px' }}>
+        Reference <strong>{draft.ref_code}</strong> · {draft.treatment_name}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '74px 1fr', gap: '5px 8px' }}>
+        <span style={{ color: '#6B6663' }}>Current</span>
+        <span style={{ textDecoration: 'line-through', color: '#9B9390' }}>
+          {formatBookingDate(draft.old_date)} at {draft.old_time_slot}
+        </span>
+        <span style={{ color: '#6B6663' }}>New</span>
+        <strong>{formatBookingDate(draft.new_date)} at {draft.new_time_slot}</strong>
+        <span style={{ color: '#6B6663' }}>Duration</span><span>{draft.duration} minutes</span>
+        {draft.price != null && <><span style={{ color: '#6B6663' }}>Rate</span><span>{draft.price} THB</span></>}
+      </div>
+      <div style={{ marginTop: '9px', color: '#6B6663', lineHeight: '1.45' }}>
+        This updates the existing booking—no second booking will be created. The same reference stays pending until the spa team confirms the new time.
+      </div>
+      <button
+        type="button"
+        onClick={confirmReschedule}
+        disabled={isConfirming}
+        style={{
+          width: '100%', marginTop: '10px', padding: '9px 12px', border: 'none', borderRadius: '7px',
+          background: isConfirming ? '#C8C3BC' : '#3B5249', color: '#fff', fontSize: '12px',
+          fontWeight: '700', fontFamily: 'Inter, sans-serif', cursor: isConfirming ? 'wait' : 'pointer',
+        }}
+      >
+        {isConfirming ? 'Updating…' : 'Confirm reschedule request'}
+      </button>
+      {error && <div role="alert" style={{ marginTop: '8px', color: '#A33A2B', lineHeight: '1.45' }}>{error}</div>}
+    </div>
+  )
+}
+
+function RescheduleConfirmCard({ result }) {
+  return (
+    <div style={{
+      background: '#E8EDE9', border: '1px solid #3B5249', borderRadius: '8px',
+      padding: '12px 14px', fontSize: '12px', color: '#1C1917',
+    }}>
+      <div style={{ fontWeight: '600', color: '#3B5249', marginBottom: '4px' }}>✓ Reschedule request sent</div>
+      <div>Reference: <strong>{result.ref_code}</strong></div>
+      <div style={{ marginTop: '4px' }}>{formatBookingDate(result.date)} at {result.time}</div>
+      <div style={{ marginTop: '6px', color: '#6B6663', lineHeight: '1.45' }}>
+        Your original booking was updated, not duplicated. The spa team will confirm the new time.
+      </div>
+      <div style={{ marginTop: '5px', color: result.email_sent ? '#3B5249' : '#A33A2B', lineHeight: '1.45' }}>
+        {result.email_sent ? 'A confirmation email has been sent.' : 'The booking is saved, but the email could not be sent. The spa team can still see your request.'}
+      </div>
+    </div>
+  )
+}
 
 function BookingConfirmCard({ refCode, whatsapp }) {
   const phone = whatsapp || RECEPTIONIST_PHONE
