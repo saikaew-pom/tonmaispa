@@ -3,6 +3,30 @@
 **Prepared:** 4 July 2026  
 **Purpose:** Consolidated plan from the discussion beginning around 12:22 AM about using Twilio for chatbot booking, CRM, automation, staff handoff and cross-device customer memory.
 
+## Current implementation status — updated 6 July 2026
+
+- [x] Unified web + WhatsApp conversation storage
+- [x] WhatsApp Sandbox chatbot replies
+- [x] Bangkok-local opening-hours correction
+- [x] Dashboard Conversations inbox
+- [x] Full conversation timeline for staff
+- [x] Staff takeover / return-to-bot / close controls
+- [x] Staff WhatsApp replies from the dashboard
+- [x] Bot pause while staff owns the conversation
+- [x] Basic automatic handoff triggers for human requests, complaints, cancellations/refunds and safety words
+
+Remaining pilot work:
+
+- [ ] Test the Conversations dashboard against the live Sandbox thread
+- [ ] Add unread counts and staff assignment filters
+- [ ] Connect verified customer identity across website chat and WhatsApp
+- [ ] Enable booking tools inside WhatsApp only after confirmation controls are reviewed
+- [ ] Connect existing backend **Confirm and notify** booking buttons to approved WhatsApp templates
+- [ ] Build reminder, thank-you and survey automation jobs
+- [ ] Register and approve the official WhatsApp Business sender `+66822866058`
+
+Official WhatsApp Business sender requested for production registration: `+66822866058`. After Twilio/Meta approval, set `TWILIO_WHATSAPP_FROM=whatsapp:+66822866058` or attach this sender to the Twilio Messaging Service.
+
 ## Pilot verification — 5 July 2026
 
 - [x] Live WhatsApp Sandbox inbound message received by Twilio
