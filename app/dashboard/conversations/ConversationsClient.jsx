@@ -140,6 +140,11 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
     setBusy(false)
   }
 
+  const modeButtonStyle = mode => {
+    if (busy) return btnDisabled
+    return activeThread?.mode === mode ? btnActiveMode : btnGhost
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
       <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -207,9 +212,9 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button disabled={busy || activeThread.mode === 'human'} onClick={() => setMode('human')} style={busy || activeThread.mode === 'human' ? btnDisabled : btnPrimary}>Take over</button>
-                <button disabled={busy || activeThread.mode === 'bot'} onClick={() => setMode('bot')} style={busy || activeThread.mode === 'bot' ? btnDisabled : btnGhost}>Return to bot</button>
-                <button disabled={busy || activeThread.mode === 'closed'} onClick={() => setMode('closed')} style={busy || activeThread.mode === 'closed' ? btnDisabled : btnGhost}>Close</button>
+                <button disabled={busy} onClick={() => activeThread.mode !== 'human' && setMode('human')} style={modeButtonStyle('human')} aria-pressed={activeThread.mode === 'human'}>Take over</button>
+                <button disabled={busy} onClick={() => activeThread.mode !== 'bot' && setMode('bot')} style={modeButtonStyle('bot')} aria-pressed={activeThread.mode === 'bot'}>Return to bot</button>
+                <button disabled={busy} onClick={() => activeThread.mode !== 'closed' && setMode('closed')} style={modeButtonStyle('closed')} aria-pressed={activeThread.mode === 'closed'}>Close</button>
               </div>
             </div>
 
@@ -256,6 +261,11 @@ const btnPrimary = {
   padding: '9px 13px',
   font: '700 12px Inter,sans-serif',
   cursor: 'pointer',
+}
+
+const btnActiveMode = {
+  ...btnPrimary,
+  boxShadow: '0 0 0 3px rgba(59,82,73,0.12)',
 }
 
 const btnGhost = {
