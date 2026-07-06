@@ -89,6 +89,8 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   const [notifyError, setNotifyError] = useState(null)
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderResult, setReminderResult] = useState(null)
+  const [followupSending, setFollowupSending] = useState(false)
+  const [followupResult, setFollowupResult] = useState(null)
   const [editingBooking, setEditingBooking] = useState(() => (
     prefill?.bookingId ? initialBookings.find(booking => booking.id === prefill.bookingId) ?? null : null
   ))
@@ -162,6 +164,32 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       setReminderResult(data)
     } finally {
       setReminderSending(false)
+    }
+  }
+
+  const sendThankYouFollowups = async () => {
+    const ok = window.confirm('Send thank-you / survey WhatsApp follow-ups for yesterday’s confirmed or completed bookings? Each booking will only be followed up once.')
+    if (!ok) return
+
+    setFollowupSending(true)
+    setNotifyError(null)
+    setFollowupResult(null)
+    try {
+      const res = await fetch('/api/admin/bookings/send-followups', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setNotifyError(data.error || 'Could not send thank-you follow-ups.')
+        return
+      }
+      for (const item of data.sent ?? []) {
+        patchBooking(item.id, {
+          whatsapp_followup_sent_at: item.sent_at,
+          whatsapp_followup_status: item.status,
+        })
+      }
+      setFollowupResult(data)
+    } finally {
+      setFollowupSending(false)
     }
   }
 
@@ -239,6 +267,9 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       <button onClick={sendTomorrowReminders} disabled={reminderSending} style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 16px', font: '600 12px Inter,sans-serif', cursor: reminderSending ? 'wait' : 'pointer', opacity: reminderSending ? 0.7 : 1 }}>
         {reminderSending ? 'Sending reminders…' : 'Send tomorrow reminders'}
       </button>
+      <button onClick={sendThankYouFollowups} disabled={followupSending} style={{ background: '#7A4B2A', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 16px', font: '600 12px Inter,sans-serif', cursor: followupSending ? 'wait' : 'pointer', opacity: followupSending ? 0.7 : 1 }}>
+        {followupSending ? 'Sending follow-ups…' : 'Send thank-you follow-ups'}
+      </button>
       <button onClick={() => setShowNew(true)} style={{ background: '#C4924A', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 16px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
         + New Booking
       </button>
@@ -271,6 +302,12 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       {reminderResult && (
         <div style={{ background: '#E8EFEA', border: '1px solid #C9D8D0', color: '#3B5249', borderRadius: 6, padding: '10px 14px', font: '600 12px/1.5 Inter,sans-serif', marginBottom: 12 }}>
           Reminder run for {reminderResult.target_date}: sent {reminderResult.sent?.length ?? 0}, skipped {reminderResult.skipped?.length ?? 0}, failed {reminderResult.failed?.length ?? 0}.
+        </div>
+      )}
+
+      {followupResult && (
+        <div style={{ background: '#FFF3D8', border: '1px solid #E8D4A5', color: '#8A5A14', borderRadius: 6, padding: '10px 14px', font: '600 12px/1.5 Inter,sans-serif', marginBottom: 12 }}>
+          Thank-you follow-up run for {followupResult.target_date}: sent {followupResult.sent?.length ?? 0}, skipped {followupResult.skipped?.length ?? 0}, failed {followupResult.failed?.length ?? 0}.
         </div>
       )}
 
@@ -324,6 +361,7 @@ function NotifyCell({ booking, notifyingId, twilioEnabled, onSendEmail, onSendWh
   const emailSentAt = booking.last_email_status === booking.status ? formatSentAt(booking.last_email_sent_at) : null
   const whatsappSentAt = booking.last_whatsapp_status === booking.status ? formatSentAt(booking.last_whatsapp_sent_at) : null
   const reminderSentAt = formatSentAt(booking.whatsapp_reminder_sent_at)
+  const followupSentAt = formatSentAt(booking.whatsapp_followup_sent_at)
 
   const btnSt = {
     border: '1px solid #3B5249', borderRadius: 3, background: '#fff', color: '#3B5249',
@@ -349,6 +387,7 @@ function NotifyCell({ booking, notifyingId, twilioEnabled, onSendEmail, onSendWh
             </button>
       )}
       {reminderSentAt && <div style={sentSt}>✓ Reminder sent {reminderSentAt}</div>}
+      {followupSentAt && <div style={sentSt}>✓ Thank-you sent {followupSentAt}</div>}
       <button type="button" onClick={() => onViewLogs(booking.id)} style={{ ...btnSt, border: '1px solid var(--color-border)', color: '#6B6663' }}>
         View logs
       </button>
