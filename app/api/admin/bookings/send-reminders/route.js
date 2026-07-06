@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { sendWhatsAppMessage } from '@/lib/twilio'
 import { appendConversationMessage, getOrCreateWhatsAppThread } from '@/lib/conversations'
 import { logBookingAction } from '@/lib/booking-logs'
@@ -34,23 +35,23 @@ function reminderMessage({ refCode, treatment, date, time, whatsapp }) {
   return `Ton Mai Spa reminder: Your booking ${refCode} for ${treatment} is tomorrow (${date}) at ${time}. We look forward to seeing you. Questions? +${whatsapp}`
 }
 
-// POST /api/admin/bookings/send-reminders — staff-triggered first version.
-// Sends tomorrow's WhatsApp reminders once per booking. Later this can be
-// called by Vercel Cron after the workflow is proven.
-export async function POST() {
-  const auth = await requireAdmin()
-  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+function reminderError(message, status = 500) {
+  const error = new Error(message)
+  error.status = status
+  return error
+}
 
-  const { data: settingsRows } = await auth.admin
+async function runReminderSend({ admin, actorEmail = null, actorId = null }) {
+  const { data: settingsRows } = await admin
     .from('site_content')
     .select('key, value_text')
     .eq('key', 'settings.twilio_whatsapp_enabled')
   const enabled = settingEnabled(settingsRows?.[0]?.value_text)
-  if (!enabled) return Response.json({ error: 'WhatsApp sending is turned off in Settings.' }, { status: 503 })
-  if (!isTwilioConfigured()) return Response.json({ error: 'Twilio is not configured on the server yet.' }, { status: 503 })
+  if (!enabled) throw reminderError('WhatsApp sending is turned off in Settings.', 503)
+  if (!isTwilioConfigured()) throw reminderError('Twilio is not configured on the server yet.', 503)
 
   const targetDate = bangkokYmd(addDays(new Date(), 1))
-  const { data: bookings, error } = await auth.admin
+  const { data: bookings, error } = await admin
     .from('bookings')
     .select('id, ref_code, guest_name, guest_phone, date, time_slot, duration, status, whatsapp_reminder_sent_at, spa_treatments(name)')
     .eq('date', targetDate)
@@ -59,7 +60,7 @@ export async function POST() {
     .order('time_slot', { ascending: true })
     .limit(100)
 
-  if (error) return Response.json({ error: error.message }, { status: 400 })
+  if (error) throw reminderError(error.message, 400)
 
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66631175211'
   const sent = []
@@ -83,21 +84,21 @@ export async function POST() {
     try {
       const result = await sendWhatsAppMessage({ to: booking.guest_phone, body })
       const sentAt = new Date().toISOString()
-      await auth.admin
+      await admin
         .from('bookings')
         .update({ whatsapp_reminder_sent_at: sentAt, whatsapp_reminder_status: result.status || 'queued' })
         .eq('id', booking.id)
 
-      await logBookingAction(auth.admin, {
+      await logBookingAction(admin, {
         bookingId: booking.id,
-        actorEmail: auth.session.user.email,
+        actorEmail,
         action: 'whatsapp_reminder_sent',
         detail: `Reminder WhatsApp sent to ${booking.guest_phone}`,
       })
 
       try {
-        const thread = await getOrCreateWhatsAppThread(auth.admin, booking.guest_phone)
-        await appendConversationMessage(auth.admin, {
+        const thread = await getOrCreateWhatsAppThread(admin, booking.guest_phone)
+        await appendConversationMessage(admin, {
           threadId: thread.id,
           senderType: 'system',
           channel: 'whatsapp',
@@ -106,8 +107,8 @@ export async function POST() {
           dedupeKey: `twilio:${result.sid}`,
           deliveryStatus: result.status || 'queued',
           metadata: {
-            actor_id: auth.session.user.id,
-            actor_email: auth.session.user.email,
+            actor_id: actorId,
+            actor_email: actorEmail,
             booking_ref: booking.ref_code,
             source: 'booking_reminder',
           },
@@ -119,20 +120,61 @@ export async function POST() {
       sent.push({ id: booking.id, ref_code: booking.ref_code, sent_at: sentAt, status: result.status || 'queued' })
     } catch (err) {
       failed.push({ id: booking.id, ref_code: booking.ref_code, error: err.message || 'Could not send reminder' })
-      await auth.admin
+      await admin
         .from('bookings')
         .update({ whatsapp_reminder_status: 'failed' })
         .eq('id', booking.id)
     }
   }
 
-  return Response.json({
+  return {
     ok: true,
     target_date: targetDate,
     checked: bookings?.length ?? 0,
     sent,
     skipped,
     failed,
-  })
+  }
 }
 
+// POST /api/admin/bookings/send-reminders — staff-triggered manual backup.
+// Sends tomorrow's WhatsApp reminders once per booking.
+export async function POST() {
+  const auth = await requireAdmin()
+  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+
+  try {
+    const result = await runReminderSend({
+      admin: auth.admin,
+      actorEmail: auth.session.user.email,
+      actorId: auth.session.user.id,
+    })
+    return Response.json(result)
+  } catch (error) {
+    return Response.json({ error: error.message || 'Could not send reminders.' }, { status: error.status || 500 })
+  }
+}
+
+// GET /api/admin/bookings/send-reminders — Vercel Cron endpoint.
+// Requires Authorization: Bearer <CRON_SECRET>. Keep the manual POST button
+// as a backup even after cron is active.
+export async function GET(req) {
+  const secret = process.env.CRON_SECRET?.trim()
+  if (!secret) return Response.json({ error: 'CRON_SECRET is not configured.' }, { status: 503 })
+
+  const authHeader = req.headers.get('authorization') || ''
+  if (authHeader !== `Bearer ${secret}`) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const result = await runReminderSend({
+      admin: createSupabaseAdminClient(),
+      actorEmail: 'system:vercel-cron',
+      actorId: null,
+    })
+    return Response.json(result)
+  } catch (error) {
+    return Response.json({ error: error.message || 'Could not send reminders.' }, { status: error.status || 500 })
+  }
+}
