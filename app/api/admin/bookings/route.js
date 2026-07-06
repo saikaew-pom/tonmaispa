@@ -12,8 +12,14 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim())
 }
 
+function normalizeE164Input(value) {
+  const compact = String(value ?? '').trim().replace(/[\s().-]/g, '')
+  if (!compact) return ''
+  return compact.startsWith('+') ? compact : `+${compact}`
+}
+
 function isValidE164Phone(value) {
-  return /^\+[1-9]\d{6,14}$/.test(String(value ?? '').trim())
+  return /^\+[1-9]\d{6,14}$/.test(normalizeE164Input(value))
 }
 
 function missingConfirmationFields({ guest_name, guest_phone, guest_email }) {
@@ -36,14 +42,15 @@ export async function POST(req) {
 
   const body = await req.json()
   const { guest_name, guest_phone, guest_email, treatment_id, therapist_id, date, time_slot, duration, status, source, notes, overbook } = body
+  const normalizedPhone = normalizeE164Input(guest_phone)
 
-  if (!guest_name || !guest_phone || !treatment_id || !date || !time_slot || !duration) {
+  if (!guest_name || !normalizedPhone || !treatment_id || !date || !time_slot || !duration) {
     return Response.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
   const requestedStatus = status || 'confirmed'
   if (requestedStatus === 'confirmed') {
-    const missing = missingConfirmationFields({ guest_name, guest_phone, guest_email })
+    const missing = missingConfirmationFields({ guest_name, guest_phone: normalizedPhone, guest_email })
     if (missing.length) {
       return Response.json({ error: `Cannot confirm booking yet. Required: ${missing.join(', ')}.` }, { status: 400 })
     }
@@ -71,13 +78,13 @@ export async function POST(req) {
   // deliberate overbook there may be no free therapist — saved as null so
   // staff can resolve the assignment manually afterward.
   const autoTherapistIds = therapist_id ? null : capacity.therapistIds
-  const customerId = await upsertCustomer(auth.admin, { name: guest_name, phone: guest_phone, email: guest_email })
+  const customerId = await upsertCustomer(auth.admin, { name: guest_name, phone: normalizedPhone, email: guest_email })
 
   const { data: booking, error } = await auth.admin
     .from('bookings')
     .insert({
       guest_name,
-      guest_phone,
+      guest_phone: normalizedPhone,
       guest_email:  guest_email || null,
       customer_id:  customerId,
       treatment_id,

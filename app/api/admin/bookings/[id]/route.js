@@ -25,8 +25,14 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim())
 }
 
+function normalizeE164Input(value) {
+  const compact = String(value ?? '').trim().replace(/[\s().-]/g, '')
+  if (!compact) return ''
+  return compact.startsWith('+') ? compact : `+${compact}`
+}
+
 function isValidE164Phone(value) {
-  return /^\+[1-9]\d{6,14}$/.test(String(value ?? '').trim())
+  return /^\+[1-9]\d{6,14}$/.test(normalizeE164Input(value))
 }
 
 function missingConfirmationFields(booking) {
@@ -59,6 +65,7 @@ export async function PATCH(req, { params }) {
   const { id } = params
   const body = await req.json()
   const updates = Object.fromEntries(Object.entries(body).filter(([k]) => EDITABLE_FIELDS.includes(k)))
+  if ('guest_phone' in updates) updates.guest_phone = normalizeE164Input(updates.guest_phone)
 
   if (Object.keys(updates).length === 0) {
     return Response.json({ error: 'No valid fields to update' }, { status: 400 })

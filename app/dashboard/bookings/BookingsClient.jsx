@@ -57,8 +57,14 @@ function matchesDateRange(booking, dateRangeFilter, customStart, customEnd) {
 const inputSt = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid var(--color-border)', borderRadius: 4, font: '400 13px Inter,sans-serif', color: '#1C1917' }
 const labelSt = { display: 'block', font: '600 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#6B6663', marginBottom: 5 }
 
+function normalizeE164Input(phone) {
+  const compact = String(phone ?? '').trim().replace(/[\s().-]/g, '')
+  if (!compact) return ''
+  return compact.startsWith('+') ? compact : `+${compact}`
+}
+
 function looksLikeE164(phone) {
-  return /^\+[1-9]\d{6,14}$/.test(String(phone ?? '').trim())
+  return /^\+[1-9]\d{6,14}$/.test(normalizeE164Input(phone))
 }
 
 function missingConfirmationFields({ guestName, guestPhone, guestEmail }) {
@@ -478,6 +484,12 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
   const [therapistId, setTherapistId] = useState('')
   const [date, setDate]             = useState(() => toYMD(new Date()))
   const [time, setTime]             = useState('10:00')
+  const [availableSlots, setAvailableSlots] = useState([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [slotsError, setSlotsError] = useState('')
+  const [bookableTreatmentIds, setBookableTreatmentIds] = useState(() => treatments.map(t => t.id))
+  const [loadingTreatments, setLoadingTreatments] = useState(false)
+  const [treatmentsError, setTreatmentsError] = useState('')
   const [status, setStatus]         = useState('confirmed')
   const [source, setSource]         = useState(prefill.fromConversation ? 'chatbot' : 'phone')
   const [notes, setNotes]           = useState('')
@@ -489,6 +501,111 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
 
   const treatment = treatments.find(t => t.id === treatmentId)
   const durationOptions = treatment?.duration_options ?? [60]
+  const bookableTreatmentIdSet = useMemo(() => new Set(bookableTreatmentIds), [bookableTreatmentIds])
+  const bookableTreatments = useMemo(
+    () => treatments.filter(t => bookableTreatmentIdSet.has(t.id)),
+    [treatments, bookableTreatmentIdSet],
+  )
+  const canCreate = Boolean(time && availableSlots.length && !loadingSlots)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!date || !treatments.length) {
+      setBookableTreatmentIds([])
+      return
+    }
+
+    setLoadingTreatments(true)
+    setTreatmentsError('')
+
+    Promise.all(treatments.map(async t => {
+      const durations = Array.isArray(t.duration_options) && t.duration_options.length ? t.duration_options : [60]
+      for (const optionDuration of durations) {
+        const params = new URLSearchParams({
+          date,
+          treatment_id: t.id,
+          duration: String(optionDuration),
+        })
+        const res = await fetch(`/api/bookings/availability?${params.toString()}`)
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Could not check treatment availability')
+        if (Array.isArray(json.slots) && json.slots.some(slot => slot.available)) return t.id
+      }
+      return null
+    }))
+      .then(results => {
+        if (cancelled) return
+        const ids = results.filter(Boolean)
+        setBookableTreatmentIds(ids)
+        if (!ids.length) {
+          setTreatmentId('')
+          setTime('')
+          return
+        }
+        if (!ids.includes(treatmentId)) {
+          const firstTreatment = treatments.find(t => t.id === ids[0])
+          setTreatmentId(ids[0])
+          setDuration(firstTreatment?.duration_options?.[0] ?? 60)
+          setTime('')
+        }
+      })
+      .catch(error => {
+        if (cancelled) return
+        setTreatmentsError(error.message)
+        setBookableTreatmentIds(treatments.map(t => t.id))
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTreatments(false)
+      })
+
+    return () => { cancelled = true }
+  }, [date, treatments, treatmentId])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!treatmentId || !date || !duration) {
+      setAvailableSlots([])
+      setTime('')
+      return
+    }
+
+    setLoadingSlots(true)
+    setSlotsError('')
+
+    const params = new URLSearchParams({
+      date,
+      treatment_id: treatmentId,
+      duration: String(duration),
+    })
+
+    fetch(`/api/bookings/availability?${params.toString()}`)
+      .then(async res => {
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Could not check availability')
+        return Array.isArray(json.slots) ? json.slots.filter(slot => slot.available) : []
+      })
+      .then(slots => {
+        if (cancelled) return
+        setAvailableSlots(slots)
+        setSlotFull(false)
+        if (!slots.length) {
+          setTime('')
+        } else if (!slots.some(slot => slot.time === time)) {
+          setTime(slots[0].time)
+        }
+      })
+      .catch(error => {
+        if (cancelled) return
+        setAvailableSlots([])
+        setSlotsError(error.message)
+        setTime('')
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSlots(false)
+      })
+
+    return () => { cancelled = true }
+  }, [treatmentId, date, duration, time])
 
   const handleTreatmentChange = (id) => {
     setSlotFull(false)
@@ -499,9 +616,14 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
 
   const handleSubmit = async (e, overbook = false) => {
     e.preventDefault()
-    const missing = status === 'confirmed' ? missingConfirmationFields({ guestName, guestPhone, guestEmail }) : []
+    const normalizedPhone = normalizeE164Input(guestPhone)
+    const missing = status === 'confirmed' ? missingConfirmationFields({ guestName, guestPhone: normalizedPhone, guestEmail }) : []
     if (missing.length) {
       setErr(`Cannot confirm booking yet. Required: ${missing.join(', ')}.`)
+      return
+    }
+    if (!overbook && !canCreate) {
+      setErr('Please choose an available time before creating the booking.')
       return
     }
     setSaving(true)
@@ -510,7 +632,7 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
       const res = await fetch('/api/admin/bookings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          guest_name: guestName, guest_phone: guestPhone, guest_email: guestEmail,
+          guest_name: guestName, guest_phone: normalizedPhone, guest_email: guestEmail,
           treatment_id: treatmentId, therapist_id: therapistId || null,
           date, time_slot: time, duration, status, source, notes,
           overbook,
@@ -550,7 +672,7 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Phone</label>
-              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} pattern="^\\+[1-9]\\d{6,14}$" title="Use full country code format, e.g. +66869643159" style={inputSt} />
+              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} onBlur={() => setGuestPhone(normalizeE164Input(guestPhone))} title="Use full country code format, e.g. +66869643159" style={inputSt} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Email</label>
@@ -563,9 +685,18 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
 
           <div>
             <label style={labelSt}>Treatment</label>
-            <select required value={treatmentId} onChange={e => handleTreatmentChange(e.target.value)} style={inputSt}>
-              {treatments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <select required value={treatmentId} onChange={e => handleTreatmentChange(e.target.value)} disabled={loadingTreatments || bookableTreatments.length === 0} style={inputSt}>
+              {bookableTreatments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
+            <div style={{ marginTop: 5, font: '400 11px/1.5 Inter,sans-serif', color: treatmentsError ? '#C0392B' : '#9B9390' }}>
+              {loadingTreatments
+                ? 'Checking which treatments have open times on this date…'
+                : treatmentsError
+                  ? treatmentsError
+                  : bookableTreatments.length
+                    ? 'Only treatments with at least one available time on this date are shown.'
+                    : 'No treatments have available times on this date. Try another date.'}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
@@ -590,8 +721,23 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Time</label>
-              <input required type="time" value={time} onChange={e => { setSlotFull(false); setTime(e.target.value) }} style={inputSt} />
+              <select required value={time} onChange={e => { setSlotFull(false); setTime(e.target.value) }} disabled={loadingSlots || availableSlots.length === 0} style={inputSt}>
+                {availableSlots.map(slot => (
+                  <option key={slot.time} value={slot.time}>
+                    {slot.time}{Number.isFinite(slot.spotsLeft) ? ` · ${slot.spotsLeft} spot${slot.spotsLeft === 1 ? '' : 's'} left` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+          <div style={{ marginTop: -6, font: '400 11px/1.5 Inter,sans-serif', color: slotsError ? '#C0392B' : '#9B9390' }}>
+            {loadingSlots
+              ? 'Checking real availability…'
+              : slotsError
+                ? slotsError
+                : availableSlots.length
+                  ? 'Only available times are shown for this treatment, date, and duration.'
+                  : 'No available time for this treatment/date/duration. Choose another option.'}
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
@@ -616,7 +762,7 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
 
           {err && <p style={{ color: '#C0392B', font: '400 12px Inter,sans-serif', margin: 0 }}>{err}</p>}
 
-          <button type="submit" disabled={saving} style={{ marginTop: 6, background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '11px 0', font: '600 12px Inter,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+          <button type="submit" disabled={saving || !canCreate} style={{ marginTop: 6, background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '11px 0', font: '600 12px Inter,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving || !canCreate ? 0.7 : 1 }}>
             {saving ? 'Creating…' : 'Create Booking'}
           </button>
           {slotFull && (
@@ -661,7 +807,8 @@ function EditBookingModal({ booking, treatments, therapists, onClose, onSaved })
 
   const handleSubmit = async (e, overbook = false) => {
     e.preventDefault()
-    const missing = status === 'confirmed' ? missingConfirmationFields({ guestName, guestPhone, guestEmail }) : []
+    const normalizedPhone = normalizeE164Input(guestPhone)
+    const missing = status === 'confirmed' ? missingConfirmationFields({ guestName, guestPhone: normalizedPhone, guestEmail }) : []
     if (missing.length) {
       setErr(`Cannot confirm booking yet. Required: ${missing.join(', ')}.`)
       return
@@ -672,7 +819,7 @@ function EditBookingModal({ booking, treatments, therapists, onClose, onSaved })
       const res = await fetch(`/api/admin/bookings/${booking.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          guest_name: guestName, guest_phone: guestPhone, guest_email: guestEmail || null,
+          guest_name: guestName, guest_phone: normalizedPhone, guest_email: guestEmail || null,
           treatment_id: treatmentId, therapist_id: therapistId || null,
           date, time_slot: time, duration, status, source,
           notes, staff_notes: staffNotes,
@@ -708,7 +855,7 @@ function EditBookingModal({ booking, treatments, therapists, onClose, onSaved })
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Phone</label>
-              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} pattern="^\\+[1-9]\\d{6,14}$" title="Use full country code format, e.g. +66869643159" style={inputSt} />
+              <input required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} onBlur={() => setGuestPhone(normalizeE164Input(guestPhone))} title="Use full country code format, e.g. +66869643159" style={inputSt} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelSt}>Email</label>
