@@ -35,7 +35,7 @@ function timeAgo(value) {
   return new Date(value).toLocaleDateString()
 }
 
-function needsAttention(thread) {
+function needsReply(thread) {
   if (thread.mode === 'closed') return false
   if (thread.mode === 'waiting_for_staff') return true
   if (!thread.last_inbound_at) return false
@@ -94,7 +94,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
   )
 
   const attentionCount = useMemo(
-    () => initialThreads.filter(needsAttention).length,
+    () => initialThreads.filter(needsReply).length,
     [initialThreads],
   )
 
@@ -166,7 +166,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ font: '700 12px Inter,sans-serif', color: '#1C1917' }}>Recent threads</span>
-                {attentionCount > 0 && <span style={attentionPill}>{attentionCount} need attention</span>}
+                {attentionCount > 0 && <span style={attentionPill}>{attentionCount} need reply</span>}
               </div>
               <div style={{ marginTop: 3, font: '400 11px Inter,sans-serif', color: '#9B9390' }}>
                 {initialThreads.length} latest conversations · refreshed {lastRefreshedAt.toLocaleTimeString()}
@@ -178,7 +178,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
         <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
           {initialThreads.map(thread => {
             const active = thread.id === activeThread?.id
-            const attention = needsAttention(thread)
+            const attention = needsReply(thread)
             return (
               <button
                 key={thread.id}
@@ -196,14 +196,14 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                    {attention && <span aria-label="Needs attention" title="New customer message needs staff attention" style={attentionDot} />}
+                    {attention && <span aria-label="Needs reply" title="Guest is waiting for a reply" style={attentionDot} />}
                     <div style={{ font: attention ? '800 13px Inter,sans-serif' : '700 13px Inter,sans-serif', color: '#1C1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guestName(thread)}</div>
                   </div>
                   <div style={{ flexShrink: 0, font: attention ? '800 10px Inter,sans-serif' : '500 10px Inter,sans-serif', color: attention ? '#C4924A' : '#9B9390' }}>{timeAgo(thread.last_active_at)}</div>
                 </div>
                 <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                   <span style={{ font: '700 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#6B6663' }}>{thread.channel}</span>
-                  {attention && <span style={attentionBadge}>Unread</span>}
+                  {attention && <span style={attentionBadge}>Needs reply</span>}
                   <span style={{
                     borderRadius: 999,
                     padding: '3px 8px',
@@ -232,10 +232,10 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                   {activeThread.customers?.email ? ` · ${activeThread.customers.email}` : ''}
                   {activeThread.profiles?.full_name ? ` · Assigned to ${activeThread.profiles.full_name}` : ''}
                 </div>
-                {needsAttention(activeThread) && (
+                {needsReply(activeThread) && (
                   <div style={{ display: 'inline-flex', marginTop: 10, alignItems: 'center', gap: 7, borderRadius: 999, padding: '5px 10px', background: '#FFF3D8', color: '#8A5B13', font: '800 11px Inter,sans-serif' }}>
                     <span style={{ width: 8, height: 8, borderRadius: 999, background: '#C4924A' }} />
-                    New customer message needs attention
+                    Guest is waiting for a reply
                   </div>
                 )}
               </div>
