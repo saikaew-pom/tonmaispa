@@ -129,8 +129,32 @@ function MessageBubble({ message }) {
   )
 }
 
-function RelatedBookingsPanel({ bookings }) {
+function RelatedBookingsPanel({ bookings, activeThreadId, onSent }) {
+  const [sendingId, setSendingId] = useState(null)
+  const [sentIds, setSentIds] = useState({})
+  const [sendError, setSendError] = useState('')
+
   if (!bookings?.length) return null
+
+  const sendBookingUpdate = async booking => {
+    setSendingId(booking.id)
+    setSendError('')
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}/whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: activeThreadId || null }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Could not send WhatsApp update.')
+      setSentIds(prev => ({ ...prev, [booking.id]: true }))
+      onSent?.()
+    } catch (error) {
+      setSendError(error.message)
+    } finally {
+      setSendingId(null)
+    }
+  }
 
   return (
     <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', background: '#FFFCF8' }}>
@@ -140,31 +164,48 @@ function RelatedBookingsPanel({ bookings }) {
         </div>
         <div style={{ font: '500 11px Inter,sans-serif', color: '#9B9390' }}>{bookings.length} recent</div>
       </div>
+      {sendError && (
+        <div style={{ marginBottom: 8, border: '1px solid #E0B4B4', borderRadius: 6, background: '#FBEAEA', color: '#C0392B', padding: '8px 10px', font: '700 11px/1.5 Inter,sans-serif' }}>
+          {sendError}
+        </div>
+      )}
       <div style={{ display: 'grid', gap: 8 }}>
-        {bookings.map(booking => (
-          <div key={booking.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', border: '1px solid var(--color-border)', borderRadius: 8, background: '#fff', padding: 10 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ font: '800 12px Inter,sans-serif', color: '#1C1917' }}>{booking.ref_code}</span>
-                <span style={{
-                  borderRadius: 999,
-                  padding: '3px 8px',
-                  background: BOOKING_STATUS_COLORS[booking.status] || '#9B9390',
-                  color: '#fff',
-                  font: '800 10px Inter,sans-serif',
-                }}>
-                  {booking.status}
-                </span>
+        {bookings.map(booking => {
+          const sending = sendingId === booking.id
+          const canSendUpdate = ['confirmed', 'cancelled'].includes(booking.status) && booking.guest_phone
+          return (
+            <div key={booking.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', border: '1px solid var(--color-border)', borderRadius: 8, background: '#fff', padding: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ font: '800 12px Inter,sans-serif', color: '#1C1917' }}>{booking.ref_code}</span>
+                  <span style={{
+                    borderRadius: 999,
+                    padding: '3px 8px',
+                    background: BOOKING_STATUS_COLORS[booking.status] || '#9B9390',
+                    color: '#fff',
+                    font: '800 10px Inter,sans-serif',
+                  }}>
+                    {booking.status}
+                  </span>
+                  {sentIds[booking.id] && <span style={{ font: '800 10px Inter,sans-serif', color: '#3B5249' }}>✓ sent</span>}
+                </div>
+                <div style={{ marginTop: 4, font: '400 12px/1.5 Inter,sans-serif', color: '#6B6663', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {booking.spa_treatments?.name || 'Spa treatment'} · {booking.date} at {booking.time_slot?.slice(0, 5)} · {booking.duration} min
+                </div>
               </div>
-              <div style={{ marginTop: 4, font: '400 12px/1.5 Inter,sans-serif', color: '#6B6663', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {booking.spa_treatments?.name || 'Spa treatment'} · {booking.date} at {booking.time_slot?.slice(0, 5)} · {booking.duration} min
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {canSendUpdate && (
+                  <button type="button" disabled={sending} onClick={() => sendBookingUpdate(booking)} style={{ ...btnPrimary, padding: '7px 10px', fontSize: 11, opacity: sending ? 0.65 : 1, cursor: sending ? 'wait' : 'pointer' }}>
+                    {sending ? 'Sending…' : 'Send update'}
+                  </button>
+                )}
+                <a href={bookingViewUrl(booking)} style={{ ...btnGhost, textDecoration: 'none', whiteSpace: 'nowrap', padding: '7px 10px', fontSize: 11 }}>
+                  View booking
+                </a>
               </div>
             </div>
-            <a href={bookingViewUrl(booking)} style={{ ...btnGhost, textDecoration: 'none', whiteSpace: 'nowrap', padding: '7px 10px', fontSize: 11 }}>
-              View booking
-            </a>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -379,7 +420,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
               </div>
             </div>
 
-            <RelatedBookingsPanel bookings={initialRelatedBookings} />
+            <RelatedBookingsPanel bookings={initialRelatedBookings} activeThreadId={activeThread.id} onSent={refreshInbox} />
 
             <div ref={messagesRef} style={{ padding: 16, background: '#FBF8F3', minHeight: 360, maxHeight: '56vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 12, scrollBehavior: 'smooth' }}>
               {initialMessages.map(message => <MessageBubble key={message.id} message={message} />)}
