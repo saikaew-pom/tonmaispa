@@ -248,8 +248,10 @@ export default function BookingsClient({ initialBookings, treatments, therapists
           treatments={treatments}
           therapists={therapists}
           prefill={prefill}
+          twilioEnabled={twilioEnabled}
           onClose={() => setShowNew(false)}
-          onCreated={b => { addBooking(b); setShowNew(false) }}
+          onCreated={(b, options = {}) => { addBooking(b); if (!options.keepOpen) setShowNew(false) }}
+          onBookingUpdated={patchBooking}
         />
       )}
 
@@ -475,7 +477,7 @@ function LogsModal({ bookingId, onClose }) {
 }
 
 // ── Manual booking creation modal ───────────────────────────────────────────
-function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCreated }) {
+function NewBookingModal({ treatments, therapists, prefill = {}, twilioEnabled = false, onClose, onCreated, onBookingUpdated }) {
   const [guestName, setGuestName]   = useState(prefill.guestName ?? '')
   const [guestPhone, setGuestPhone] = useState(prefill.guestPhone ?? '')
   const [guestEmail, setGuestEmail] = useState(prefill.guestEmail ?? '')
@@ -495,6 +497,10 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
   const [notes, setNotes]           = useState('')
   const [saving, setSaving]         = useState(false)
   const [err, setErr]               = useState('')
+  const [createdBooking, setCreatedBooking] = useState(null)
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false)
+  const [whatsAppSentAt, setWhatsAppSentAt] = useState('')
+  const [whatsAppError, setWhatsAppError] = useState('')
   // Set when the server rejects with SLOT_FULL — swaps the submit button
   // into an explicit "Book anyway (overbook)" confirmation.
   const [slotFull, setSlotFull]     = useState(false)
@@ -643,12 +649,97 @@ function NewBookingModal({ treatments, therapists, prefill = {}, onClose, onCrea
         if (json.code === 'SLOT_FULL') setSlotFull(true)
         throw new Error(json.error || 'Could not create booking')
       }
-      onCreated(json.booking)
+      if (prefill.fromConversation) {
+        setCreatedBooking(json.booking)
+        setWhatsAppSentAt('')
+        setWhatsAppError('')
+        onCreated(json.booking, { keepOpen: true })
+      } else {
+        onCreated(json.booking)
+      }
     } catch (e2) {
       setErr(e2.message)
     } finally {
       setSaving(false)
     }
+  }
+
+  const sendCreatedBookingWhatsApp = async () => {
+    if (!createdBooking?.id) return
+    setSendingWhatsApp(true)
+    setWhatsAppError('')
+    try {
+      const res = await fetch(`/api/admin/bookings/${createdBooking.id}/whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: prefill.conversationId || null }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Could not send WhatsApp confirmation')
+      setWhatsAppSentAt(json.last_whatsapp_sent_at)
+      onBookingUpdated?.(createdBooking.id, {
+        last_whatsapp_sent_at: json.last_whatsapp_sent_at,
+        last_whatsapp_status: json.last_whatsapp_status,
+      })
+    } catch (error) {
+      setWhatsAppError(error.message)
+    } finally {
+      setSendingWhatsApp(false)
+    }
+  }
+
+  if (createdBooking) {
+    const conversationHref = prefill.conversationId ? `/dashboard/conversations?thread=${encodeURIComponent(prefill.conversationId)}` : '/dashboard/conversations'
+    const canSendWhatsApp = twilioEnabled && createdBooking.guest_phone && ['confirmed', 'cancelled'].includes(createdBooking.status)
+    return (
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,25,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+        <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 10, padding: 28, maxWidth: 480, width: '100%', boxShadow: '0 24px 70px rgba(28,25,23,0.18)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 18 }}>
+            <div>
+              <div style={{ font: '400 24px Cormorant Garamond,serif', color: '#1C1917' }}>Booking created</div>
+              <div style={{ marginTop: 5, font: '700 11px Inter,sans-serif', letterSpacing: 1.2, textTransform: 'uppercase', color: '#C4924A' }}>
+                {createdBooking.ref_code}
+              </div>
+            </div>
+            <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9B9390', lineHeight: 1 }}>×</button>
+          </div>
+
+          <div style={{ background: '#FBF8F3', border: '1px solid var(--color-border)', borderRadius: 8, padding: 14, marginBottom: 14 }}>
+            <div style={{ font: '700 13px Inter,sans-serif', color: '#1C1917' }}>{createdBooking.guest_name}</div>
+            <div style={{ marginTop: 5, font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663' }}>
+              {createdBooking.spa_treatments?.name || treatment?.name || 'Spa treatment'}<br />
+              {createdBooking.date} at {createdBooking.time_slot?.slice(0, 5)} · {createdBooking.duration} min
+            </div>
+          </div>
+
+          <div style={{ font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663', marginBottom: 14 }}>
+            Next: send the confirmation into the same WhatsApp conversation so the guest sees the booking details and the timeline stays complete.
+          </div>
+
+          {whatsAppError && <div style={{ background: '#FBEAEA', border: '1px solid #E0B4B4', color: '#C0392B', borderRadius: 6, padding: '9px 11px', font: '600 12px Inter,sans-serif', marginBottom: 12 }}>{whatsAppError}</div>}
+          {whatsAppSentAt && <div style={{ background: '#E8EFEA', border: '1px solid #C9D8D0', color: '#3B5249', borderRadius: 6, padding: '9px 11px', font: '700 12px Inter,sans-serif', marginBottom: 12 }}>✓ WhatsApp confirmation sent and logged in the conversation.</div>}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {canSendWhatsApp && !whatsAppSentAt && (
+              <button type="button" disabled={sendingWhatsApp} onClick={sendCreatedBookingWhatsApp} style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '11px 0', font: '700 12px Inter,sans-serif', cursor: sendingWhatsApp ? 'wait' : 'pointer', opacity: sendingWhatsApp ? 0.7 : 1 }}>
+                {sendingWhatsApp ? 'Sending confirmation…' : 'Send WhatsApp confirmation'}
+              </button>
+            )}
+            {!canSendWhatsApp && (
+              <div style={{ color: '#8A5B13', background: '#FFF3D8', borderRadius: 6, padding: '9px 11px', font: '600 12px/1.5 Inter,sans-serif' }}>
+                WhatsApp sending is not available for this booking. Check Twilio settings and guest phone.
+              </div>
+            )}
+            <a href={conversationHref} style={{ textAlign: 'center', textDecoration: 'none', background: '#fff', color: '#3B5249', border: '1px solid #3B5249', borderRadius: 6, padding: '10px 0', font: '700 12px Inter,sans-serif' }}>
+              Back to conversation
+            </a>
+            <button type="button" onClick={onClose} style={{ background: '#fff', color: '#6B6663', border: '1px solid var(--color-border)', borderRadius: 6, padding: '10px 0', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
+              Stay on bookings
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

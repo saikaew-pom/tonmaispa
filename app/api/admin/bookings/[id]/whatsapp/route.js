@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/require-admin'
 import { sendWhatsAppMessage } from '@/lib/twilio'
 import { logBookingAction } from '@/lib/booking-logs'
+import { appendConversationMessage } from '@/lib/conversations'
 
 function isTwilioConfigured() {
   return Boolean(
@@ -24,6 +25,8 @@ function messageFor(status, { refCode, treatment, date, time, whatsapp }) {
 export async function POST(req, { params }) {
   const auth = await requireAdmin()
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+  const bodyJson = await req.json().catch(() => ({}))
+  const conversationId = String(bodyJson?.conversationId || bodyJson?.conversation_id || '').trim()
 
   const { data: settingsRows } = await auth.admin
     .from('site_content').select('key, value_text').eq('key', 'settings.twilio_whatsapp_enabled')
@@ -53,8 +56,9 @@ export async function POST(req, { params }) {
     whatsapp: whatsappNumber,
   })
 
+  let result
   try {
-    await sendWhatsAppMessage({ to: booking.guest_phone, body })
+    result = await sendWhatsAppMessage({ to: booking.guest_phone, body })
   } catch (err) {
     console.error('[bookings whatsapp] send failed:', err.message)
     return Response.json({ error: 'Could not send the WhatsApp message. Please try again.' }, { status: 502 })
@@ -70,5 +74,32 @@ export async function POST(req, { params }) {
     detail: `${booking.status === 'confirmed' ? 'Confirmed' : 'Cancelled'} WhatsApp message sent to ${booking.guest_phone}`,
   })
 
-  return Response.json({ ok: true, last_whatsapp_sent_at: sentAt, last_whatsapp_status: booking.status })
+  if (conversationId) {
+    const { data: thread } = await auth.admin
+      .from('conversation_threads')
+      .select('id, whatsapp_address')
+      .eq('id', conversationId)
+      .maybeSingle()
+
+    if (thread?.whatsapp_address) {
+      await appendConversationMessage(auth.admin, {
+        threadId: thread.id,
+        senderType: 'staff',
+        channel: 'whatsapp',
+        body,
+        twilioMessageSid: result.sid,
+        dedupeKey: `twilio:${result.sid}`,
+        deliveryStatus: result.status || 'queued',
+        metadata: {
+          actor_id: auth.session.user.id,
+          actor_email: auth.session.user.email,
+          booking_ref: booking.ref_code,
+          booking_status: booking.status,
+          source: 'booking_confirmation',
+        },
+      })
+    }
+  }
+
+  return Response.json({ ok: true, sid: result.sid, last_whatsapp_sent_at: sentAt, last_whatsapp_status: booking.status })
 }
