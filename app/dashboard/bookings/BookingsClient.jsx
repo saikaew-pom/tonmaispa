@@ -87,6 +87,8 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   const [showNew, setShowNew]       = useState(Boolean(prefill?.fromConversation))
   const [notifyingId, setNotifyingId] = useState(null) // `${id}:email` | `${id}:whatsapp`
   const [notifyError, setNotifyError] = useState(null)
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderResult, setReminderResult] = useState(null)
   const [editingBooking, setEditingBooking] = useState(() => (
     prefill?.bookingId ? initialBookings.find(booking => booking.id === prefill.bookingId) ?? null : null
   ))
@@ -134,6 +136,32 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       patchBooking(id, { last_whatsapp_sent_at: data.last_whatsapp_sent_at, last_whatsapp_status: data.last_whatsapp_status })
     } finally {
       setNotifyingId(null)
+    }
+  }
+
+  const sendTomorrowReminders = async () => {
+    const ok = window.confirm('Send WhatsApp reminders for confirmed bookings tomorrow? Each booking will only be reminded once.')
+    if (!ok) return
+
+    setReminderSending(true)
+    setNotifyError(null)
+    setReminderResult(null)
+    try {
+      const res = await fetch('/api/admin/bookings/send-reminders', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setNotifyError(data.error || 'Could not send tomorrow reminders.')
+        return
+      }
+      for (const item of data.sent ?? []) {
+        patchBooking(item.id, {
+          whatsapp_reminder_sent_at: item.sent_at,
+          whatsapp_reminder_status: item.status,
+        })
+      }
+      setReminderResult(data)
+    } finally {
+      setReminderSending(false)
     }
   }
 
@@ -208,6 +236,9 @@ export default function BookingsClient({ initialBookings, treatments, therapists
           </button>
         ))}
       </div>
+      <button onClick={sendTomorrowReminders} disabled={reminderSending} style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 16px', font: '600 12px Inter,sans-serif', cursor: reminderSending ? 'wait' : 'pointer', opacity: reminderSending ? 0.7 : 1 }}>
+        {reminderSending ? 'Sending reminders…' : 'Send tomorrow reminders'}
+      </button>
       <button onClick={() => setShowNew(true)} style={{ background: '#C4924A', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 16px', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
         + New Booking
       </button>
@@ -234,6 +265,12 @@ export default function BookingsClient({ initialBookings, treatments, therapists
       {notifyError && (
         <div style={{ background: '#FBEAEA', border: '1px solid #E0B4B4', color: '#C0392B', borderRadius: 6, padding: '10px 14px', font: '500 12px Inter,sans-serif', marginBottom: 12 }}>
           {notifyError}
+        </div>
+      )}
+
+      {reminderResult && (
+        <div style={{ background: '#E8EFEA', border: '1px solid #C9D8D0', color: '#3B5249', borderRadius: 6, padding: '10px 14px', font: '600 12px/1.5 Inter,sans-serif', marginBottom: 12 }}>
+          Reminder run for {reminderResult.target_date}: sent {reminderResult.sent?.length ?? 0}, skipped {reminderResult.skipped?.length ?? 0}, failed {reminderResult.failed?.length ?? 0}.
         </div>
       )}
 
@@ -286,6 +323,7 @@ function NotifyCell({ booking, notifyingId, twilioEnabled, onSendEmail, onSendWh
   // so they can notify the guest of the new status too.
   const emailSentAt = booking.last_email_status === booking.status ? formatSentAt(booking.last_email_sent_at) : null
   const whatsappSentAt = booking.last_whatsapp_status === booking.status ? formatSentAt(booking.last_whatsapp_sent_at) : null
+  const reminderSentAt = formatSentAt(booking.whatsapp_reminder_sent_at)
 
   const btnSt = {
     border: '1px solid #3B5249', borderRadius: 3, background: '#fff', color: '#3B5249',
@@ -310,6 +348,7 @@ function NotifyCell({ booking, notifyingId, twilioEnabled, onSendEmail, onSendWh
               {whatsappSending ? 'Sending…' : 'Send via WhatsApp'}
             </button>
       )}
+      {reminderSentAt && <div style={sentSt}>✓ Reminder sent {reminderSentAt}</div>}
       <button type="button" onClick={() => onViewLogs(booking.id)} style={{ ...btnSt, border: '1px solid var(--color-border)', color: '#6B6663' }}>
         View logs
       </button>
