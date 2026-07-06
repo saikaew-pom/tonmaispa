@@ -11,6 +11,10 @@ function isTwilioConfigured() {
   )
 }
 
+function settingEnabled(value) {
+  return ['true', '1', 'yes', 'on', 'enabled'].includes(String(value ?? '').trim().toLowerCase())
+}
+
 async function getData() {
   const admin = createSupabaseAdminClient()
   const [bookingsRes, treatmentsRes, therapistsRes, settingsRes] = await Promise.all([
@@ -33,7 +37,7 @@ async function getData() {
     bookings:   bookingsRes.data ?? [],
     treatments: treatmentsRes.data ?? [],
     therapists: therapistsRes.data ?? [],
-    twilioEnabled: settingsRes.data?.value_text === 'true' && isTwilioConfigured(),
+    twilioEnabled: settingEnabled(settingsRes.data?.value_text) && isTwilioConfigured(),
   }
 }
 

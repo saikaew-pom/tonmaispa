@@ -690,7 +690,7 @@ function NewBookingModal({ treatments, therapists, prefill = {}, twilioEnabled =
 
   if (createdBooking) {
     const conversationHref = prefill.conversationId ? `/dashboard/conversations?thread=${encodeURIComponent(prefill.conversationId)}` : '/dashboard/conversations'
-    const canSendWhatsApp = twilioEnabled && createdBooking.guest_phone && ['confirmed', 'cancelled'].includes(createdBooking.status)
+    const hasWhatsAppRecipient = Boolean(createdBooking.guest_phone && ['confirmed', 'cancelled'].includes(createdBooking.status))
     return (
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,25,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
         <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 10, padding: 28, maxWidth: 480, width: '100%', boxShadow: '0 24px 70px rgba(28,25,23,0.18)' }}>
@@ -720,14 +720,19 @@ function NewBookingModal({ treatments, therapists, prefill = {}, twilioEnabled =
           {whatsAppSentAt && <div style={{ background: '#E8EFEA', border: '1px solid #C9D8D0', color: '#3B5249', borderRadius: 6, padding: '9px 11px', font: '700 12px Inter,sans-serif', marginBottom: 12 }}>✓ WhatsApp confirmation sent and logged in the conversation.</div>}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {canSendWhatsApp && !whatsAppSentAt && (
+            {hasWhatsAppRecipient && !whatsAppSentAt && (
               <button type="button" disabled={sendingWhatsApp} onClick={sendCreatedBookingWhatsApp} style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '11px 0', font: '700 12px Inter,sans-serif', cursor: sendingWhatsApp ? 'wait' : 'pointer', opacity: sendingWhatsApp ? 0.7 : 1 }}>
                 {sendingWhatsApp ? 'Sending confirmation…' : 'Send WhatsApp confirmation'}
               </button>
             )}
-            {!canSendWhatsApp && (
+            {hasWhatsAppRecipient && !twilioEnabled && !whatsAppSentAt && (
               <div style={{ color: '#8A5B13', background: '#FFF3D8', borderRadius: 6, padding: '9px 11px', font: '600 12px/1.5 Inter,sans-serif' }}>
-                WhatsApp sending is not available for this booking. Check Twilio settings and guest phone.
+                WhatsApp may need Settings or Vercel variables. You can still try sending; if blocked, the exact reason will appear here.
+              </div>
+            )}
+            {!hasWhatsAppRecipient && (
+              <div style={{ color: '#8A5B13', background: '#FFF3D8', borderRadius: 6, padding: '9px 11px', font: '600 12px/1.5 Inter,sans-serif' }}>
+                WhatsApp confirmation needs a guest phone and a confirmed or cancelled booking status.
               </div>
             )}
             <a href={conversationHref} style={{ textAlign: 'center', textDecoration: 'none', background: '#fff', color: '#3B5249', border: '1px solid #3B5249', borderRadius: 6, padding: '10px 0', font: '700 12px Inter,sans-serif' }}>

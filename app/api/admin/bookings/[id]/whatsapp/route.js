@@ -11,6 +11,10 @@ function isTwilioConfigured() {
   )
 }
 
+function settingEnabled(value) {
+  return ['true', '1', 'yes', 'on', 'enabled'].includes(String(value ?? '').trim().toLowerCase())
+}
+
 function messageFor(status, { refCode, treatment, date, time, whatsapp }) {
   if (status === 'confirmed') {
     return `Ton Mai Spa: Your booking ${refCode} for ${treatment} on ${date} at ${time} is confirmed. See you soon! Questions? +${whatsapp}`
@@ -30,7 +34,7 @@ export async function POST(req, { params }) {
 
   const { data: settingsRows } = await auth.admin
     .from('site_content').select('key, value_text').eq('key', 'settings.twilio_whatsapp_enabled')
-  const enabled = settingsRows?.[0]?.value_text === 'true'
+  const enabled = settingEnabled(settingsRows?.[0]?.value_text)
   if (!enabled) return Response.json({ error: 'WhatsApp sending is turned off in Settings.' }, { status: 503 })
   if (!isTwilioConfigured()) return Response.json({ error: 'Twilio is not configured on the server yet.' }, { status: 503 })
 
