@@ -1,3 +1,5 @@
+import { cookies } from 'next/headers'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import ConversationsClient from './ConversationsClient'
 
@@ -12,6 +14,9 @@ function threadNeedsReply(thread) {
 }
 
 async function getThreads(selectedId) {
+  const cookieStore = await cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const { data: { session } } = await supabase.auth.getSession()
   const admin = createSupabaseAdminClient()
 
   const { data: threads } = await admin
@@ -62,13 +67,13 @@ async function getThreads(selectedId) {
     messages = data ?? []
   }
 
-  return { threads: list, activeId, messages }
+  return { threads: list, activeId, messages, currentStaffId: session?.user?.id ?? null }
 }
 
 export default async function ConversationsPage({ searchParams }) {
   const params = await searchParams
   const selectedId = params?.thread || null
-  const { threads, activeId, messages } = await getThreads(selectedId)
+  const { threads, activeId, messages, currentStaffId } = await getThreads(selectedId)
 
   return (
     <div>
@@ -79,7 +84,12 @@ export default async function ConversationsPage({ searchParams }) {
           See web and WhatsApp chats in one place. Take over when a guest needs a human, then return the thread to the bot when finished.
         </p>
       </div>
-      <ConversationsClient initialThreads={threads} activeId={activeId} initialMessages={messages} />
+      <ConversationsClient
+        initialThreads={threads}
+        activeId={activeId}
+        initialMessages={messages}
+        currentStaffId={currentStaffId}
+      />
     </div>
   )
 }

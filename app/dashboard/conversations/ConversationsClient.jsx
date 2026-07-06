@@ -17,6 +17,15 @@ const MODE_COLORS = {
   closed: '#9B9390',
 }
 
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'needs_reply', label: 'Needs reply' },
+  { key: 'mine', label: 'My conversations' },
+  { key: 'human', label: 'Staff active' },
+  { key: 'bot', label: 'Bot active' },
+  { key: 'closed', label: 'Closed' },
+]
+
 function guestName(thread) {
   return thread.customers?.display_name
     || thread.whatsapp_address?.replace(/^whatsapp:/, '')
@@ -41,6 +50,21 @@ function needsReply(thread) {
   if (!thread.last_inbound_at) return false
   if (!thread.last_outbound_at) return true
   return new Date(thread.last_inbound_at).getTime() > new Date(thread.last_outbound_at).getTime()
+}
+
+function threadMatchesFilter(thread, filter, currentStaffId) {
+  if (filter === 'all') return true
+  if (filter === 'needs_reply') return needsReply(thread)
+  if (filter === 'mine') return Boolean(currentStaffId && thread.assigned_staff_id === currentStaffId)
+  if (filter === 'human') return thread.mode === 'human' || thread.mode === 'waiting_for_staff'
+  return thread.mode === filter
+}
+
+function assignmentLabel(thread, currentStaffId) {
+  if (!thread.assigned_staff_id) return 'Unassigned'
+  if (currentStaffId && thread.assigned_staff_id === currentStaffId) return 'Assigned to me'
+  if (thread.profiles?.full_name) return `Assigned to ${thread.profiles.full_name}`
+  return 'Assigned to staff'
 }
 
 function MessageBubble({ message }) {
@@ -80,12 +104,13 @@ function MessageBubble({ message }) {
   )
 }
 
-export default function ConversationsClient({ initialThreads, activeId, initialMessages }) {
+export default function ConversationsClient({ initialThreads, activeId, initialMessages, currentStaffId }) {
   const router = useRouter()
   const messagesRef = useRef(null)
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [filter, setFilter] = useState('all')
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => new Date())
 
   const activeThread = useMemo(
@@ -96,6 +121,18 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
   const attentionCount = useMemo(
     () => initialThreads.filter(needsReply).length,
     [initialThreads],
+  )
+
+  const filterCounts = useMemo(() => Object.fromEntries(
+    FILTERS.map(item => [
+      item.key,
+      initialThreads.filter(thread => threadMatchesFilter(thread, item.key, currentStaffId)).length,
+    ]),
+  ), [currentStaffId, initialThreads])
+
+  const visibleThreads = useMemo(
+    () => initialThreads.filter(thread => threadMatchesFilter(thread, filter, currentStaffId)),
+    [currentStaffId, filter, initialThreads],
   )
 
   const refreshInbox = useCallback(() => {
@@ -174,9 +211,24 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
             </div>
             <button onClick={refreshInbox} disabled={busy} style={{ ...btnGhost, padding: '7px 10px', fontSize: 11 }}>Refresh</button>
           </div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 12 }}>
+            {FILTERS.map(item => {
+              const active = filter === item.key
+              const count = filterCounts[item.key] ?? 0
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setFilter(item.key)}
+                  style={active ? filterChipActive : filterChip}
+                >
+                  {item.label} <span style={active ? filterCountActive : filterCount}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
         <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
-          {initialThreads.map(thread => {
+          {visibleThreads.map(thread => {
             const active = thread.id === activeThread?.id
             const attention = needsReply(thread)
             return (
@@ -204,6 +256,7 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                 <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                   <span style={{ font: '700 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: '#6B6663' }}>{thread.channel}</span>
                   {attention && <span style={attentionBadge}>Needs reply</span>}
+                  <span style={assignmentBadge(thread, currentStaffId)}>{assignmentLabel(thread, currentStaffId)}</span>
                   <span style={{
                     borderRadius: 999,
                     padding: '3px 8px',
@@ -217,7 +270,11 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
               </button>
             )
           })}
-          {initialThreads.length === 0 && <div style={{ padding: 18, font: '400 13px Inter,sans-serif', color: '#9B9390' }}>No conversations yet.</div>}
+          {visibleThreads.length === 0 && (
+            <div style={{ padding: 18, font: '400 13px/1.6 Inter,sans-serif', color: '#9B9390' }}>
+              No conversations in this view.
+            </div>
+          )}
         </div>
       </section>
 
@@ -230,7 +287,9 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                 <div style={{ marginTop: 4, font: '400 12px Inter,sans-serif', color: '#6B6663' }}>
                   {activeThread.whatsapp_address?.replace(/^whatsapp:/, '') || 'Website chat'}
                   {activeThread.customers?.email ? ` · ${activeThread.customers.email}` : ''}
-                  {activeThread.profiles?.full_name ? ` · Assigned to ${activeThread.profiles.full_name}` : ''}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <span style={assignmentBadge(activeThread, currentStaffId)}>{assignmentLabel(activeThread, currentStaffId)}</span>
                 </div>
                 {needsReply(activeThread) && (
                   <div style={{ display: 'inline-flex', marginTop: 10, alignItems: 'center', gap: 7, borderRadius: 999, padding: '5px 10px', background: '#FFF3D8', color: '#8A5B13', font: '800 11px Inter,sans-serif' }}>
@@ -319,6 +378,45 @@ const attentionBadge = {
   background: '#C4924A',
   color: '#fff',
   font: '800 10px Inter,sans-serif',
+}
+
+function assignmentBadge(thread, currentStaffId) {
+  const mine = currentStaffId && thread.assigned_staff_id === currentStaffId
+  const unassigned = !thread.assigned_staff_id
+  return {
+    borderRadius: 999,
+    padding: '3px 8px',
+    background: mine ? '#E8EFEA' : unassigned ? '#F4F0EA' : '#EFE7DC',
+    color: mine ? '#3B5249' : unassigned ? '#7A716B' : '#7B4B2A',
+    font: '800 10px Inter,sans-serif',
+  }
+}
+
+const filterChip = {
+  border: '1px solid var(--color-border)',
+  borderRadius: 999,
+  background: '#fff',
+  color: '#3B5249',
+  padding: '6px 10px',
+  font: '800 10px Inter,sans-serif',
+  cursor: 'pointer',
+}
+
+const filterChipActive = {
+  ...filterChip,
+  borderColor: '#3B5249',
+  background: '#3B5249',
+  color: '#fff',
+}
+
+const filterCount = {
+  marginLeft: 4,
+  color: '#9B9390',
+}
+
+const filterCountActive = {
+  marginLeft: 4,
+  color: 'rgba(255,255,255,0.72)',
 }
 
 const btnGhost = {
