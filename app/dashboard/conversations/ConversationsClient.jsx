@@ -131,6 +131,8 @@ function MessageBubble({ message }) {
 
 function RelatedBookingsPanel({ bookings, activeThreadId, onSent }) {
   const [sendingId, setSendingId] = useState(null)
+  const [cancellingId, setCancellingId] = useState(null)
+  const [statusOverrides, setStatusOverrides] = useState({})
   const [sentIds, setSentIds] = useState({})
   const [sendError, setSendError] = useState('')
 
@@ -156,6 +158,30 @@ function RelatedBookingsPanel({ bookings, activeThreadId, onSent }) {
     }
   }
 
+  const cancelBooking = async booking => {
+    const ok = window.confirm(`Cancel booking ${booking.ref_code}? You can send the WhatsApp cancellation update after it is cancelled.`)
+    if (!ok) return
+
+    setCancellingId(booking.id)
+    setSendError('')
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Could not cancel booking.')
+      setStatusOverrides(prev => ({ ...prev, [booking.id]: 'cancelled' }))
+      setSentIds(prev => ({ ...prev, [booking.id]: false }))
+      onSent?.()
+    } catch (error) {
+      setSendError(error.message)
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
   return (
     <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', background: '#FFFCF8' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
@@ -171,8 +197,11 @@ function RelatedBookingsPanel({ bookings, activeThreadId, onSent }) {
       )}
       <div style={{ display: 'grid', gap: 8 }}>
         {bookings.map(booking => {
+          const effectiveStatus = statusOverrides[booking.id] || booking.status
           const sending = sendingId === booking.id
-          const canSendUpdate = ['confirmed', 'cancelled'].includes(booking.status) && booking.guest_phone
+          const cancelling = cancellingId === booking.id
+          const canSendUpdate = ['confirmed', 'cancelled'].includes(effectiveStatus) && booking.guest_phone
+          const canCancel = effectiveStatus !== 'cancelled' && effectiveStatus !== 'completed'
           return (
             <div key={booking.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', border: '1px solid var(--color-border)', borderRadius: 8, background: '#fff', padding: 10 }}>
               <div style={{ minWidth: 0 }}>
@@ -181,11 +210,11 @@ function RelatedBookingsPanel({ bookings, activeThreadId, onSent }) {
                   <span style={{
                     borderRadius: 999,
                     padding: '3px 8px',
-                    background: BOOKING_STATUS_COLORS[booking.status] || '#9B9390',
+                    background: BOOKING_STATUS_COLORS[effectiveStatus] || '#9B9390',
                     color: '#fff',
                     font: '800 10px Inter,sans-serif',
                   }}>
-                    {booking.status}
+                    {effectiveStatus}
                   </span>
                   {sentIds[booking.id] && <span style={{ font: '800 10px Inter,sans-serif', color: '#3B5249' }}>✓ sent</span>}
                 </div>
@@ -199,8 +228,13 @@ function RelatedBookingsPanel({ bookings, activeThreadId, onSent }) {
                     {sending ? 'Sending…' : 'Send update'}
                   </button>
                 )}
+                {canCancel && (
+                  <button type="button" disabled={cancelling} onClick={() => cancelBooking(booking)} style={{ ...btnGhost, borderColor: '#C0392B', color: '#C0392B', padding: '7px 10px', fontSize: 11, opacity: cancelling ? 0.65 : 1, cursor: cancelling ? 'wait' : 'pointer' }}>
+                    {cancelling ? 'Cancelling…' : 'Cancel'}
+                  </button>
+                )}
                 <a href={bookingViewUrl(booking)} style={{ ...btnGhost, textDecoration: 'none', whiteSpace: 'nowrap', padding: '7px 10px', fontSize: 11 }}>
-                  View booking
+                  Reschedule
                 </a>
               </div>
             </div>
