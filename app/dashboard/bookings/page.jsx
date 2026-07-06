@@ -56,6 +56,7 @@ export default async function BookingsPage({ searchParams }) {
     guestPhone: stringParam(params, 'guestPhone') || '',
     guestEmail: stringParam(params, 'guestEmail') || '',
     customerId: stringParam(params, 'customerId') || '',
+    bookingId: stringParam(params, 'bookingId') || '',
   }
   return (
     <div>

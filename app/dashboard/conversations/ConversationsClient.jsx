@@ -17,6 +17,13 @@ const MODE_COLORS = {
   closed: '#9B9390',
 }
 
+const BOOKING_STATUS_COLORS = {
+  pending: '#C4924A',
+  confirmed: '#3B5249',
+  completed: '#6B6663',
+  cancelled: '#C0392B',
+}
+
 const FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'needs_reply', label: 'Needs reply' },
@@ -79,6 +86,12 @@ function conversationBookingUrl(thread) {
   return `/dashboard/bookings?${params.toString()}`
 }
 
+function bookingViewUrl(booking) {
+  const params = new URLSearchParams()
+  params.set('bookingId', booking.id)
+  return `/dashboard/bookings?${params.toString()}`
+}
+
 function MessageBubble({ message }) {
   const isGuest = message.sender_type === 'customer'
   const isSystem = message.sender_type === 'system'
@@ -116,7 +129,48 @@ function MessageBubble({ message }) {
   )
 }
 
-export default function ConversationsClient({ initialThreads, activeId, initialMessages, currentStaffId }) {
+function RelatedBookingsPanel({ bookings }) {
+  if (!bookings?.length) return null
+
+  return (
+    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', background: '#FFFCF8' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ font: '800 11px Inter,sans-serif', letterSpacing: 1.2, textTransform: 'uppercase', color: '#C4924A' }}>
+          Related bookings
+        </div>
+        <div style={{ font: '500 11px Inter,sans-serif', color: '#9B9390' }}>{bookings.length} recent</div>
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {bookings.map(booking => (
+          <div key={booking.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', border: '1px solid var(--color-border)', borderRadius: 8, background: '#fff', padding: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ font: '800 12px Inter,sans-serif', color: '#1C1917' }}>{booking.ref_code}</span>
+                <span style={{
+                  borderRadius: 999,
+                  padding: '3px 8px',
+                  background: BOOKING_STATUS_COLORS[booking.status] || '#9B9390',
+                  color: '#fff',
+                  font: '800 10px Inter,sans-serif',
+                }}>
+                  {booking.status}
+                </span>
+              </div>
+              <div style={{ marginTop: 4, font: '400 12px/1.5 Inter,sans-serif', color: '#6B6663', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {booking.spa_treatments?.name || 'Spa treatment'} · {booking.date} at {booking.time_slot?.slice(0, 5)} · {booking.duration} min
+              </div>
+            </div>
+            <a href={bookingViewUrl(booking)} style={{ ...btnGhost, textDecoration: 'none', whiteSpace: 'nowrap', padding: '7px 10px', fontSize: 11 }}>
+              View booking
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function ConversationsClient({ initialThreads, activeId, initialMessages, initialRelatedBookings = [], currentStaffId }) {
   const router = useRouter()
   const messagesRef = useRef(null)
   const [reply, setReply] = useState('')
@@ -324,6 +378,8 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
                 <button disabled={busy} onClick={() => activeThread.mode !== 'closed' && setMode('closed')} style={modeButtonStyle('closed')} aria-pressed={activeThread.mode === 'closed'}>Close</button>
               </div>
             </div>
+
+            <RelatedBookingsPanel bookings={initialRelatedBookings} />
 
             <div ref={messagesRef} style={{ padding: 16, background: '#FBF8F3', minHeight: 360, maxHeight: '56vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 12, scrollBehavior: 'smooth' }}>
               {initialMessages.map(message => <MessageBubble key={message.id} message={message} />)}

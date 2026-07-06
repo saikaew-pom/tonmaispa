@@ -56,7 +56,10 @@ async function getThreads(selectedId) {
   })
   const activeId = selectedId || list[0]?.id || null
 
+  const activeThread = list.find(thread => thread.id === activeId) ?? null
+
   let messages = []
+  let relatedBookings = []
   if (activeId) {
     const { data } = await admin
       .from('conversation_messages')
@@ -65,15 +68,33 @@ async function getThreads(selectedId) {
       .order('created_at', { ascending: true })
       .limit(250)
     messages = data ?? []
+
+    const customerId = activeThread?.customers?.id
+    const phone = activeThread?.customers?.primary_phone_e164 || activeThread?.whatsapp_address?.replace(/^whatsapp:/, '')
+    if (customerId || phone) {
+      let query = admin
+        .from('bookings')
+        .select('id, ref_code, guest_name, guest_phone, date, time_slot, duration, status, spa_treatments(name)')
+        .order('date', { ascending: false })
+        .order('time_slot', { ascending: false })
+        .limit(5)
+
+      if (customerId && phone) query = query.or(`customer_id.eq.${customerId},guest_phone.eq.${phone}`)
+      else if (customerId) query = query.eq('customer_id', customerId)
+      else query = query.eq('guest_phone', phone)
+
+      const { data: bookings } = await query
+      relatedBookings = bookings ?? []
+    }
   }
 
-  return { threads: list, activeId, messages, currentStaffId: session?.user?.id ?? null }
+  return { threads: list, activeId, messages, relatedBookings, currentStaffId: session?.user?.id ?? null }
 }
 
 export default async function ConversationsPage({ searchParams }) {
   const params = await searchParams
   const selectedId = params?.thread || null
-  const { threads, activeId, messages, currentStaffId } = await getThreads(selectedId)
+  const { threads, activeId, messages, relatedBookings, currentStaffId } = await getThreads(selectedId)
 
   return (
     <div>
@@ -88,6 +109,7 @@ export default async function ConversationsPage({ searchParams }) {
         initialThreads={threads}
         activeId={activeId}
         initialMessages={messages}
+        initialRelatedBookings={relatedBookings}
         currentStaffId={currentStaffId}
       />
     </div>

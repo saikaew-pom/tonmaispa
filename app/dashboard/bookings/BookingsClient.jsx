@@ -87,7 +87,9 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   const [showNew, setShowNew]       = useState(Boolean(prefill?.fromConversation))
   const [notifyingId, setNotifyingId] = useState(null) // `${id}:email` | `${id}:whatsapp`
   const [notifyError, setNotifyError] = useState(null)
-  const [editingBooking, setEditingBooking] = useState(null)
+  const [editingBooking, setEditingBooking] = useState(() => (
+    prefill?.bookingId ? initialBookings.find(booking => booking.id === prefill.bookingId) ?? null : null
+  ))
   const [logsBookingId, setLogsBookingId]   = useState(null)
   const [dateRangeFilter, setDateRangeFilter] = useState('all')
   const [customStart, setCustomStart] = useState('')
