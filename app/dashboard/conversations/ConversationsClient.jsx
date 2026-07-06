@@ -167,7 +167,14 @@ export default function ConversationsClient({ initialThreads, activeId, initialM
     })
     const body = await res.json().catch(() => ({}))
     if (!res.ok) setError(body.error || 'Could not update the conversation.')
-    else refreshInbox()
+    else {
+      if (body.notice_status === 'failed') {
+        setError('Mode changed, but the WhatsApp notice could not be sent.')
+      } else if (body.notice_status === 'twilio_not_configured') {
+        setError('Mode changed, but WhatsApp notices are not configured yet.')
+      }
+      refreshInbox()
+    }
     setBusy(false)
   }
 
