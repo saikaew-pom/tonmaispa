@@ -46,9 +46,13 @@ export async function POST(req) {
   const admin = createSupabaseAdminClient()
 
   // ── 2. Load live spa data for system prompt ─────────────────
-  const [treatmentsRes, settingsRes] = await Promise.all([
+  const [treatmentsRes, settingsRes, blogRes] = await Promise.all([
     admin.from('spa_treatments').select('*').eq('is_active', true).order('sort_order'),
     admin.from('site_content').select('key, value_text').eq('page', 'settings'),
+    // Published blog guides — lets the bot answer "what should I eat before a
+    // massage?"-type questions with a grounded pointer to the real article
+    // instead of only a summary, and gives it exact URLs it may share.
+    admin.from('blog_posts').select('title, slug').eq('is_published', true).order('publish_date', { ascending: false }).limit(30),
   ])
 
   const settings = Object.fromEntries(
@@ -67,6 +71,7 @@ export async function POST(req) {
     treatments: treatmentsRes.data ?? [],
     settings,
     bookingEngineEnabled: chatbotFullMode,
+    blogPosts: blogRes.data ?? [],
   })
 
   const tools = chatbotFullMode ? TOOLS_FULL : TOOLS_SIMPLE
@@ -93,27 +98,44 @@ export async function POST(req) {
   // text answer (stop_reason !== 'tool_use'), capped at a few rounds.
   const encoder = new TextEncoder()
   const MAX_TOOL_ROUNDS = 4
+  // MiniMax latency is unpredictable (13s → indefinite hangs observed) — a
+  // per-round abort deadline means a stuck stream degrades into a friendly
+  // fallback instead of the widget silently dying at Vercel's 60s kill.
+  const ROUND_TIMEOUT_MS = 45000
+
+  // The model must never tell the guest a review card exists unless a
+  // prepare_* tool actually ran this exchange — the widget only renders
+  // cards from real tool results, so a claimed-but-unprepared card is a
+  // visible dead end. Detected server-side and corrected with one extra
+  // round, because prompt rules alone have been observed to fail here.
+  const CARD_CLAIM_RE = /(summary card|review card|booking card|confirm booking button|reschedule card|the card (below|above|here))/i
 
   const readable = new ReadableStream({
     async start(controller) {
       let fullText = ''
       const conversationMessages = [...modelMessages]
+      let draftToolRan = false
+      let cardCorrectionUsed = false
 
       try {
         let resolvedNaturally = false
 
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          const roundAbort = new AbortController()
+          const roundTimer = setTimeout(() => roundAbort.abort(), ROUND_TIMEOUT_MS)
           const stream = await client.messages.create({
-            model:      MINIMAX_MODEL,
-            max_tokens: 500,
-            system:     systemPrompt,
-            messages:   conversationMessages,
+            model:       MINIMAX_MODEL,
+            max_tokens:  700,
+            temperature: 0.6,
+            system:      systemPrompt,
+            messages:    conversationMessages,
             tools,
-            stream:     true,
-          })
+            stream:      true,
+          }, { signal: roundAbort.signal })
 
           const blocks = {} // index -> accumulated content block
           let stopReason = null
+          let roundText = ''
 
           for await (const event of stream) {
             if (event.type === 'content_block_start') {
@@ -128,6 +150,7 @@ export async function POST(req) {
               if (event.delta?.type === 'text_delta') {
                 block.text += event.delta.text
                 fullText += event.delta.text
+                roundText += event.delta.text
                 controller.enqueue(encoder.encode(
                   JSON.stringify({ type: 'text', text: event.delta.text }) + '\n'
                 ))
@@ -141,6 +164,7 @@ export async function POST(req) {
               stopReason = event.delta?.stop_reason
             }
           }
+          clearTimeout(roundTimer)
 
           const assistantContent = Object.keys(blocks).sort((a, b) => a - b).map(i => {
             const b = blocks[i]
@@ -154,6 +178,18 @@ export async function POST(req) {
           conversationMessages.push({ role: 'assistant', content: assistantContent })
 
           if (stopReason !== 'tool_use') {
+            // Card-claim guard: the model just told the guest a review card
+            // exists, but no prepare_* tool ran this exchange — no card will
+            // render. Inject one corrective round so it either actually calls
+            // the tool or walks the claim back. (Observed live in testing.)
+            if (!draftToolRan && !cardCorrectionUsed && CARD_CLAIM_RE.test(roundText)) {
+              cardCorrectionUsed = true
+              conversationMessages.push({
+                role: 'user',
+                content: '[SYSTEM CHECK — not the guest speaking] You told the guest a review/booking card is shown, but you did not call prepare_booking or prepare_reschedule this turn, so NO card is visible to them. Fix this now: if you have the treatment, date, time and duration agreed, call the appropriate prepare tool immediately. Otherwise, briefly tell the guest what detail you still need. Do not apologise at length.',
+              })
+              continue
+            }
             resolvedNaturally = true
             break
           }
@@ -172,6 +208,7 @@ export async function POST(req) {
               block.input,
               { admin, sessionId, bookingEngineEnabled: chatbotFullMode, settings }
             )
+            if (['prepare_booking', 'prepare_reschedule'].includes(block.name)) draftToolRan = true
 
             controller.enqueue(encoder.encode(
               JSON.stringify({ type: 'tool_result', tool: block.name, result: toolResult }) + '\n'
@@ -188,17 +225,26 @@ export async function POST(req) {
           controller.enqueue(encoder.encode(JSON.stringify({ type: 'text', text: fallback }) + '\n'))
         }
 
-        // ── 6. Persist conversation to Supabase ────────────────
-        await persistSession({ admin, sessionId, messages, assistantText: fullText })
-
       } catch (err) {
         console.error('[chat] stream error:', err)
+        const friendly = err?.name === 'AbortError' || /abort/i.test(String(err?.message))
+          ? 'That took longer than it should — please try once more, or message our team on WhatsApp for an instant answer.'
+          : "I'm having a moment — please try again, or WhatsApp us directly."
+        fullText += (fullText ? ' ' : '') + friendly
         controller.enqueue(encoder.encode(
-          JSON.stringify({ type: 'error', text: "I'm having a moment — please try again, or WhatsApp us directly." }) + '\n'
+          JSON.stringify({ type: 'error', text: friendly }) + '\n'
         ))
-      } finally {
-        controller.close()
       }
+
+      // ── 6. Persist conversation to Supabase ────────────────
+      // Outside the model try/catch: a storage hiccup must never surface an
+      // error bubble after the guest already received a complete answer.
+      try {
+        await persistSession({ admin, sessionId, messages, assistantText: fullText })
+      } catch (err) {
+        console.error('[chat] persist failed:', err)
+      }
+      controller.close()
     },
   })
 
@@ -223,22 +269,24 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
       if (input.guest_name)  updates.guest_name  = input.guest_name
       if (input.guest_phone) updates.guest_phone = input.guest_phone
       if (Object.keys(updates).length > 0) {
+        // Upsert, not update: on a guest's very first message the session
+        // row doesn't exist yet (persistSession runs after the tool loop),
+        // and a bare update would silently drop their name/phone.
         await admin.from('chat_sessions')
-          .update({ ...updates, last_active: new Date().toISOString() })
-          .eq('session_id', sessionId)
+          .upsert({ session_id: sessionId, ...updates, last_active: new Date().toISOString() }, { onConflict: 'session_id' })
       }
       return { ok: true }
     }
 
     case 'capture_booking_intent': {
-      // Update session with guest info
+      // Upsert session with guest info (row may not exist yet — see above)
       await admin.from('chat_sessions')
-        .update({
+        .upsert({
+          session_id:  sessionId,
           guest_name:  input.guest_name,
           guest_phone: input.guest_phone,
           last_active: new Date().toISOString(),
-        })
-        .eq('session_id', sessionId)
+        }, { onConflict: 'session_id' })
 
       // Save to enquiries table — staff will follow up via WhatsApp
       const { data: enquiry } = await admin.from('enquiries').insert({

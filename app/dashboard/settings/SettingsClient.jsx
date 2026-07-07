@@ -17,7 +17,7 @@ const WORD_TOGGLE_KEYS = {
   'settings.chatbot_booking_mode': { on: 'full', off: 'simple' },
 }
 
-const TEXTAREA_KEYS = ['settings.homepage_services_subheading', 'settings.homepage_facilities_subheading']
+const TEXTAREA_KEYS = ['settings.homepage_services_subheading', 'settings.homepage_facilities_subheading', 'settings.chatbot_custom_notes']
 const NUMBER_KEYS   = ['settings.homepage_services_count']
 
 // Keys an `owner` account is allowed to see and change — everything else
@@ -42,6 +42,10 @@ const FULL_GROUPS = [
   {
     title: 'Homepage — Facilities Section',
     keys: ['settings.homepage_facilities_eyebrow', 'settings.homepage_facilities_heading', 'settings.homepage_facilities_subheading'],
+  },
+  {
+    title: 'Chatbot Knowledge',
+    keys: ['settings.chatbot_custom_notes'],
   },
   {
     title: 'Feature Toggles',
@@ -81,6 +85,7 @@ const LABELS = {
   'settings.chatbot_booking_mode':        'Chatbot full booking mode',
   'settings.insights_enabled':            'Revenue & Marketing Advisor enabled',
   'settings.campaigns_enabled':           'AI Campaign Planner enabled',
+  'settings.chatbot_custom_notes':        'Extra knowledge for the chatbot',
   'settings.twilio_whatsapp_enabled':     'WhatsApp booking updates (via Twilio)',
   'settings.whatsapp_chatbot_enabled':    'WhatsApp chatbot replies enabled',
   'settings.maintenance_mode':            'Maintenance mode',
@@ -92,6 +97,7 @@ const HINTS = {
   'settings.campaigns_enabled':     'Premium feature — gate this for clients who haven\'t paid for AI analytics access.',
   'settings.whatsapp_chatbot_enabled': 'Premium feature — automatically answers inbound WhatsApp messages and stores them in the unified conversation timeline. Turn this off to stop bot replies immediately.',
   'settings.chatbot_booking_mode':  'Off = chatbot only captures name/phone for staff follow-up. On = chatbot checks real availability and books directly. Requires "Booking engine enabled" above to also be on.',
+  'settings.chatbot_custom_notes':  'Facts the chatbot should know that aren\'t in the CMS yet — current promotions, seasonal notes, temporary closures, policies. Plain sentences work best (e.g. "The garden pool is closed for maintenance until 15 Aug."). The bot treats these as verified facts and they take effect on the next message — no deploy needed.',
   'settings.twilio_whatsapp_enabled': 'Lets staff send a booking confirmation/cancellation update via WhatsApp from the Bookings page. Also requires Twilio credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and a messaging service or WhatsApp sender) configured on the server — this toggle alone won\'t work without those.',
 }
 
