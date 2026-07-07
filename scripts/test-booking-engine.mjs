@@ -20,7 +20,7 @@ for (const line of envText.split('\n')) {
 
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const {
-  getFreeTherapistIds, checkSlotCapacity, getAvailableSlots, getBookableTreatmentsAt,
+  getFreeTherapistIds, checkSlotCapacity, getAvailableSlots, getBookableTreatmentsAt, capacityErrorFromDb,
 } = await import('../lib/scheduling.js')
 const {
   prepareBookingDraft, confirmBookingDraft,
@@ -165,21 +165,32 @@ check('C1 couples booking ok when 2 qualified free (assigns both)',
 c = await checkSlotCapacity(admin, { treatmentId: couples.id, date: D_MAIN, startTime: '18:00', endTime: '19:00' })
 check('C2 couples booking rejected when only 1 free (T2 off after 14:00)', c.ok === false && c.reason === 'no_therapist')
 
-// ══ D. Room capacity ═════════════════════════════════════════════
-console.log('\n═ D. Room capacity')
+// ══ D. Concurrency caps (rooms + max_concurrent) ═════════════════
+console.log('\n═ D. Concurrency caps (rooms + max_concurrent)')
 const { data: capRow } = await admin.from('room_capacity').select('room_count').eq('day_of_week', 3).maybeSingle() // Wed
 const roomCount = capRow?.room_count ?? 0
-console.log(`  (room_count for Wednesday = ${roomCount})`)
+const { data: globalCfg } = await admin.from('slot_settings').select('max_concurrent').is('treatment_id', null).eq('is_active', true).maybeSingle()
+const maxConcurrent = globalCfg?.max_concurrent ?? null
+const effectiveCap = maxConcurrent ? Math.min(roomCount, maxConcurrent) : roomCount
+console.log(`  (rooms=${roomCount}, max_concurrent=${maxConcurrent} → effective cap=${effectiveCap})`)
 const dummies = []
-for (let i = 0; i < roomCount; i++) {
+for (let i = 0; i < effectiveCap; i++) {
   dummies.push(await makeBooking({ therapist_id: null, time_slot: '11:00', status: 'pending' }))
 }
 let d = await cap({ startTime: '11:00', endTime: '12:00' })
-check(`D1 ${roomCount} overlapping bookings exhaust rooms → no_room`, d.ok === false && d.reason === 'no_room', JSON.stringify(d))
+check(`D1 ${effectiveCap} overlapping bookings exhaust the effective cap → no_room`, d.ok === false && d.reason === 'no_room', JSON.stringify(d))
 d = await cap({ startTime: '11:00', endTime: '12:00', excludeBookingId: dummies[0] })
-check('D2 excludeBookingId frees its own room (edit path)', d.ok === true, JSON.stringify(d))
+check('D2 excludeBookingId frees its own spot (edit path)', d.ok === true, JSON.stringify(d))
 d = await cap({ startTime: '10:00', endTime: '11:00' })
-check('D3 adjacent window (10:00–11:00) unaffected by 11:00 room-full block', d.ok === true)
+check('D3 adjacent window (10:00–11:00) unaffected by 11:00 full block', d.ok === true)
+if (maxConcurrent && maxConcurrent < roomCount) {
+  // max_concurrent is the binding constraint app-side; physical rooms still
+  // have headroom, so a direct insert (trigger-level) must still succeed.
+  const extra = await makeBooking({ therapist_id: null, time_slot: '11:00', status: 'pending' })
+  check('D4 max_concurrent binds the app layer while physical rooms retain trigger headroom', !!extra)
+} else {
+  console.log('  (D4 skipped — max_concurrent does not undercut room capacity in current config)')
+}
 
 // ══ E. Whole-spa closure ═════════════════════════════════════════
 console.log('\n═ E. Whole-spa closure')
@@ -272,25 +283,67 @@ check('H6 booking moved to 15:00, back to pending, therapist reassigned to T1 (o
 free = await getFreeTherapistIds(admin, { therapistIds: [T1, T2], date: D_MAIN, startTime: '10:00', endTime: '11:00' })
 check('H7 old 10:00 slot freed after reschedule', free.length === 2)
 
-// ══ I. Race condition probe (documented, not a pass/fail) ════════
-console.log('\n═ I. Concurrency probe — two simultaneous books for the last slot')
-// 18:00–19:00: only T1 free (T2 off). Fire two capacity+insert pairs in parallel,
-// simulating two public POSTs hitting the API at the same instant.
+// ══ I. Atomic capacity trigger (migration 027) ═══════════════════
+console.log('\n═ I. Atomic capacity trigger — races, backstop, overbook bypass')
+// 18:00–19:00: only T1 free (T2 off shift). Two capacity+insert pairs fired
+// in parallel simulate two public POSTs hitting the API at the same instant —
+// both pass the JS pre-check, but the DB trigger must let exactly one through.
 async function simulatePublicBook(guestName) {
   const capRes = await checkSlotCapacity(admin, { treatmentId: single.id, date: D_MAIN, startTime: '18:00', endTime: '19:00' })
-  if (!capRes.ok) return { ok: false }
+  if (!capRes.ok) return { ok: false, stage: 'precheck' }
   const { data, error } = await admin.from('bookings').insert({
     guest_name: guestName, guest_phone: '+66900000009', treatment_id: single.id,
     therapist_id: capRes.therapistIds[0], date: D_MAIN, time_slot: '18:00', duration: 60,
     status: 'pending', source: 'online',
   }).select('id').single()
   if (data?.id) cleanup.bookings.push(data.id)
-  return { ok: !error, id: data?.id }
+  return { ok: !error, id: data?.id, error }
 }
 const [raceA, raceB] = await Promise.all([simulatePublicBook('ZZTEST Race A'), simulatePublicBook('ZZTEST Race B')])
-const doubleBooked = raceA.ok && raceB.ok
-console.log(`  → both requests ${doubleBooked ? 'SUCCEEDED (double-booked T1 — race window confirmed)' : 'did not both succeed'}`)
-console.log('  (informational: check-then-insert is not atomic; see findings)')
+const winners = [raceA, raceB].filter(r => r.ok)
+const loser = [raceA, raceB].find(r => !r.ok)
+check('I1 race: exactly ONE of two simultaneous bookings wins the last slot', winners.length === 1,
+  `winners=${winners.length}`)
+check('I2 race loser rejected by trigger with THERAPIST_DOUBLE_BOOKED',
+  capacityErrorFromDb(loser?.error)?.reason === 'no_therapist', String(loser?.error?.message ?? loser?.stage))
+
+// Direct sequential double-book attempt (bypassing pre-check entirely).
+const { error: dblErr } = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST Direct Dbl', guest_phone: '+66900000009', treatment_id: single.id,
+  therapist_id: T1, date: D_MAIN, time_slot: '18:00', duration: 60, status: 'pending', source: 'online',
+}).select('id').single()
+check('I3 direct overlapping insert on a busy therapist rejected even without pre-check',
+  capacityErrorFromDb(dblErr)?.reason === 'no_therapist', String(dblErr?.message))
+
+// Deliberate staff overbook bypasses the trigger and is recorded on the row.
+const { data: obRow, error: obErr } = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST Overbook', guest_phone: '+66900000009', treatment_id: single.id,
+  therapist_id: T1, date: D_MAIN, time_slot: '18:00', duration: 60, status: 'pending', source: 'walk_in',
+  overbooked: true,
+}).select('id, overbooked').single()
+if (obRow?.id) cleanup.bookings.push(obRow.id)
+check('I4 overbooked=true bypasses the trigger (deliberate staff overbook preserved)', !obErr && obRow?.overbooked === true, String(obErr?.message ?? ''))
+
+// Physical room overflow backstop: fill every room at 20:30 (no shifts
+// needed — therapist-null bookings), then the next plain insert must fail.
+const roomFillers = []
+for (let i = 0; i < roomCount; i++) {
+  roomFillers.push(await makeBooking({ therapist_id: null, time_slot: '20:30', duration: 30, status: 'pending' }))
+}
+const { error: roomErr } = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST RoomOverflow', guest_phone: '+66900000009', treatment_id: single.id,
+  therapist_id: null, date: D_MAIN, time_slot: '20:30', duration: 30, status: 'pending', source: 'online',
+}).select('id').single()
+check(`I5 trigger blocks insert past physical room capacity (${roomCount})`,
+  capacityErrorFromDb(roomErr)?.reason === 'no_room', String(roomErr?.message))
+
+// Reactivating a cancelled booking into a now-conflicting window must fail:
+// the chat booking moved to 15:00 (T1) in section H; flip the cancelled
+// 16:00 booking onto that same window and back to confirmed in one update.
+const { error: reactErr } = await admin.from('bookings')
+  .update({ time_slot: '15:00', status: 'confirmed' }).eq('id', bCancelled).select('id').single()
+check('I6 cancelled→confirmed reactivation into a conflicting slot rejected (UPDATE path)',
+  capacityErrorFromDb(reactErr)?.reason === 'no_therapist', String(reactErr?.message))
 
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')
@@ -319,5 +372,4 @@ console.log(`  leftover rows on fixture dates: ${leftover?.length ?? 0}`)
 
 console.log(`\n════ RESULT: ${pass} passed, ${fail} failed ════`)
 if (failures.length) console.log('Failed:', failures.join(' | '))
-if (doubleBooked) console.log('NOTE: race-condition probe double-booked as predicted (known non-atomic check-then-insert).')
 process.exit(fail > 0 ? 1 : 0)

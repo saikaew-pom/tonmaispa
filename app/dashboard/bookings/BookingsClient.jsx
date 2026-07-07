@@ -104,11 +104,19 @@ export default function BookingsClient({ initialBookings, treatments, therapists
 
   const updateStatus = async (id, status) => {
     setSavingId(id)
+    setNotifyError(null)
     const res = await fetch(`/api/admin/bookings/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
-    if (res.ok) patchBooking(id, { status })
+    if (res.ok) {
+      patchBooking(id, { status })
+    } else {
+      // e.g. confirming without complete contact details, or reactivating a
+      // cancelled booking into a slot that has since filled — never silent.
+      const data = await res.json().catch(() => ({}))
+      setNotifyError(data.error || 'Could not update the booking status.')
+    }
     setSavingId(null)
   }
 

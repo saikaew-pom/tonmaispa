@@ -6,7 +6,7 @@ import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
 import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
-import { checkSlotCapacity } from '@/lib/scheduling'
+import { checkSlotCapacity, capacityErrorFromDb } from '@/lib/scheduling'
 import { upsertCustomer } from '@/lib/customers'
 
 function addMinutes(time, mins) {
@@ -78,6 +78,12 @@ export async function POST(req) {
     .single()
 
   if (error) {
+    // The DB capacity trigger is the atomic backstop for the race window
+    // between the checkSlotCapacity pre-check above and this insert — treat
+    // a trigger rejection exactly like a failed pre-check, not a server error.
+    if (capacityErrorFromDb(error)) {
+      return Response.json({ error: 'This slot just filled up. Please choose another time.' }, { status: 409 })
+    }
     console.error('[bookings] insert error:', error)
     return Response.json({ error: 'Could not save booking. Please contact us via WhatsApp.' }, { status: 500 })
   }

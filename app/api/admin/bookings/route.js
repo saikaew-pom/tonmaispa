@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
-import { checkSlotCapacity } from '@/lib/scheduling'
+import { checkSlotCapacity, capacityErrorFromDb } from '@/lib/scheduling'
 import { upsertCustomer } from '@/lib/customers'
 
 function addMinutes(time, mins) {
@@ -99,10 +99,23 @@ export async function POST(req) {
       status:       requestedStatus,
       source:       source || 'phone',
       notes:        notes || null,
+      // Deliberate staff overbook — bypasses the DB capacity trigger and is
+      // auditable on the row.
+      overbooked:   Boolean(overbook),
     })
     .select('id, ref_code, guest_name, guest_phone, guest_email, date, time_slot, duration, status, source, notes, spa_treatments(name)')
     .single()
 
-  if (error) return Response.json({ error: error.message }, { status: 400 })
+  if (error) {
+    // DB trigger backstop caught a race the pre-check missed — surface it
+    // as the same SLOT_FULL flow so the UI can offer "book anyway".
+    if (capacityErrorFromDb(error)) {
+      return Response.json({
+        error: 'This slot just filled up while saving. Tick "book anyway" to overbook it deliberately.',
+        code: 'SLOT_FULL',
+      }, { status: 409 })
+    }
+    return Response.json({ error: error.message }, { status: 400 })
+  }
   return Response.json({ ok: true, booking })
 }

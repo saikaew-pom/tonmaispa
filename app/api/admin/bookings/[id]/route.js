@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
-import { checkSlotCapacity } from '@/lib/scheduling'
+import { checkSlotCapacity, capacityErrorFromDb } from '@/lib/scheduling'
 import { logBookingAction } from '@/lib/booking-logs'
 
 const EDITABLE_FIELDS = [
@@ -76,6 +76,12 @@ export async function PATCH(req, { params }) {
   if (beforeError || !before) return Response.json({ error: 'Booking not found' }, { status: 404 })
 
   const touchesCapacity = CAPACITY_FIELDS.some(f => f in updates && updates[f] !== before[f])
+  // Overbook flag lifecycle: an explicit "save anyway" marks the row
+  // overbooked (bypasses the DB capacity trigger, auditable); moving a
+  // previously-overbooked row to a new slot WITHOUT the flag clears it, so
+  // the new slot gets fully re-validated instead of inheriting the bypass.
+  if (body.overbook) updates.overbooked = true
+  else if (touchesCapacity && before.overbooked) updates.overbooked = false
   if (touchesCapacity && !body.overbook) {
     const merged = { ...before, ...updates }
     const capacity = await checkSlotCapacity(auth.admin, {
@@ -107,7 +113,17 @@ export async function PATCH(req, { params }) {
   }
 
   const { data, error } = await auth.admin.from('bookings').update(updates).eq('id', id).select().single()
-  if (error) return Response.json({ error: error.message }, { status: 400 })
+  if (error) {
+    // DB trigger backstop (race caught between pre-check and write, or a
+    // status reactivation into a now-full slot) — same SLOT_FULL flow.
+    if (capacityErrorFromDb(error)) {
+      return Response.json({
+        error: 'This slot just filled up while saving. Tick "save anyway" to overbook it deliberately.',
+        code: 'SLOT_FULL',
+      }, { status: 409 })
+    }
+    return Response.json({ error: error.message }, { status: 400 })
+  }
 
   const changedFields = Object.keys(updates).filter(k => updates[k] !== before[k])
   if (changedFields.length) {
