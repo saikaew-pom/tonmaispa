@@ -3,6 +3,7 @@ import Footer      from '@/components/layout/Footer'
 import BookingCTA  from '@/components/ui/BookingCTA'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { LOCALES, getDictionary } from '@/lib/i18n/get-dictionary'
+import { jsonLdScript, faqSchema } from '@/lib/json-ld'
 import { t } from '@/lib/i18n/t'
 
 export const revalidate = 60
@@ -42,6 +43,12 @@ export default async function BookPage({ params, searchParams }) {
 
   return (
     <>
+      {/* FAQPage rich-result schema from the same Q&As rendered below —
+          eligible for FAQ rich snippets and a grounding source for AI
+          engines answering booking-policy questions about the spa. */}
+      {faq.length > 0 && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqSchema(faq)) }} />
+      )}
       <Nav lang={lang} dict={dict} />
 
       {/* Page header */}

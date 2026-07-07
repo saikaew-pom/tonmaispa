@@ -60,12 +60,12 @@ export default function Footer({ settings = {}, lang = 'en', dict = {} }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: 'clamp(36px,5vw,56px) auto 0', paddingTop: 26, borderTop: '1px solid rgba(250,246,240,0.12)', display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', font: '400 12px Inter,sans-serif', color: 'rgba(250,246,240,0.45)' }}>
+      <div style={{ maxWidth: 1200, margin: 'clamp(36px,5vw,56px) auto 0', paddingTop: 26, borderTop: '1px solid rgba(250,246,240,0.12)', display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', font: '400 12px Inter,sans-serif', color: 'rgba(250,246,240,0.66)' }}>
         <span>© {new Date().getFullYear()} Ton Mai Spa · Rawai, Phuket</span>
         <span style={{ display: 'flex', gap: 16 }}>
-          <Link href={`/${lang}/privacy`} style={{ color: 'rgba(250,246,240,0.45)' }}>{t(dict, 'footer.privacy')}</Link>
-          <Link href={`/${lang}/terms`}   style={{ color: 'rgba(250,246,240,0.45)' }}>{t(dict, 'footer.terms')}</Link>
-          <CookieSettingsLink style={{ color: 'rgba(250,246,240,0.45)' }} />
+          <Link href={`/${lang}/privacy`} style={{ color: 'rgba(250,246,240,0.66)' }}>{t(dict, 'footer.privacy')}</Link>
+          <Link href={`/${lang}/terms`}   style={{ color: 'rgba(250,246,240,0.66)' }}>{t(dict, 'footer.terms')}</Link>
+          <CookieSettingsLink style={{ color: 'rgba(250,246,240,0.66)' }} />
         </span>
       </div>
     </footer>

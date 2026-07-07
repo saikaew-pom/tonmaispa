@@ -31,6 +31,16 @@ export async function middleware(req) {
     return res
   }
 
+  // The bare root is every visitor's most common entry point — serve the /en
+  // content via rewrite instead of a redirect. The 307 round-trip was costing
+  // ~1.5s of mobile LCP (measured); the /en canonical tag keeps search
+  // engines consolidated on /en.
+  if (pathname === '/') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/en'
+    return NextResponse.rewrite(url)
+  }
+
   // Everything else that isn't already locale-prefixed and isn't one of the
   // unlocalized flows gets redirected to the default /en locale.
   const isUnlocalizedPrefix = UNLOCALIZED_PREFIXES.some(p => pathname.startsWith(p))
@@ -38,7 +48,7 @@ export async function middleware(req) {
 
   if (!isUnlocalizedPrefix && !looksLikeStaticFile && !isLocalized(pathname)) {
     const url = req.nextUrl.clone()
-    url.pathname = `/en${pathname === '/' ? '' : pathname}`
+    url.pathname = `/en${pathname}`
     return NextResponse.redirect(url)
   }
 

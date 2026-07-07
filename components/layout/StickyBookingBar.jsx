@@ -36,7 +36,7 @@ export default function StickyBookingBar({ settings = {}, dict = {} }) {
         <a
           href={`https://wa.me/${wa}?text=${waMsg}`}
           target="_blank" rel="noopener noreferrer"
-          style={{ width: 48, height: 48, background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, flexShrink: 0 }}
+          style={{ width: 48, height: 48, background: '#075E54', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, flexShrink: 0 }}
           onClick={() => { if (window.gtag) window.gtag('event','whatsapp_click',{method:'sticky_bar'}) }}
           aria-label="WhatsApp"
         >

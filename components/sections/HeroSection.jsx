@@ -22,8 +22,11 @@ export default function HeroSection({ settings = {}, dict = {} }) {
 
   const [slideIdx, setSlideIdx] = useState(0)
   // Only the current slide + the one queued to appear next are ever mounted —
-  // loading all 8 full-size hero photos up front tanked mobile LCP.
-  const [loadedIndices, setLoadedIndices] = useState(() => new Set([0, 1 % SLIDES.length]))
+  // loading all 8 full-size hero photos up front tanked mobile LCP. The
+  // second slide additionally waits ~3s after mount so its download never
+  // competes with the LCP image on a slow connection (Lighthouse flagged
+  // both hero photos loading side by side).
+  const [loadedIndices, setLoadedIndices] = useState(() => new Set([0]))
   const timerRef = useRef(null)
 
   const startTimer = () => {
@@ -39,7 +42,11 @@ export default function HeroSection({ settings = {}, dict = {} }) {
 
   useEffect(() => {
     startTimer()
-    return () => clearInterval(timerRef.current)
+    // Pre-mount the next slide well after first paint, well before the 6s fade.
+    const preloadNext = setTimeout(() => {
+      setLoadedIndices(prev => new Set(prev).add(1 % SLIDES.length))
+    }, 3000)
+    return () => { clearInterval(timerRef.current); clearTimeout(preloadNext) }
   }, [])
 
   const goToSlide = (i) => {

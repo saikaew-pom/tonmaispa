@@ -16,7 +16,7 @@ export default function ContactSection({ settings = {}, dict = {} }) {
         {/* Location info + map */}
         <div>
           <div style={{ marginBottom: 24 }}>
-            <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: '#9B9390', marginBottom: 12 }}>{t(dict, 'home.contact.findUs')}</div>
+            <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: '#6E6963', marginBottom: 12 }}>{t(dict, 'home.contact.findUs')}</div>
             <p style={{ font: '400 15px/1.8 Inter,sans-serif', color: '#6B6663', margin: 0 }}>
               {t(dict, 'home.contact.addressLine1')}<br />
               {t(dict, 'home.contact.addressLine2')}<br />
@@ -48,12 +48,12 @@ export default function ContactSection({ settings = {}, dict = {} }) {
           {/* Compact contact links */}
           <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer"
-              style={{ flex: 1, textAlign: 'center', padding: '10px 12px', background: '#25D366', color: '#fff', borderRadius: 2, font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}
+              style={{ flex: 1, textAlign: 'center', padding: '10px 12px', background: '#075E54', color: '#fff', borderRadius: 2, font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}
               onClick={() => { if (window.gtag) window.gtag('event','whatsapp_click',{method:'contact_map'}) }}>
               {t(dict, 'home.contact.whatsapp')}
             </a>
             <a href={`https://line.me/R/ti/p/${lineId}`} target="_blank" rel="noopener noreferrer"
-              style={{ flex: 1, textAlign: 'center', padding: '10px 12px', background: '#06C755', color: '#fff', borderRadius: 2, font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}
+              style={{ flex: 1, textAlign: 'center', padding: '10px 12px', background: '#00753A', color: '#fff', borderRadius: 2, font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}
               onClick={() => { if (window.gtag) window.gtag('event','line_click',{method:'contact_map'}) }}>
               {t(dict, 'home.contact.line')}
             </a>

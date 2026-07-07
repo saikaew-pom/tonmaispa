@@ -58,7 +58,7 @@ export default function GallerySection({ gallery = [], dict = {} }) {
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         <div data-reveal style={{ opacity: 0, transform: 'translateY(24px)', transition: 'opacity .8s ease, transform .8s ease', textAlign: 'center', marginBottom: 'clamp(32px,4vw,52px)' }}>
-          <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#C4924A' }}>{t(dict, 'home.gallery.eyebrow')}</div>
+          <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#8A6528' }}>{t(dict, 'home.gallery.eyebrow')}</div>
           <h2 style={{ font: '400 clamp(30px,4.5vw,52px)/1.08 Cormorant Garamond,serif', color: '#1C1917', margin: '12px 0 0' }}>
             {t(dict, 'home.gallery.title')}
           </h2>

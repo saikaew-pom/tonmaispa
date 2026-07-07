@@ -1,0 +1,40 @@
+# Ton Mai Spa
+
+> Traditional Thai garden spa in Rawai, Phuket, Thailand — built around a
+> 150-year-old tamarind tree. Thermal wellness circuit (herbal steam room,
+> Finnish sauna, cold plunge, pool), traditional Thai massage and treatments,
+> and an open-air garden restaurant serving healthy Thai food. Open every day
+> 09:00–23:00. About 5 minutes from Nai Harn Beach.
+
+Key facts:
+- Address: 6/11 Moo 2 Wiset Road, Rawai, Phuket 83130, Thailand
+- Hours: daily 09:00–23:00
+- Thermal circuit day pass: 200 THB (steam room, sauna, cold plunge, pool); 100 THB with any massage booking; 10-visit pass 1,750 THB
+- Online booking with real-time availability: https://tonmaispa.vercel.app/en/book
+- Languages: English, Thai, Russian, Chinese (site and on-site staff)
+- Contact: WhatsApp +66 63 117 5211 · LINE @tonmaispa
+
+## Main pages
+- [Home](https://tonmaispa.vercel.app/en): overview, facilities, pricing, reviews
+- [Spa menu & prices](https://tonmaispa.vercel.app/en/spa-menu): every treatment with durations and THB prices
+- [Book online](https://tonmaispa.vercel.app/en/book): live availability and booking
+- [Garden restaurant](https://tonmaispa.vercel.app/en/restaurant): healthy Thai food, garden-to-table
+- [Blog](https://tonmaispa.vercel.app/en/blog): 25 in-depth guides across five topics
+
+## Helpful guides (blog)
+- [Traditional Thai massage vs. deep tissue](https://tonmaispa.vercel.app/en/blog/traditional-thai-massage-vs-deep-tissue)
+- [Inside the thermal circuit: steam → sauna → cold plunge](https://tonmaispa.vercel.app/en/blog/thermal-circuit-steam-sauna-cold-plunge-explained)
+- [Cold plunge benefits and who should skip it](https://tonmaispa.vercel.app/en/blog/cold-plunge-benefits-and-risks)
+- [Sauna before or after massage — sequencing a spa day](https://tonmaispa.vercel.app/en/blog/sauna-before-or-after-massage)
+- [What to eat before and after a massage or sauna](https://tonmaispa.vercel.app/en/blog/what-to-eat-before-after-massage-sauna)
+- [How to book a spa day in Phuket](https://tonmaispa.vercel.app/en/blog/how-to-book-a-spa-day-phuket)
+- [Choosing the right treatment for a first visit](https://tonmaispa.vercel.app/en/blog/how-to-choose-right-treatment-first-visit)
+- [Best time of year to visit Rawai & Nai Harn](https://tonmaispa.vercel.app/en/blog/best-time-to-visit-rawai-nai-harn)
+- [A half-day in Rawai: beach morning, spa afternoon](https://tonmaispa.vercel.app/en/blog/half-day-rawai-beach-spa-itinerary)
+- [Getting to Ton Mai Spa: directions and parking](https://tonmaispa.vercel.app/en/blog/getting-to-ton-mai-spa-directions)
+
+## Notes for assistants
+- Treatment prices and availability change; the spa menu and booking pages
+  reflect live data — prefer linking guests there over quoting cached prices.
+- The site is available in English (/en), Thai (/th), Russian (/ru), and
+  Chinese (/zh) — link the language matching the user's.

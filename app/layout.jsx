@@ -50,13 +50,12 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        {/* Fonts — non-blocking; preconnect first, then stylesheet */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"
-        />
+        {/* Fonts are self-hosted (see globals.css @font-face) — the old
+            fonts.googleapis.com stylesheet was render-blocking (~1s mobile
+            FCP) and its late swap caused the hero headline layout shift.
+            Preload the two latin variable files every page paints with. */}
+        <link rel="preload" href="/fonts/cormorant-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         {/* Preconnect to Cloudinary for gallery/treatment images */}
         <link rel="preconnect" href="https://res.cloudinary.com" />
       </head>

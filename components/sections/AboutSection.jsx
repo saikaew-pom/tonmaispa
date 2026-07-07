@@ -24,7 +24,7 @@ export default function AboutSection({ dict = {} }) {
         </div>
 
         <div>
-          <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#C4924A' }}>{t(dict, 'home.about.eyebrow')}</div>
+          <div style={{ font: '600 11px Inter,sans-serif', letterSpacing: 3, textTransform: 'uppercase', color: '#8A6528' }}>{t(dict, 'home.about.eyebrow')}</div>
           <h2 style={{ font: '400 clamp(30px,4.5vw,52px)/1.08 Cormorant Garamond,serif', color: '#1C1917', margin: '14px 0 0', letterSpacing: '-0.3px' }}>
             {t(dict, 'home.about.title')}
           </h2>

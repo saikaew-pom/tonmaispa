@@ -27,11 +27,16 @@ export const revalidate = 60
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.tonmaispa.com'
 
-export function generateMetadata({ params }) {
+export async function generateMetadata({ params }) {
+  const { lang } = await params
   return {
     title:       'Ton Mai Spa — Garden Spa in Rawai, Phuket',
     description: 'Traditional Thai spa in Rawai, Phuket. Thermal circuit, massage, facials, garden lounge. 5 minutes from Nai Harn Beach. Open daily 09:00–23:00.',
     alternates: {
+      // Explicit canonical matters doubly here: the bare site root is served
+      // as a rewrite of /en (see middleware.js), so this tag is what tells
+      // search engines the canonical home for that content is /en.
+      canonical: `${SITE_URL}/${lang}`,
       languages: Object.fromEntries([
         ...LOCALES.map(l => [l, `${SITE_URL}/${l}`]),
         ['x-default', `${SITE_URL}/en`],
@@ -119,6 +124,10 @@ export default async function HomePage({ params }) {
     ratingCount: settings['settings.google_review_count'] ?? '369',
     hours: [{ days: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'], opens: '09:00', closes: '23:00' }],
     address: { street: '6/11 Moo 2 Wiset Road', city: 'Rawai', region: 'Phuket', postalCode: '83130' },
+    sameAs: [
+      settings['settings.instagram_url'] ?? 'https://www.instagram.com/tonmai.spa/',
+      settings['settings.facebook_url']  ?? 'https://www.facebook.com/tonmai.spa',
+    ].filter(Boolean),
   })
 
   return (

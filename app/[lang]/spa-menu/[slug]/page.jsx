@@ -6,7 +6,7 @@ import TrackedLink    from '@/components/ui/TrackedLink'
 import TreatmentGallery from './TreatmentGallery'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { TREATMENT_CATEGORIES } from '@/lib/display'
-import { jsonLdScript } from '@/lib/json-ld'
+import { jsonLdScript, breadcrumbSchema } from '@/lib/json-ld'
 import { translateFields } from '@/lib/translate'
 import { LOCALES, getDictionary } from '@/lib/i18n/get-dictionary'
 import { t } from '@/lib/i18n/t'
@@ -117,6 +117,11 @@ export default async function TreatmentDetailPage({ params }) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schema }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbSchema([
+        { name: 'Ton Mai Spa', url: `${SITE_URL}/${lang}` },
+        { name: 'Spa Menu', url: `${SITE_URL}/${lang}/spa-menu` },
+        { name: treatment.name },
+      ])) }} />
       <Nav lang={lang} dict={dict} />
 
       <section style={{ background: '#3B5249', padding: 'clamp(100px,14vw,160px) clamp(18px,4vw,40px) clamp(48px,6vw,72px)' }}>

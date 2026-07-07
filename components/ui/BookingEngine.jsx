@@ -75,7 +75,7 @@ function Calendar({ year, month, selected, onSelect }) {
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
         {DAYS.map((d, i) => (
-          <div key={i} style={{ textAlign: 'center', font: '600 10px Inter,sans-serif', letterSpacing: 1, color: '#9B9390', padding: '6px 0' }}>{d}</div>
+          <div key={i} style={{ textAlign: 'center', font: '600 10px Inter,sans-serif', letterSpacing: 1, color: '#6E6963', padding: '6px 0' }}>{d}</div>
         ))}
         {cells.map((d, i) => {
           const inMonth  = d.getMonth() === month
@@ -295,7 +295,7 @@ export default function BookingEngine({ presetSlug }) {
           <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, cursor: done ? 'pointer' : 'default' }}
             onClick={() => done && setStep(n)}>
             <div style={{ height: 3, borderRadius: 2, background: done || active ? '#3B5249' : '#E5E0D8', transition: 'background 300ms' }} />
-            <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: done || active ? '#3B5249' : '#C8C3BC' }}>{label}</div>
+            <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 1, textTransform: 'uppercase', color: done || active ? '#3B5249' : '#6E6963' }}>{label}</div>
           </div>
         )
       })}
@@ -321,7 +321,7 @@ export default function BookingEngine({ presetSlug }) {
                 <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase', color: '#3B5249' }}>{treatment.category}</div>
                 <div style={{ font: '400 18px Cormorant Garamond,serif', color: '#1C1917', marginTop: 2 }}>{treatment.name}</div>
               </div>
-              {treatment.badge && <span style={{ background: '#C4924A', color: '#fff', padding: '3px 10px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{treatment.badge}</span>}
+              {treatment.badge && <span style={{ background: '#8A6528', color: '#fff', padding: '3px 10px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{treatment.badge}</span>}
             </div>
             {treatment.description && <p style={{ font: '400 13px/1.5 Inter,sans-serif', color: '#6B6663', margin: '8px 0 0' }}>{treatment.description}</p>}
             {treatment.duration_options && (
@@ -371,7 +371,7 @@ export default function BookingEngine({ presetSlug }) {
                     <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase', color: '#3B5249' }}>{t.category}</div>
                     <div style={{ font: '400 18px Cormorant Garamond,serif', color: '#1C1917', marginTop: 2 }}>{t.name}</div>
                   </div>
-                  {t.badge && <span style={{ background: '#C4924A', color: '#fff', padding: '3px 10px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{t.badge}</span>}
+                  {t.badge && <span style={{ background: '#8A6528', color: '#fff', padding: '3px 10px', borderRadius: 999, font: '600 9px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{t.badge}</span>}
                 </div>
                 {t.description && <p style={{ font: '400 13px/1.5 Inter,sans-serif', color: '#6B6663', margin: '8px 0 0' }}>{t.description}</p>}
                 {sel && t.duration_options && (

@@ -63,7 +63,7 @@ export default function TreatmentsSection({ treatments = [], settings = {}, lang
               <div key={t.id ?? t.name} data-reveal style={{ opacity: 0, transform: 'translateY(28px)', transition: `opacity .8s ${Math.min(i,5)*0.1}s ease, transform .8s ${Math.min(i,5)*0.1}s ease`, background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(28,25,23,0.07)' }}>
                 <div style={{ position: 'relative', height: 220 }}>
                   <Image src={img} alt={t.name} fill sizes="(max-width: 768px) 100vw, 33vw" style={{ objectFit: 'cover' }} />
-                  {badge && <div style={{ position: 'absolute', top: 14, left: 14, background: '#C4924A', color: '#fff', padding: '5px 12px', borderRadius: 999, font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{badge}</div>}
+                  {badge && <div style={{ position: 'absolute', top: 14, left: 14, background: '#8A6528', color: '#fff', padding: '5px 12px', borderRadius: 999, font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase' }}>{badge}</div>}
                 </div>
                 <div style={{ padding: '24px 26px' }}>
                   <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 2, textTransform: 'uppercase', color: '#3B5249' }}>{TREATMENT_CATEGORIES[t.category] ?? t.category ?? 'Massage'}</div>
