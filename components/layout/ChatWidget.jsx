@@ -490,7 +490,15 @@ export default function ChatWidget({ chatbotEnabled = true }) {
                   />
                 )}
                 {toolResults.booking && (
-                  <BookingConfirmCard refCode={toolResults.booking.ref_code} whatsapp={toolResults.booking.whatsapp} />
+                  <BookingConfirmCard
+                    refCode={toolResults.booking.ref_code}
+                    whatsapp={toolResults.booking.whatsapp}
+                    bookingId={toolResults.booking.booking_id}
+                    sessionId={sessionId}
+                    disabled={isStreaming}
+                    onChangeDate={refCode => sendMessage(`I want to change the date of my booking ${refCode}.`)}
+                    onBookAnother={() => sendMessage('I would like to book another treatment.')}
+                  />
                 )}
                 {toolResults.rescheduleDraft && !toolResults.reschedule && (
                   <RescheduleDraftCard
@@ -691,6 +699,31 @@ function BookingLookupCard({ sessionId, initialResult, onSelectBooking }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // Per-booking cancel flow: which booking shows the are-you-sure step, which
+  // is mid-request, and which have completed (kept in the list as receipts).
+  const [confirmCancelId, setConfirmCancelId] = useState(null)
+  const [cancellingId, setCancellingId] = useState(null)
+  const [cancelledIds, setCancelledIds] = useState({})
+
+  const cancelBooking = async (booking) => {
+    setCancellingId(booking.booking_id)
+    setError('')
+    try {
+      const res = await fetch('/api/chat/cancel-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, booking_id: booking.booking_id }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.ok) throw new Error(result.error || 'Could not cancel this booking.')
+      setCancelledIds(prev => ({ ...prev, [booking.booking_id]: result }))
+      setConfirmCancelId(null)
+    } catch (err) {
+      setError(err.message || 'Could not cancel this booking.')
+    } finally {
+      setCancellingId(null)
+    }
+  }
 
   const requestCode = async () => {
     if (!sessionId || busy) return
@@ -776,14 +809,50 @@ function BookingLookupCard({ sessionId, initialResult, onSelectBooking }) {
           <div style={{ color: '#3B5249', fontWeight: 700, marginBottom: 8 }}>✓ Identity verified</div>
           {!bookings.length && <div style={{ color: '#6B6663' }}>There are no pending or confirmed bookings on this profile.</div>}
           <div style={{ display: 'grid', gap: 7 }}>
-            {bookings.map(booking => (
-              <div key={booking.booking_id} style={{ border: '1px solid #E0D9D0', borderRadius: 7, padding: 9 }}>
-                <div style={{ fontWeight: 700 }}>{booking.ref_code} · {booking.treatment}</div>
-                <div style={{ color: '#6B6663', marginTop: 3 }}>{formatBookingDate(booking.date)} at {booking.time} · {booking.duration} min · {booking.status}</div>
-                {booking.price != null && <div style={{ color: '#6B6663', marginTop: 2 }}>{booking.price} THB</div>}
-                <button type="button" onClick={() => onSelectBooking(booking)} style={{ ...buttonStyle, marginTop: 7 }}>Change this booking</button>
-              </div>
-            ))}
+            {bookings.map(booking => {
+              const cancelled = cancelledIds[booking.booking_id]
+              if (cancelled) {
+                return (
+                  <div key={booking.booking_id} style={{ border: '1px solid #DCC1BA', background: '#FBF3EC', borderRadius: 7, padding: 9 }}>
+                    <div style={{ fontWeight: 700, color: '#8A5A14' }}>{booking.ref_code} · cancelled</div>
+                    <div style={{ color: '#6B6663', marginTop: 3 }}>
+                      {booking.treatment} on {formatBookingDate(booking.date)} at {booking.time} is cancelled.
+                      {cancelled.email_sent ? ' A confirmation email is on its way.' : ''}
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <div key={booking.booking_id} style={{ border: '1px solid #E0D9D0', borderRadius: 7, padding: 9 }}>
+                  <div style={{ fontWeight: 700 }}>{booking.ref_code} · {booking.treatment}</div>
+                  <div style={{ color: '#6B6663', marginTop: 3 }}>{formatBookingDate(booking.date)} at {booking.time} · {booking.duration} min · {booking.status}</div>
+                  {booking.price != null && <div style={{ color: '#6B6663', marginTop: 2 }}>{booking.price} THB</div>}
+                  {confirmCancelId === booking.booking_id ? (
+                    <>
+                      <div style={{ color: '#A33A2B', fontWeight: 700, marginTop: 7 }}>Cancel {booking.ref_code} — are you sure?</div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button type="button" disabled={cancellingId === booking.booking_id} onClick={() => cancelBooking(booking)}
+                          style={{ ...buttonStyle, marginTop: 7, background: '#A33A2B' }}>
+                          {cancellingId === booking.booking_id ? 'Cancelling…' : 'Yes, cancel it'}
+                        </button>
+                        <button type="button" disabled={cancellingId === booking.booking_id} onClick={() => setConfirmCancelId(null)}
+                          style={{ ...buttonStyle, marginTop: 7, background: 'transparent', color: '#3B5249', border: '1px solid #D6D0C8' }}>
+                          Keep it
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button type="button" onClick={() => onSelectBooking(booking)} style={{ ...buttonStyle, marginTop: 7 }}>Change this booking</button>
+                      <button type="button" onClick={() => setConfirmCancelId(booking.booking_id)}
+                        style={{ ...buttonStyle, marginTop: 7, background: 'transparent', color: '#A33A2B', border: '1px solid #DCC1BA' }}>
+                        Cancel booking
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </>
       )}
@@ -874,8 +943,53 @@ function RescheduleConfirmCard({ result }) {
   )
 }
 
-function BookingConfirmCard({ refCode, whatsapp }) {
+function BookingConfirmCard({ refCode, whatsapp, bookingId, sessionId, onChangeDate, onBookAnother, disabled }) {
   const phone = whatsapp || RECEPTIONIST_PHONE
+  // cancelState: null → 'confirm' (are you sure?) → 'busy' → 'done' | error
+  const [cancelState, setCancelState] = useState(null)
+  const [cancelResult, setCancelResult] = useState(null)
+  const [cancelError, setCancelError] = useState('')
+
+  const doCancel = async () => {
+    setCancelState('busy')
+    setCancelError('')
+    try {
+      const res = await fetch('/api/chat/cancel-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, booking_id: bookingId || undefined, booking_ref: bookingId ? undefined : refCode }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.ok) throw new Error(result.error || 'Could not cancel this booking.')
+      setCancelResult(result)
+      setCancelState('done')
+    } catch (err) {
+      setCancelError(err.message || 'Could not cancel this booking.')
+      setCancelState(null)
+    }
+  }
+
+  const actionBtn = (primary) => ({
+    flex: 1, minWidth: 0, padding: '8px 6px', borderRadius: '7px',
+    border: primary ? 'none' : '1px solid #D6D0C8',
+    background: primary ? '#3B5249' : '#fff',
+    color: primary ? '#fff' : '#3B5249',
+    font: '700 11px Inter,sans-serif', cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.55 : 1,
+  })
+
+  if (cancelState === 'done') {
+    return (
+      <div style={{ background: '#FBF3EC', border: '1px solid #C4924A', borderRadius: '8px', padding: '12px 14px', fontSize: '12px', color: '#1C1917' }}>
+        <div style={{ fontWeight: '600', color: '#8A5A14', marginBottom: '4px' }}>Booking {cancelResult.ref_code} cancelled</div>
+        <div style={{ color: '#6B6663', lineHeight: '1.45' }}>
+          {cancelResult.treatment} on {formatBookingDate(cancelResult.date)} at {cancelResult.time} is cancelled.
+          {cancelResult.email_sent ? ' A confirmation email is on its way.' : ''} We hope to welcome you another time 🌿
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{
       background: '#E8EDE9', border: '1px solid #3B5249',
@@ -890,9 +1004,26 @@ function BookingConfirmCard({ refCode, whatsapp }) {
       <div style={{ marginTop: '6px', color: '#6B6663', lineHeight: '1.45' }}>
         Want to speak with us right away? Call or WhatsApp <strong>+{phone}</strong>.
       </div>
-      <div style={{ marginTop: '6px', color: '#6B6663', lineHeight: '1.45' }}>
-        Booking for someone else too? Just tell me the next treatment and time.
-      </div>
+
+      {cancelState !== 'confirm' ? (
+        <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+          <button type="button" disabled={disabled} onClick={() => onChangeDate(refCode)} style={actionBtn(true)}>Change date</button>
+          <button type="button" disabled={disabled} onClick={() => setCancelState('confirm')} style={{ ...actionBtn(false), color: '#A33A2B', borderColor: '#DCC1BA' }}>Cancel booking</button>
+          <button type="button" disabled={disabled} onClick={onBookAnother} style={actionBtn(false)}>Book another</button>
+        </div>
+      ) : (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{ color: '#A33A2B', fontWeight: 600, marginBottom: 6 }}>Cancel booking {refCode} — are you sure?</div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button type="button" disabled={cancelState === 'busy'} onClick={doCancel}
+              style={{ ...actionBtn(true), background: '#A33A2B' }}>
+              {cancelState === 'busy' ? 'Cancelling…' : 'Yes, cancel it'}
+            </button>
+            <button type="button" disabled={cancelState === 'busy'} onClick={() => setCancelState(null)} style={actionBtn(false)}>Keep booking</button>
+          </div>
+        </div>
+      )}
+      {cancelError && <div role="alert" style={{ marginTop: 7, color: '#A33A2B', lineHeight: 1.45 }}>{cancelError}</div>}
     </div>
   )
 }

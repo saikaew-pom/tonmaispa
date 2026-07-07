@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
-import { checkSlotCapacity, capacityErrorFromDb } from '@/lib/scheduling'
+import { checkSlotCapacity, capacityErrorFromDb, getFreeTherapistIds, getQualifiedTherapistIds } from '@/lib/scheduling'
 import { logBookingAction } from '@/lib/booking-logs'
 
 const EDITABLE_FIELDS = [
@@ -104,6 +104,30 @@ export async function PATCH(req, { params }) {
     }
   }
 
+  // Assigning a specific therapist re-validates that person in real time
+  // (qualified + on shift + no overlapping booking), same rules as the
+  // availability engine. `force_therapist` is the staff's explicit override —
+  // logged like overbook, never the default path.
+  const therapistChanged = 'therapist_id' in updates && updates.therapist_id && updates.therapist_id !== before.therapist_id
+  if (therapistChanged && !body.force_therapist) {
+    const merged = { ...before, ...updates }
+    const startTime = merged.time_slot.slice(0, 5)
+    const endTime = addMinutes(startTime, merged.duration)
+    const qualifiedIds = await getQualifiedTherapistIds(auth.admin, merged.treatment_id)
+    const notQualified = !qualifiedIds.includes(updates.therapist_id)
+    const freeIds = notQualified ? [] : await getFreeTherapistIds(auth.admin, {
+      therapistIds: [updates.therapist_id], date: merged.date, startTime, endTime, excludeBookingId: id,
+    })
+    if (notQualified || !freeIds.includes(updates.therapist_id)) {
+      return Response.json({
+        error: notQualified
+          ? 'This therapist is not marked as qualified for this treatment.'
+          : 'This therapist is off shift or already booked during this time.',
+        code: 'THERAPIST_UNAVAILABLE',
+      }, { status: 409 })
+    }
+  }
+
   const mergedForValidation = { ...before, ...updates }
   if (mergedForValidation.status === 'confirmed') {
     const missing = missingConfirmationFields(mergedForValidation)
@@ -112,7 +136,7 @@ export async function PATCH(req, { params }) {
     }
   }
 
-  const { data, error } = await auth.admin.from('bookings').update(updates).eq('id', id).select().single()
+  const { data, error } = await auth.admin.from('bookings').update(updates).eq('id', id).select('*, spa_treatments(name), therapists(name)').single()
   if (error) {
     // DB trigger backstop (race caught between pre-check and write, or a
     // status reactivation into a now-full slot) — same SLOT_FULL flow.
@@ -128,13 +152,16 @@ export async function PATCH(req, { params }) {
   const changedFields = Object.keys(updates).filter(k => updates[k] !== before[k])
   if (changedFields.length) {
     const isOnlyStatus = changedFields.length === 1 && changedFields[0] === 'status'
+    const isOnlyTherapist = changedFields.length === 1 && changedFields[0] === 'therapist_id'
     const detail = isOnlyStatus
       ? `status: ${before.status} → ${updates.status}`
+      : isOnlyTherapist
+      ? `therapist assigned: ${data.therapists?.name ?? updates.therapist_id ?? 'unassigned'}${body.force_therapist ? ' (forced despite unavailability)' : ''}`
       : changedFields.map(f => `${f}: ${before[f] ?? '—'} → ${updates[f] ?? '—'}`).join('; ')
     await logBookingAction(auth.admin, {
       bookingId: id,
       actorEmail: auth.session.user.email,
-      action: isOnlyStatus ? 'status_changed' : 'edited',
+      action: isOnlyStatus ? 'status_changed' : isOnlyTherapist ? 'therapist_assigned' : 'edited',
       detail,
     })
   }

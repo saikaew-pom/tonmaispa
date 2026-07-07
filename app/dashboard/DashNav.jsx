@@ -4,25 +4,38 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
-const BASE_LINKS = [
-  { href: '/dashboard',            label: 'Overview' },
-  { href: '/dashboard/bookings',   label: 'Bookings' },
-  { href: '/dashboard/customers',  label: 'Guests' },
-  { href: '/dashboard/conversations', label: 'Conversations' },
-  { href: '/dashboard/analytics',  label: 'Analytics', minRole: 'owner' },
-  { href: '/dashboard/insights',   label: 'Insights', flag: 'insights' },
-  { href: '/dashboard/campaigns',  label: 'Campaigns', flag: 'campaigns' },
-  { href: '/dashboard/availability', label: 'Availability' },
-  { href: '/dashboard/therapists',   label: 'Therapists' },
-  { href: '/dashboard/enquiries',  label: 'Enquiries' },
-  { href: '/dashboard/treatments', label: 'Treatments' },
-  { href: '/dashboard/menu',       label: 'Restaurant Menu' },
-  { href: '/dashboard/facilities', label: 'Facilities' },
-  { href: '/dashboard/gallery',    label: 'Gallery' },
-  { href: '/dashboard/blog',       label: 'Blog' },
-  { href: '/dashboard/banners',    label: 'Banners', minRole: 'owner' },
-  { href: '/dashboard/users',      label: 'Users', minRole: 'owner' },
-  { href: '/dashboard/settings',   label: 'Settings', minRole: 'owner' },
+// Grouped by what staff are doing, in daily-frequency order: running today's
+// operations, talking to guests, managing the schedule/team, editing site
+// content, then owner-level admin. Group titles render as section headers.
+const NAV_GROUPS = [
+  { title: null, links: [
+    { href: '/dashboard',            label: 'Overview' },
+  ]},
+  { title: 'Operations', links: [
+    { href: '/dashboard/bookings',   label: 'Bookings' },
+    { href: '/dashboard/availability', label: 'Availability' },
+    { href: '/dashboard/therapists', label: 'Therapists' },
+  ]},
+  { title: 'Guests', links: [
+    { href: '/dashboard/customers',  label: 'Guests' },
+    { href: '/dashboard/conversations', label: 'Conversations' },
+    { href: '/dashboard/enquiries',  label: 'Enquiries' },
+    { href: '/dashboard/campaigns',  label: 'Campaigns', flag: 'campaigns' },
+  ]},
+  { title: 'Content', links: [
+    { href: '/dashboard/treatments', label: 'Treatments' },
+    { href: '/dashboard/menu',       label: 'Restaurant Menu' },
+    { href: '/dashboard/facilities', label: 'Facilities' },
+    { href: '/dashboard/gallery',    label: 'Gallery' },
+    { href: '/dashboard/blog',       label: 'Blog' },
+    { href: '/dashboard/banners',    label: 'Banners', minRole: 'owner' },
+  ]},
+  { title: 'Insights & Admin', links: [
+    { href: '/dashboard/analytics',  label: 'Analytics', minRole: 'owner' },
+    { href: '/dashboard/insights',   label: 'Insights', flag: 'insights' },
+    { href: '/dashboard/users',      label: 'Users', minRole: 'owner' },
+    { href: '/dashboard/settings',   label: 'Settings', minRole: 'owner' },
+  ]},
 ]
 
 const ROLE_RANK = { staff: 0, owner: 1, super_admin: 2 }
@@ -30,11 +43,16 @@ const ROLE_RANK = { staff: 0, owner: 1, super_admin: 2 }
 export default function DashNav({ fullName, role, email, insightsEnabled = true, campaignsEnabled = true }) {
   const pathname = usePathname()
   const router   = useRouter()
-  const LINKS = BASE_LINKS.filter(l =>
-    (l.flag !== 'insights' || insightsEnabled) &&
-    (l.flag !== 'campaigns' || campaignsEnabled) &&
-    (!l.minRole || (ROLE_RANK[role] ?? 0) >= ROLE_RANK[l.minRole])
-  )
+  const groups = NAV_GROUPS
+    .map(g => ({
+      ...g,
+      links: g.links.filter(l =>
+        (l.flag !== 'insights' || insightsEnabled) &&
+        (l.flag !== 'campaigns' || campaignsEnabled) &&
+        (!l.minRole || (ROLE_RANK[role] ?? 0) >= ROLE_RANK[l.minRole])
+      ),
+    }))
+    .filter(g => g.links.length > 0)
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -53,20 +71,29 @@ export default function DashNav({ fullName, role, email, insightsEnabled = true,
         <div style={{ font: '600 10px Inter,sans-serif', letterSpacing: 1.5, textTransform: 'uppercase', color: '#C4924A', marginTop: 2 }}>Dashboard</div>
       </div>
 
-      <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {LINKS.map(l => {
-          const active = l.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(l.href)
-          return (
-            <a key={l.href} href={l.href} style={{
-              padding: '10px 12px', borderRadius: 4, textDecoration: 'none',
-              font: '500 13px Inter,sans-serif',
-              color: active ? '#1C1917' : 'rgba(250,246,240,0.75)',
-              background: active ? '#C4924A' : 'transparent',
-            }}>
-              {l.label}
-            </a>
-          )
-        })}
+      <nav style={{ flex: 1, padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto' }}>
+        {groups.map((g, gi) => (
+          <div key={g.title ?? gi} style={{ marginBottom: 6 }}>
+            {g.title && (
+              <div style={{ padding: '10px 12px 4px', font: '700 9px Inter,sans-serif', letterSpacing: 1.6, textTransform: 'uppercase', color: 'rgba(250,246,240,0.4)' }}>
+                {g.title}
+              </div>
+            )}
+            {g.links.map(l => {
+              const active = l.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(l.href)
+              return (
+                <a key={l.href} href={l.href} style={{
+                  display: 'block', padding: '8px 12px', borderRadius: 4, textDecoration: 'none',
+                  font: '500 13px Inter,sans-serif',
+                  color: active ? '#1C1917' : 'rgba(250,246,240,0.75)',
+                  background: active ? '#C4924A' : 'transparent',
+                }}>
+                  {l.label}
+                </a>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(250,246,240,0.12)' }}>

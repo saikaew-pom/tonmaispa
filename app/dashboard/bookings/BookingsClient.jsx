@@ -32,12 +32,23 @@ function daysFromToday(n) {
 }
 
 const DATE_RANGE_OPTIONS = [
-  { value: 'all',      label: 'All dates' },
+  { value: 'upcoming', label: 'Today & upcoming' },
   { value: 'today',    label: 'Today' },
   { value: 'tomorrow', label: 'Tomorrow' },
   { value: 'next2',    label: 'Next 2 days' },
   { value: 'next7',    label: 'Next 7 days' },
+  { value: 'past',     label: 'Past bookings' },
+  { value: 'all',      label: 'All dates' },
   { value: 'custom',   label: 'Custom range…' },
+]
+
+// When the booking was MADE (created_at), as opposed to when the visit is —
+// staff use this to review what came in overnight/today.
+const CREATED_RANGE_OPTIONS = [
+  { value: 'any',       label: 'Booked: any time' },
+  { value: 'today',     label: 'Booked today' },
+  { value: 'yesterday', label: 'Booked yesterday' },
+  { value: 'last2',     label: 'Booked today or yesterday' },
 ]
 
 // Table-view-only date filter — calendar view has its own week navigation
@@ -45,12 +56,34 @@ const DATE_RANGE_OPTIONS = [
 function matchesDateRange(booking, dateRangeFilter, customStart, customEnd) {
   const todayYMD = toYMD(new Date())
   switch (dateRangeFilter) {
+    case 'upcoming': return booking.date >= todayYMD
     case 'today':    return booking.date === todayYMD
     case 'tomorrow': return booking.date === daysFromToday(1)
     case 'next2':    return booking.date >= todayYMD && booking.date <= daysFromToday(2)
     case 'next7':    return booking.date >= todayYMD && booking.date <= daysFromToday(7)
+    case 'past':     return booking.date < todayYMD
     case 'custom':   return (!customStart || booking.date >= customStart) && (!customEnd || booking.date <= customEnd)
     default:         return true
+  }
+}
+
+// created_at is a timestamp — compare in the browser's local day, matching
+// what staff mean by "booked today".
+function createdYMD(booking) {
+  return booking.created_at ? toYMD(new Date(booking.created_at)) : ''
+}
+
+function matchesCreatedRange(booking, createdFilter) {
+  if (createdFilter === 'any') return true
+  const made = createdYMD(booking)
+  if (!made) return false
+  const todayYMD = toYMD(new Date())
+  const yesterdayYMD = daysFromToday(-1)
+  switch (createdFilter) {
+    case 'today':     return made === todayYMD
+    case 'yesterday': return made === yesterdayYMD
+    case 'last2':     return made === todayYMD || made === yesterdayYMD
+    default:          return true
   }
 }
 
@@ -95,10 +128,19 @@ export default function BookingsClient({ initialBookings, treatments, therapists
     prefill?.bookingId ? initialBookings.find(booking => booking.id === prefill.bookingId) ?? null : null
   ))
   const [logsBookingId, setLogsBookingId]   = useState(null)
-  const [dateRangeFilter, setDateRangeFilter] = useState('all')
+  // Default: today + future only — staff open this page to run the day ahead,
+  // not to scroll past history (choose "Past bookings"/"All dates" for that).
+  const [dateRangeFilter, setDateRangeFilter] = useState('upcoming')
+  const [createdFilter, setCreatedFilter] = useState('any')
+  const [therapistFilter, setTherapistFilter] = useState('all')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd]     = useState('')
-  const [sortDir, setSortDir]         = useState('asc') // table view's Date/Time column sort
+  // Table sort: by visit date/time or by when the booking was made.
+  const [sortKey, setSortKey]         = useState('when')    // 'when' | 'created'
+  const [sortDir, setSortDir]         = useState('asc')
+  // Pending therapist assignment awaiting the reconfirm popup:
+  // { booking, therapistId, checking, check } — check = availability verdict.
+  const [assignRequest, setAssignRequest] = useState(null)
 
   const patchBooking = (id, fields) => setBookings(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b))
 
@@ -205,20 +247,25 @@ export default function BookingsClient({ initialBookings, treatments, therapists
     .filter(b => statusFilter === 'all' || b.status === statusFilter)
     .filter(b => treatmentFilter === 'all' || b.treatment_id === treatmentFilter)
     .filter(b => sourceFilter === 'all' || b.source === sourceFilter)
+    .filter(b => therapistFilter === 'all'
+      || (therapistFilter === 'unassigned' ? !b.therapist_id : b.therapist_id === therapistFilter))
     .filter(b => {
       if (!search.trim()) return true
       const q = search.trim().toLowerCase()
       return b.guest_name?.toLowerCase().includes(q) || b.guest_phone?.includes(q) || b.ref_code?.toLowerCase().includes(q)
-    }), [bookings, statusFilter, treatmentFilter, sourceFilter, search])
+    }), [bookings, statusFilter, treatmentFilter, sourceFilter, therapistFilter, search])
 
   // Table view's own date-range + sort — calendar view keeps its week
   // navigation as its date mechanism, so this is scoped to the table only.
   const tableRows = useMemo(() => visible
     .filter(b => matchesDateRange(b, dateRangeFilter, customStart, customEnd))
+    .filter(b => matchesCreatedRange(b, createdFilter))
     .sort((a, b) => {
-      const cmp = `${a.date} ${a.time_slot}`.localeCompare(`${b.date} ${b.time_slot}`)
+      const cmp = sortKey === 'created'
+        ? String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''))
+        : `${a.date} ${a.time_slot}`.localeCompare(`${b.date} ${b.time_slot}`)
       return sortDir === 'asc' ? cmp : -cmp
-    }), [visible, dateRangeFilter, customStart, customEnd, sortDir])
+    }), [visible, dateRangeFilter, createdFilter, customStart, customEnd, sortKey, sortDir])
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d
@@ -235,6 +282,59 @@ export default function BookingsClient({ initialBookings, treatments, therapists
 
   const addBooking = (booking) => setBookings(prev => [booking, ...prev])
 
+  // Therapist quick-assign: picking a name opens a reconfirm popup that shows
+  // the real-time availability verdict (shift + overlap + qualification, from
+  // the same engine as the public site) BEFORE anything is saved. Assigning
+  // an unavailable therapist stays possible, but only as an explicit red
+  // override — mirroring the overbook pattern.
+  const requestAssignTherapist = async (booking, therapistId) => {
+    // Unassigning frees the therapist — no availability check to run.
+    if (!therapistId) {
+      if (!booking.therapist_id) return
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ therapist_id: null }),
+      })
+      if (res.ok) patchBooking(booking.id, { therapist_id: null, therapists: null })
+      return
+    }
+    const therapist = therapists.find(t => t.id === therapistId)
+    if (!therapist) return
+    setAssignRequest({ booking, therapist, checking: true, check: null })
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}/therapist-check?therapist_id=${encodeURIComponent(therapistId)}`)
+      const data = await res.json()
+      setAssignRequest(prev => prev && prev.booking.id === booking.id
+        ? { ...prev, checking: false, check: res.ok ? data : { available: false, message: data.error || 'Could not check availability.' } }
+        : prev)
+    } catch {
+      setAssignRequest(prev => prev && prev.booking.id === booking.id
+        ? { ...prev, checking: false, check: { available: false, message: 'Could not check availability.' } }
+        : prev)
+    }
+  }
+
+  const confirmAssignTherapist = async (force = false) => {
+    if (!assignRequest) return
+    const { booking, therapist } = assignRequest
+    setAssignRequest(prev => ({ ...prev, saving: true }))
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ therapist_id: therapist.id, force_therapist: force }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAssignRequest(prev => ({ ...prev, saving: false, check: { available: false, message: data.error || 'Could not assign.' } }))
+        return
+      }
+      patchBooking(booking.id, { therapist_id: therapist.id, therapists: { name: therapist.name } })
+      setAssignRequest(null)
+    } catch {
+      setAssignRequest(prev => ({ ...prev, saving: false, check: { available: false, message: 'Could not assign.' } }))
+    }
+  }
+
   const FilterBar = () => (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
       <input placeholder="Search name, phone, ref…" value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputSt, maxWidth: 200 }} />
@@ -250,10 +350,18 @@ export default function BookingsClient({ initialBookings, treatments, therapists
         <option value="all">All sources</option>
         {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
       </select>
+      <select value={therapistFilter} onChange={e => setTherapistFilter(e.target.value)} style={{ ...inputSt, maxWidth: 170, width: 'auto' }}>
+        <option value="all">All therapists</option>
+        <option value="unassigned">Unassigned</option>
+        {therapists.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+      </select>
       {view === 'table' && (
         <>
           <select value={dateRangeFilter} onChange={e => setDateRangeFilter(e.target.value)} style={{ ...inputSt, maxWidth: 160, width: 'auto' }}>
             {DATE_RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <select value={createdFilter} onChange={e => setCreatedFilter(e.target.value)} style={{ ...inputSt, maxWidth: 200, width: 'auto' }}>
+            {CREATED_RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           {dateRangeFilter === 'custom' && (
             <>
@@ -285,6 +393,7 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   )
 
   const notifyProps = { notifyingId, twilioEnabled, onSendEmail: sendUpdateEmail, onSendWhatsApp: sendWhatsApp, onViewLogs: setLogsBookingId }
+  const assignProps = { therapists, onAssignTherapist: requestAssignTherapist }
 
   return (
     <div>
@@ -321,10 +430,59 @@ export default function BookingsClient({ initialBookings, treatments, therapists
 
       {view === 'calendar' ? (
         <CalendarView weekDays={weekDays} byDate={byDate} onShift={shiftWeek} onToday={() => setWeekStart(getWeekStart(new Date()))}
-          savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking} {...notifyProps} />
+          savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking} {...assignProps} {...notifyProps} />
       ) : (
         <TableView visible={tableRows} savingId={savingId} onStatusChange={updateStatus} onEdit={setEditingBooking}
-          sortDir={sortDir} onToggleSort={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} {...notifyProps} />
+          sortKey={sortKey} sortDir={sortDir}
+          onSort={key => {
+            if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+            else { setSortKey(key); setSortDir(key === 'created' ? 'desc' : 'asc') }
+          }}
+          {...assignProps} {...notifyProps} />
+      )}
+
+      {assignRequest && (
+        <div onClick={() => !assignRequest.saving && setAssignRequest(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(28,25,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 10, padding: 24, maxWidth: 420, width: '100%' }}>
+            <div style={{ font: '400 20px Cormorant Garamond,serif', color: '#1C1917', marginBottom: 6 }}>
+              Assign {assignRequest.therapist.name}?
+            </div>
+            <div style={{ font: '400 12px/1.6 Inter,sans-serif', color: '#6B6663', marginBottom: 14 }}>
+              {assignRequest.booking.ref_code} · {assignRequest.booking.spa_treatments?.name ?? 'Treatment'} · {assignRequest.booking.date} at {assignRequest.booking.time_slot?.slice(0, 5)} ({assignRequest.booking.duration} min)
+            </div>
+
+            {assignRequest.checking ? (
+              <div style={{ font: '600 12px Inter,sans-serif', color: '#6B6663', marginBottom: 16 }}>Checking real-time availability…</div>
+            ) : assignRequest.check?.available ? (
+              <div style={{ background: '#E8EFEA', border: '1px solid #C9D8D0', color: '#3B5249', borderRadius: 6, padding: '9px 11px', font: '600 12px/1.5 Inter,sans-serif', marginBottom: 16 }}>
+                ✓ {assignRequest.check.message}
+              </div>
+            ) : (
+              <div style={{ background: '#FBEAEA', border: '1px solid #E0B4B4', color: '#C0392B', borderRadius: 6, padding: '9px 11px', font: '600 12px/1.5 Inter,sans-serif', marginBottom: 16 }}>
+                ✗ {assignRequest.check?.message ?? 'Not available.'}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {!assignRequest.checking && assignRequest.check?.available && (
+                <button type="button" disabled={assignRequest.saving} onClick={() => confirmAssignTherapist(false)}
+                  style={{ background: '#3B5249', color: '#fff', border: 'none', borderRadius: 6, padding: '11px 0', font: '700 12px Inter,sans-serif', cursor: assignRequest.saving ? 'wait' : 'pointer', opacity: assignRequest.saving ? 0.7 : 1 }}>
+                  {assignRequest.saving ? 'Assigning…' : `Confirm — assign ${assignRequest.therapist.name}`}
+                </button>
+              )}
+              {!assignRequest.checking && assignRequest.check && !assignRequest.check.available && (
+                <button type="button" disabled={assignRequest.saving} onClick={() => confirmAssignTherapist(true)}
+                  style={{ background: '#fff', color: '#C0392B', border: '1px solid #C0392B', borderRadius: 6, padding: '10px 0', font: '600 12px Inter,sans-serif', cursor: assignRequest.saving ? 'wait' : 'pointer' }}>
+                  {assignRequest.saving ? 'Assigning…' : 'Assign anyway (override availability)'}
+                </button>
+              )}
+              <button type="button" disabled={assignRequest.saving} onClick={() => setAssignRequest(null)}
+                style={{ background: '#fff', color: '#6B6663', border: '1px solid var(--color-border)', borderRadius: 6, padding: '10px 0', font: '600 12px Inter,sans-serif', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showNew && (
@@ -403,8 +561,29 @@ function NotifyCell({ booking, notifyingId, twilioEnabled, onSendEmail, onSendWh
   )
 }
 
+// Therapist display + quick assign. Selecting a name does NOT save — it opens
+// the reconfirm popup (real-time availability verdict) up in BookingsClient.
+function TherapistCell({ booking, therapists, onAssignTherapist, compact }) {
+  return (
+    <select
+      value={booking.therapist_id ?? ''}
+      onChange={e => onAssignTherapist(booking, e.target.value || null)}
+      style={{
+        width: compact ? '100%' : 'auto', maxWidth: 150, marginTop: compact ? 4 : 0,
+        border: '1px solid var(--color-border)', borderRadius: compact ? 3 : 4,
+        padding: compact ? '2px 4px' : '5px 8px',
+        font: `500 ${compact ? 10 : 12}px Inter,sans-serif`,
+        background: '#fff', color: booking.therapist_id ? '#1C1917' : '#9B9390',
+      }}
+    >
+      <option value="">{booking.therapist_id ? 'Unassign…' : 'Assign therapist…'}</option>
+      {therapists.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+    </select>
+  )
+}
+
 // ── Calendar (7-day week) view ──────────────────────────────────────────────
-function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusChange, onEdit, ...notifyProps }) {
+function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusChange, onEdit, therapists, onAssignTherapist, ...notifyProps }) {
   const monthLabel = weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const todayYMD = toYMD(new Date())
 
@@ -438,6 +617,9 @@ function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusCh
                   <div key={b.id} onClick={() => onEdit(b)} style={{ cursor: 'pointer', background: '#FAF6F0', borderLeft: `3px solid ${STATUS_COLORS[b.status]}`, borderRadius: 4, padding: '6px 8px' }}>
                     <div style={{ font: '600 11px Inter,sans-serif', color: '#1C1917' }}>{b.time_slot?.slice(0, 5)} · {b.guest_name}</div>
                     <div style={{ font: '400 10px Inter,sans-serif', color: '#6B6663', marginTop: 1 }}>{b.spa_treatments?.name ?? '—'}</div>
+                    <div onClick={e => e.stopPropagation()}>
+                      <TherapistCell booking={b} therapists={therapists} onAssignTherapist={onAssignTherapist} compact />
+                    </div>
                     <select
                       value={b.status}
                       disabled={savingId === b.id}
@@ -464,17 +646,18 @@ function CalendarView({ weekDays, byDate, onShift, onToday, savingId, onStatusCh
 const navBtnSt = { padding: '6px 12px', border: '1px solid var(--color-border)', borderRadius: 4, background: '#fff', font: '500 11px Inter,sans-serif', cursor: 'pointer' }
 
 // ── Table view ───────────────────────────────────────────────────────────────
-function TableView({ visible, savingId, onStatusChange, onEdit, sortDir, onToggleSort, ...notifyProps }) {
+function TableView({ visible, savingId, onStatusChange, onEdit, sortKey, sortDir, onSort, therapists, onAssignTherapist, ...notifyProps }) {
+  const SORTABLE = { 'Date / Time': 'when', 'Booked on': 'created' }
   return (
     <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#FAF6F0', textAlign: 'left' }}>
-            {['Ref', 'Guest', 'Treatment', 'Date / Time', 'Source', 'Status', 'Notify'].map(h => (
+            {['Ref', 'Guest', 'Treatment', 'Therapist', 'Date / Time', 'Booked on', 'Source', 'Status', 'Notify'].map(h => (
               <th key={h} style={{ padding: '10px 14px', font: '600 11px Inter,sans-serif', letterSpacing: 0.5, textTransform: 'uppercase', color: '#9B9390' }}>
-                {h === 'Date / Time' ? (
-                  <button type="button" onClick={onToggleSort} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {h} <span style={{ fontSize: 10 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>
+                {SORTABLE[h] ? (
+                  <button type="button" onClick={() => onSort(SORTABLE[h])} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {h} <span style={{ fontSize: 10, opacity: sortKey === SORTABLE[h] ? 1 : 0.3 }}>{sortKey === SORTABLE[h] && sortDir === 'desc' ? '▼' : '▲'}</span>
                   </button>
                 ) : h}
               </th>
@@ -494,7 +677,11 @@ function TableView({ visible, savingId, onStatusChange, onEdit, sortDir, onToggl
                 <div style={{ color: '#9B9390', fontSize: 12 }}>{b.guest_phone}</div>
               </td>
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>{b.spa_treatments?.name ?? '—'} <span style={{ color: '#9B9390' }}>({b.duration}min)</span></td>
+              <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
+                <TherapistCell booking={b} therapists={therapists} onAssignTherapist={onAssignTherapist} />
+              </td>
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }}>{b.date} · {b.time_slot?.slice(0,5)}</td>
+              <td style={{ padding: '12px 14px', font: '400 12px Inter,sans-serif', color: '#6B6663' }}>{formatSentAt(b.created_at) ?? '—'}</td>
               <td style={{ padding: '12px 14px', font: '400 12px Inter,sans-serif', color: '#6B6663', textTransform: 'capitalize' }}>{b.source}</td>
               <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
                 <select
@@ -512,7 +699,7 @@ function TableView({ visible, savingId, onStatusChange, onEdit, sortDir, onToggl
             </tr>
           ))}
           {visible.length === 0 && (
-            <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No bookings found.</td></tr>
+            <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9B9390', font: '400 13px Inter,sans-serif' }}>No bookings found.</td></tr>
           )}
         </tbody>
       </table>

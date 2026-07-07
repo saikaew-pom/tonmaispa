@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/require-admin'
-import { sendWhatsAppMessage } from '@/lib/twilio'
+import { sendWhatsAppMessage, fetchMessageStatus } from '@/lib/twilio'
 import { logBookingAction } from '@/lib/booking-logs'
 import { appendConversationMessage } from '@/lib/conversations'
 
@@ -60,12 +60,61 @@ export async function POST(req, { params }) {
     whatsapp: whatsappNumber,
   })
 
+  // Business-initiated WhatsApp messages are only deliverable as freeform text
+  // inside the guest's 24-hour session window. Outside it, WhatsApp requires a
+  // pre-approved Content Template — if one is configured, use it; otherwise
+  // fall back to freeform and VERIFY delivery below instead of assuming it.
+  const contentSid = (booking.status === 'confirmed'
+    ? process.env.TWILIO_CONTENT_SID_BOOKING_CONFIRMED
+    : process.env.TWILIO_CONTENT_SID_BOOKING_CANCELLED)?.trim()
+
   let result
   try {
-    result = await sendWhatsAppMessage({ to: booking.guest_phone, body })
+    result = await sendWhatsAppMessage({
+      to: booking.guest_phone,
+      ...(contentSid
+        ? {
+            contentSid,
+            contentVariables: {
+              1: booking.ref_code,
+              2: booking.spa_treatments?.name ?? 'Spa Treatment',
+              3: booking.date,
+              4: booking.time_slot?.slice(0, 5) ?? '',
+            },
+          }
+        : { body }),
+    })
   } catch (err) {
     console.error('[bookings whatsapp] send failed:', err.message)
     return Response.json({ error: 'Could not send the WhatsApp message. Please try again.' }, { status: 502 })
+  }
+
+  // Twilio accepting the message is NOT delivery. Poll the real status once —
+  // failures (esp. 63016 "outside the 24h window") show up within seconds, and
+  // staff must see them instead of a false "sent". Observed live: every send
+  // stuck at "queued" forever while the dashboard claimed success.
+  let delivery = null
+  try {
+    await new Promise(r => setTimeout(r, 2500))
+    delivery = await fetchMessageStatus(result.sid)
+  } catch (err) {
+    console.error('[bookings whatsapp] status check failed:', err.message)
+  }
+
+  if (delivery && ['failed', 'undelivered'].includes(delivery.status)) {
+    const outsideWindow = String(delivery.errorCode) === '63016'
+    await logBookingAction(auth.admin, {
+      bookingId: id,
+      actorEmail: auth.session.user.email,
+      action: 'whatsapp_failed',
+      detail: `WhatsApp to ${booking.guest_phone} not delivered (Twilio ${delivery.errorCode ?? 'unknown'}: ${delivery.errorMessage ?? delivery.status})`,
+    })
+    return Response.json({
+      error: outsideWindow
+        ? 'WhatsApp rejected the message: the guest has not messaged the spa in the last 24 hours, so WhatsApp only allows an approved template. Ask the guest to message the spa WhatsApp first, or configure a Twilio Content Template (TWILIO_CONTENT_SID_BOOKING_CONFIRMED / _CANCELLED).'
+        : `WhatsApp message was not delivered (Twilio error ${delivery.errorCode ?? delivery.status}). ${delivery.errorMessage ?? ''}`.trim(),
+      delivery,
+    }, { status: 502 })
   }
 
   const sentAt = new Date().toISOString()
