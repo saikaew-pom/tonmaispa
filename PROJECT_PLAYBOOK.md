@@ -39,7 +39,7 @@ automatically on push to `main`.
 | i18n | `app/[lang]/`, `lib/translate.js` (cache table `content_translations`, 40s hard timeout, fails open to EN), `lib/i18n/` dictionaries |
 | Blog CMS | `lib/blog.js`, `lib/blog-ai.js`, `app/dashboard/blog/`, `app/api/admin/blog/*` |
 | Blog public | `app/[lang]/blog/`, `lib/sanitize.js`, source content in `blog-content/pillar-*.md` |
-| SEO | `app/sitemap.js` (DB-driven), `app/robots.js`, `lib/json-ld.js` |
+| SEO / GEO / perf | `app/sitemap.js` (DB-driven), `app/robots.js`, `lib/json-ld.js` (`spaSchema`, `faqSchema`, `breadcrumbSchema`), `public/llms.txt`, `public/fonts/` (self-hosted woff2, `@font-face` in `app/globals.css`), root rewrite in `middleware.js` |
 | Anti-bot | `lib/ratelimit.js`, `lib/verify-turnstile.js` — both fail open |
 | Settings & toggles | `app/dashboard/settings/`, `site_content` table, role-gated in `app/api/admin/settings/route.js` |
 | Migrations | `supabase/migrations/*.sql` — pasted by hand into Supabase SQL Editor, never auto-run |
@@ -79,6 +79,22 @@ automatically on push to `main`.
 10. **Migrations by hand, verified before code ships.** Write the SQL file,
     the owner pastes it in Supabase, then verify the column exists before
     pushing code that selects it — pushing first broke the bookings page once.
+11. **The bare domain must never redirect.** `/` is served with a `rewrite`
+    to `/en` in `middleware.js`, not a redirect — a 307 there cost ~1.5s on
+    every first visit. Canonical tag on the homepage points at `/en` since
+    the rewrite hides that from crawlers otherwise.
+12. **Fonts are self-hosted, not loaded from Google's CSS API.** The extra
+    third-party request blocked render and caused a late text swap/CLS spike.
+    `@font-face` blocks in `app/globals.css` point at `public/fonts/*.woff2`
+    under the *same* family names (`Cormorant Garamond`, `Inter`) so no
+    inline style needed to change; only the two "latin" subsets are
+    preloaded in `app/layout.jsx`.
+13. **Verify contrast against the actual computed color, not the design
+    token.** All 16 WCAG-AA failures found by Lighthouse were opacity/light
+    variants of on-brand colors (`rgba(255,255,255,0.4)`, `#C4924A` on light
+    backgrounds, `#9B9390`, `#C8C3BC`) that read fine visually but failed the
+    4.5:1 ratio — same hex can pass or fail depending on the background it
+    sits on, so check each usage site, not just the swatch.
 
 ## Operational notes
 
@@ -96,6 +112,17 @@ automatically on push to `main`.
   then deleted. The dashboard is verified visually by the owner post-deploy.
 - **Deploys:** watch `vercel ls` to Ready/Error after every push. An Error
   deploy means prod still serves the old build.
+- **Measuring SEO/perf:** the keyless PageSpeed Insights API hits a daily
+  quota fast (`RESOURCE_EXHAUSTED`); use `npx lighthouse <url> --output=json
+  --form-factor=mobile --screenEmulation.mobile --throttling-method=simulate
+  --chrome-flags="--headless=new --no-sandbox"` locally instead — no quota,
+  same Lighthouse engine PSI uses. Always re-run against a freshly rebuilt
+  local server (`lsof -ti:<port> | xargs kill -9` before `npm start`, a stale
+  process silently keeps serving the old `.next` build) and again against
+  prod after deploy to confirm the fix actually shipped. "Agentic Browsing"
+  is a newer PSI-only category not exposed by the open-source Lighthouse
+  CLI — `llms.txt` + FAQPage/BreadcrumbList/`sameAs` schema target it, but
+  confirm the score itself via the PSI web tool, not the CLI.
 - **Known open items** are tracked in the auto-memory launch checklist, not
   here (Turnstile retest, MOCK- demo data removal, final domain cutover).
 

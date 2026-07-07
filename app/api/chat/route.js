@@ -110,12 +110,38 @@ export async function POST(req) {
   // round, because prompt rules alone have been observed to fail here.
   const CARD_CLAIM_RE = /(summary card|review card|booking card|confirm booking button|reschedule card|the card (below|above|here))/i
 
+  // The model must never describe an existing booking (ref, treatment, date,
+  // time) it has not fetched. Observed live: asked to reschedule TMS-024, it
+  // confidently invented the booking's details without any lookup call, then
+  // contradicted itself two turns later. A ref is "known" only if a previous
+  // ASSISTANT message already stated it (i.e. it came from a real tool result
+  // in an earlier exchange) — refs the guest typed themselves don't count.
+  // Same class of lie in simple/lead-capture mode: "I've passed your details
+  // to the team" is only true if capture_booking_intent actually inserted an
+  // enquiry. Narrow phrasing on purpose — "the team will contact you" alone is
+  // legitimate after-confirmation talk and must not trigger this.
+  const SENT_CLAIM_RE = /((passed|sent|forwarded|logged|saved) (your|the) (details|request|enquiry|information)|team has been (notified|alerted))/i
+
+  const BOOKING_REF_RE = /TMS-\d+/gi
+  const knownRefs = new Set()
+  for (const m of modelMessages) {
+    if (m.role !== 'assistant') continue
+    const text = typeof m.content === 'string'
+      ? m.content
+      : (Array.isArray(m.content) ? m.content.map(c => c.text ?? '').join(' ') : '')
+    for (const ref of text.match(BOOKING_REF_RE) ?? []) knownRefs.add(ref.toUpperCase())
+  }
+
   const readable = new ReadableStream({
     async start(controller) {
       let fullText = ''
       const conversationMessages = [...modelMessages]
       let draftToolRan = false
       let cardCorrectionUsed = false
+      let lookupToolRan = false
+      let refCorrectionUsed = false
+      let enquiryToolRan = false
+      let sentCorrectionUsed = false
 
       try {
         let resolvedNaturally = false
@@ -148,6 +174,15 @@ export async function POST(req) {
             if (event.type === 'content_block_delta') {
               const block = blocks[event.index]
               if (event.delta?.type === 'text_delta') {
+                // Later rounds (after tool results or a system-check round)
+                // stream straight after the previous round's text — without a
+                // separator the guest sees "…for you.Got it —" glued together.
+                if (roundText === '' && fullText !== '' && !/\s$/.test(fullText)) {
+                  fullText += '\n\n'
+                  controller.enqueue(encoder.encode(
+                    JSON.stringify({ type: 'text', text: '\n\n' }) + '\n'
+                  ))
+                }
                 block.text += event.delta.text
                 fullText += event.delta.text
                 roundText += event.delta.text
@@ -190,6 +225,30 @@ export async function POST(req) {
               })
               continue
             }
+            // Ref-claim guard: the model mentioned a booking reference that no
+            // tool returned this exchange and no earlier assistant turn ever
+            // stated — so any details attached to it are invented. Force one
+            // corrective round to ground it in a real lookup.
+            // Sent-claim guard: the model told the guest their request/details
+            // were passed to the team, but no enquiry-creating tool ran.
+            if (!enquiryToolRan && !sentCorrectionUsed && SENT_CLAIM_RE.test(roundText)) {
+              sentCorrectionUsed = true
+              conversationMessages.push({
+                role: 'user',
+                content: '[SYSTEM CHECK — not the guest speaking] You told the guest their details/request were sent to the team, but you did not call capture_booking_intent this turn, so nothing was recorded. Fix this now: if you have their name and phone, call capture_booking_intent immediately. Otherwise ask for the missing detail. Never claim something was sent unless the tool ran. Keep the reply short.',
+              })
+              continue
+            }
+            const mentionedRefs = (roundText.match(BOOKING_REF_RE) ?? []).map(r => r.toUpperCase())
+            const unknownRef = mentionedRefs.find(r => !knownRefs.has(r))
+            if (!lookupToolRan && !refCorrectionUsed && unknownRef) {
+              refCorrectionUsed = true
+              conversationMessages.push({
+                role: 'user',
+                content: `[SYSTEM CHECK — not the guest speaking] You mentioned booking ${unknownRef}, but you have not retrieved it with any tool, so any treatment/date/time you stated for it is INVENTED and may be wrong. Fix this now: call find_my_bookings if this chat is already verified, otherwise call start_booking_lookup and ask the guest to verify on the secure card first. Never restate details for a booking a tool has not returned. Keep the reply short.`,
+              })
+              continue
+            }
             resolvedNaturally = true
             break
           }
@@ -209,6 +268,13 @@ export async function POST(req) {
               { admin, sessionId, bookingEngineEnabled: chatbotFullMode, settings }
             )
             if (['prepare_booking', 'prepare_reschedule'].includes(block.name)) draftToolRan = true
+            if (block.name === 'capture_booking_intent') enquiryToolRan = true
+            if (['find_my_bookings', 'start_booking_lookup', 'check_reschedule_availability', 'prepare_reschedule'].includes(block.name)) {
+              lookupToolRan = true
+              // Refs returned by a real lookup this exchange become known, so
+              // the guard doesn't re-fire when the model then talks about them.
+              for (const ref of JSON.stringify(toolResult).match(BOOKING_REF_RE) ?? []) knownRefs.add(ref.toUpperCase())
+            }
 
             controller.enqueue(encoder.encode(
               JSON.stringify({ type: 'tool_result', tool: block.name, result: toolResult }) + '\n'
