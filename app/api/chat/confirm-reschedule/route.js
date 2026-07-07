@@ -9,7 +9,7 @@ const confirmationSchema = z.object({
 })
 
 export async function POST(req) {
-  const rateLimit = await checkRateLimit(req, 'chat-reschedule-confirm', { limit: 5, window: 600 })
+  const rateLimit = await checkRateLimit(req, 'chat-reschedule-confirm', { limit: 10, window: 600 })
   if (!rateLimit.success) return tooManyRequestsResponse()
 
   const parsed = confirmationSchema.safeParse(await req.json())

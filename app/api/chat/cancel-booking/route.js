@@ -13,7 +13,10 @@ const cancelSchema = z.object({
 // booking cards. Ownership enforced server-side (same-session or verified
 // customer); the guest gets an automatic email + WhatsApp receipt.
 export async function POST(req) {
-  const rateLimit = await checkRateLimit(req, 'chat-booking-cancel', { limit: 5, window: 600 })
+  // Generous limit: a guest tidying up a handful of bookings in one sitting
+  // is legitimate (observed live — 5/10min blocked a real guest mid-cleanup).
+  // Ownership checks are the real abuse barrier here, not the rate limit.
+  const rateLimit = await checkRateLimit(req, 'chat-booking-cancel', { limit: 15, window: 600 })
   if (!rateLimit.success) return tooManyRequestsResponse()
 
   const parsed = cancelSchema.safeParse(await req.json())

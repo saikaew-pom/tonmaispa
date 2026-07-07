@@ -15,7 +15,9 @@ const confirmationSchema = z.object({
 })
 
 export async function POST(req) {
-  const rateLimit = await checkRateLimit(req, 'chat-booking-confirm', { limit: 5, window: 600 })
+  // Roomy enough for a guest booking for themselves + companions in one chat
+  // ("book another" flow) plus capacity-conflict retries.
+  const rateLimit = await checkRateLimit(req, 'chat-booking-confirm', { limit: 10, window: 600 })
   if (!rateLimit.success) return tooManyRequestsResponse()
 
   const parsed = confirmationSchema.safeParse(await req.json())

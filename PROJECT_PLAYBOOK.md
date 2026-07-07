@@ -28,11 +28,11 @@ automatically on push to `main`.
 | Auth guards (staff/owner/super_admin) | `lib/require-admin.js`, `middleware.js` |
 | Availability + capacity truth | `lib/scheduling.js` (`checkSlotCapacity`, `getAvailableSlots`, `excludeBookingId` for edits) |
 | Public booking widget | `components/ui/BookingEngine.jsx` (+ `BookingCTA.jsx` toggle) |
-| Booking APIs | `app/api/bookings/*` (public), `app/api/admin/bookings/*` (staff, incl. `[id]/notify`, `[id]/whatsapp`, `[id]/logs`) |
-| Bookings dashboard | `app/dashboard/bookings/` — calendar + table views, click-to-edit modal, date filters/sort, notify buttons, audit log modal |
+| Booking APIs | `app/api/bookings/*` (public), `app/api/admin/bookings/*` (staff, incl. `[id]/notify`, `[id]/whatsapp`, `[id]/logs`, `[id]/therapist-check`) |
+| Bookings dashboard | `app/dashboard/bookings/` — calendar + table views, click-to-edit modal, date filters/sort (default: today & upcoming), "Booked on" column, therapist assign + reconfirm popup, notify buttons, audit log modal |
 | Booking audit trail | `lib/booking-logs.js`, `booking_logs` table (migration 025) |
-| Chatbot brain + tools | `lib/chatbot.js` (prompt + tool schemas), `lib/chat-booking.js` (draft/confirm), `app/api/chat/*` |
-| Chat widget + review card | `components/layout/ChatWidget.jsx` (`BookingDraftCard` collects name/country/phone/email) |
+| Chatbot brain + tools | `lib/chatbot.js` (prompt + tool schemas), `lib/chat-booking.js` (draft/confirm/**cancel**), `app/api/chat/*` (incl. `cancel-booking`) |
+| Chat widget + review card | `components/layout/ChatWidget.jsx` (`BookingDraftCard` collects name/country/phone/email; `BookingConfirmCard`/`BookingLookupCard` carry guest self-service: change date, cancel, book another) |
 | Email | `lib/brevo.js` (send + per-event HTML templates) |
 | WhatsApp | `lib/twilio.js`, conversations inbox under `app/dashboard/`, webhook under `app/api/twilio/` |
 | AI provider | `lib/minimax.js` (Anthropic SDK + baseURL override) — every caller wraps in a hard timeout |
@@ -95,6 +95,28 @@ automatically on push to `main`.
     backgrounds, `#9B9390`, `#C8C3BC`) that read fine visually but failed the
     4.5:1 ratio — same hex can pass or fail depending on the background it
     sits on, so check each usage site, not just the swatch.
+14. **A Twilio 200 is not delivery.** `sendWhatsAppMessage` accepting a
+    message only means Twilio queued it — WhatsApp itself can silently drop a
+    freeform business-initiated message if the guest hasn't messaged in the
+    last 24h (error 63016). Every staff-triggered WhatsApp send now polls
+    `fetchMessageStatus` a few seconds after sending and surfaces a real
+    failure instead of an optimistic "✓ sent" — this is how a whole batch of
+    dashboard sends were found stuck at "queued" forever while the UI
+    claimed success. Fix path: an approved Content Template
+    (`TWILIO_CONTENT_SID_BOOKING_CONFIRMED`/`_CANCELLED`) delivers outside
+    the window; freeform only works inside it.
+15. **Guest self-service writes still go through the same rules.** The
+    chat widget's Cancel/Change-date buttons call server endpoints that
+    re-check ownership (same session or verified customer) and re-validate
+    capacity — never a client-side status flip. Guest-initiated actions
+    (unlike staff actions) auto-send the email/WhatsApp receipt immediately,
+    since the guest performing the action IS the human-in-the-loop that
+    rule 5's "staff must click send" exists to require.
+16. **Therapist assignment is a capacity check, not a label.** Picking a
+    name opens a reconfirm popup backed by a real-time check (qualified +
+    on shift + no overlapping booking, same engine as `checkSlotCapacity`)
+    before saving — assigning an unavailable therapist is possible only as
+    an explicit logged override, mirroring the overbook pattern.
 
 ## Operational notes
 
@@ -125,6 +147,14 @@ automatically on push to `main`.
   confirm the score itself via the PSI web tool, not the CLI.
 - **Known open items** are tracked in the auto-memory launch checklist, not
   here (Turnstile retest, MOCK- demo data removal, final domain cutover).
+- **Dashboard sidebar** (`app/dashboard/DashNav.jsx`) is grouped into
+  Operations / Guests / Content / Insights & Admin as the link count grows —
+  add new dashboard pages to the right group, don't append to one flat list.
+- **Chatbot claim guards** (`app/api/chat/route.js`) currently cover: card
+  claimed without a prepare tool, booking ref mentioned without a lookup
+  tool, "sent to team" without `capture_booking_intent`. Any new bot
+  capability that lets it assert something a tool proves should get the
+  same treatment — see [[chatbot-optimizer-fable]].
 
 ## Starting a new project from this one
 
