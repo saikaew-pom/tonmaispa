@@ -122,6 +122,18 @@ export async function POST(req) {
   // legitimate after-confirmation talk and must not trigger this.
   const SENT_CLAIM_RE = /((passed|sent|forwarded|logged|saved) (your|the) (details|request|enquiry|information)|team has been (notified|alerted))/i
 
+  // The model must never present a booking LIST as complete/exhaustive from
+  // conversation memory alone — refs it mentioned earlier this chat are
+  // "known" for the ref-hallucination guard above, but "here are ALL your
+  // bookings" is a distinct, stronger claim that specifically requires a
+  // FRESH find_my_bookings/start_booking_lookup call THIS turn. Observed
+  // live: guest had 6 real active bookings; asked to see them again later
+  // in the same chat, the bot recited only the 2 refs it happened to have
+  // mentioned earlier, silently omitting the other 4 — no tool ran that
+  // turn. The ref-guard correctly stayed quiet (both refs were "known"),
+  // but the completeness claim was false.
+  const LISTING_CLAIM_RE = /\b(here are|these are|those are)\s+(your|the)(\s+only)?(\s+\d+)?\s+(active\s+)?bookings?\b/i
+
   const BOOKING_REF_RE = /TMS-\d+/gi
   const knownRefs = new Set()
   for (const m of modelMessages) {
@@ -142,6 +154,7 @@ export async function POST(req) {
       let refCorrectionUsed = false
       let enquiryToolRan = false
       let sentCorrectionUsed = false
+      let listingCorrectionUsed = false
 
       try {
         let resolvedNaturally = false
@@ -246,6 +259,20 @@ export async function POST(req) {
               conversationMessages.push({
                 role: 'user',
                 content: `[SYSTEM CHECK — not the guest speaking] You mentioned booking ${unknownRef}, but you have not retrieved it with any tool, so any treatment/date/time you stated for it is INVENTED and may be wrong. Fix this now: call find_my_bookings if this chat is already verified, otherwise call start_booking_lookup and ask the guest to verify on the secure card first. Never restate details for a booking a tool has not returned. Keep the reply short.`,
+              })
+              continue
+            }
+            // Listing-claim guard: the model presented a booking LIST as
+            // complete without a fresh find_my_bookings/start_booking_lookup
+            // call this turn — it may be reciting only the refs it happened
+            // to mention earlier, silently omitting real bookings it never
+            // fetched. Distinct from the ref-guard above (which only checks
+            // individual refs are grounded, not that a list is exhaustive).
+            if (!lookupToolRan && !listingCorrectionUsed && LISTING_CLAIM_RE.test(roundText)) {
+              listingCorrectionUsed = true
+              conversationMessages.push({
+                role: 'user',
+                content: '[SYSTEM CHECK — not the guest speaking] You presented a list of bookings as complete, but you did not call find_my_bookings this turn — refs you recall from earlier in this chat may not be the guest\'s FULL current list. Fix this now: call find_my_bookings and answer only from its fresh result. Keep the reply short.',
               })
               continue
             }
