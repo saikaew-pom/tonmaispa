@@ -170,6 +170,16 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     setInput('')
     setIsStreaming(true)
 
+    // Cards are appended after the whole message list, not inline at the
+    // point they were created — so a purely informational, buttonless
+    // receipt (the reschedule confirmation) would otherwise keep trailing
+    // every later message forever, looking "stuck" once the guest moves on
+    // to something else. It has already served its purpose by the time the
+    // guest sends their next message, so drop it here. Cards that still
+    // offer actions (the booking confirm card's Change/Cancel buttons, any
+    // unconfirmed draft) are left alone — those stay useful all session.
+    setToolResults(prev => (prev.reschedule ? { ...prev, reschedule: null } : prev))
+
     // Placeholder for assistant reply
     const assistantPlaceholder = {
       role:      'assistant',
