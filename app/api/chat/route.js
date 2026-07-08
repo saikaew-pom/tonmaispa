@@ -134,6 +134,20 @@ export async function POST(req) {
   // but the completeness claim was false.
   const LISTING_CLAIM_RE = /\b(here are|these are|those are)\s+(your|the)(\s+only)?(\s+\d+)?\s+(active\s+)?bookings?\b/i
 
+  // The corrective guard above is a backstop, not a guarantee — MiniMax can
+  // (and did, live, ~1 in 3 tries) ignore the correction and repeat the same
+  // unproven claim, burning the guard's one-shot budget. For financial/
+  // scheduling data a probabilistic guard isn't good enough, so for this one
+  // well-known intent we don't ask the model to choose correctly at all:
+  // detect "show/see/list my bookings" server-side on the GUEST's own latest
+  // message and run the real fetch before the model ever responds, exactly
+  // like the Cancel button bypasses tool-choice for an irreversible action.
+  // False positives just cost one harmless extra read — err broad.
+  const lastUserMsg = [...modelMessages].reverse().find(m => m.role === 'user')
+  const lastUserText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content.toLowerCase() : ''
+  const LISTING_INTENT_RE = /\b(show|see|check|list|recall|remind|all|again)\b/i
+  const listingIntentDetected = /\bbookings?\b/i.test(lastUserText) && LISTING_INTENT_RE.test(lastUserText)
+
   const BOOKING_REF_RE = /TMS-\d+/gi
   const knownRefs = new Set()
   for (const m of modelMessages) {
@@ -155,6 +169,31 @@ export async function POST(req) {
       let enquiryToolRan = false
       let sentCorrectionUsed = false
       let listingCorrectionUsed = false
+
+      // Deterministic pre-fetch: run the REAL find_my_bookings call now and
+      // hand the model its result as if it had already called the tool this
+      // turn, rather than trusting the model to choose to call it. See the
+      // LISTING_INTENT_RE note above for why this exists.
+      if (chatbotFullMode && listingIntentDetected) {
+        try {
+          const listingResult = await listSessionBookings(admin, sessionId)
+          controller.enqueue(encoder.encode(
+            JSON.stringify({ type: 'tool_result', tool: 'find_my_bookings', result: listingResult }) + '\n'
+          ))
+          const syntheticId = `pre_${crypto.randomUUID()}`
+          conversationMessages.push({
+            role: 'assistant',
+            content: [{ type: 'tool_use', id: syntheticId, name: 'find_my_bookings', input: {} }],
+          })
+          conversationMessages.push({
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: syntheticId, content: JSON.stringify(listingResult) }],
+          })
+          lookupToolRan = true
+        } catch (err) {
+          console.error('[chat] listing pre-fetch failed:', err)
+        }
+      }
 
       try {
         let resolvedNaturally = false
