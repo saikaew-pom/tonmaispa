@@ -117,6 +117,56 @@ automatically on push to `main`.
     on shift + no overlapping booking, same engine as `checkSlotCapacity`)
     before saving — assigning an unavailable therapist is possible only as
     an explicit logged override, mirroring the overbook pattern.
+17. **Every chat card that requires further guest action must persist to
+    `chat_sessions.metadata` and be restored in `ChatWidget`'s `initSession`.**
+    `prepare_booking`/`prepare_reschedule` always did this (`booking_draft`/
+    `reschedule_draft`); `start_booking_lookup` didn't, so a page reload or a
+    mobile browser reclaiming a backgrounded tab wiped the verify card while
+    the bot's "please verify" text stayed in history — guest saw a prompt
+    with nothing to act on (found live, phone screenshot, Chrome with 27 open
+    tabs). Fixed with `metadata.booking_lookup_pending`. Any NEW card type
+    needs the same write-on-create/restore-on-mount/clear-on-resolve triplet
+    from day one — check for this symmetry whenever a card is added.
+    **Sibling gap found the same day**: fixing the "please verify" card's
+    restore isn't enough — the "you're verified, here's your bookings" card
+    needs its OWN restore path too, and it can't just replay a stored
+    snapshot (bookings change). `/api/chat/session` GET now computes this
+    live: if `booking_access` is still valid, re-run `listSessionBookings`
+    fresh on every restore; only fall back to the empty verify-prompt
+    otherwise. When a feature has two states (unverified vs. verified,
+    pending vs. resolved), check that BOTH have a restore path, not just the
+    first one you find broken — verifying the fix against the reporting
+    guest's own live session (not a synthetic repro) is what surfaced this.
+18. **A corrective guard is a backstop, not a guarantee — for data guests
+    can't verify themselves, make it deterministic instead.** A guest with 6
+    real bookings asked to see them again later in the same chat; the bot
+    recited only the 2 refs it happened to have mentioned earlier (no fresh
+    `find_my_bookings` call). The `LISTING_CLAIM_RE` guard (same pattern as
+    rule 17's siblings) reduced this but repeated live testing against
+    production showed MiniMax ignored the one-shot correction ~1 in 3 tries.
+    Fix: detect this intent ("show/see/all/again" + "bookings") on the
+    GUEST's own message server-side and run the real fetch BEFORE the model
+    responds, injected as a synthetic tool_use/tool_result pair — same
+    principle as the Cancel button bypassing tool-choice entirely for an
+    irreversible action. 5/5 on repeated live production tests, up from
+    ~2/3. Reach for this pattern (detect intent, force the real call, let
+    the model only summarize) whenever a guard's failure mode is "shows the
+    guest wrong data," not just "shows the guest nothing."
+19. **A single literal-phrase regex guard will keep losing to a paraphrasing
+    model — write the pattern for the underlying tell, not the exact words.**
+    `CARD_CLAIM_RE` missed "press Confirm reschedule request... that button
+    updates the booking" (no literal "card" anywhere) and separately invented
+    an entirely fabricated reschedule summary — wrong treatment name, wrong
+    original time, all pulled from the customer's OTHER booking, because
+    `prepare_reschedule` never ran (same root cause, worse symptom: once a
+    claim is unbacked, EVERY detail attached to it is unreliable, not just
+    "no card"). Fixed by replacing the last literal with a general
+    `\b(press|tap|click)\b...\bconfirm\b` shape. This can never false-positive
+    on a legitimate confirmation, because the guard only runs at all when the
+    matching prepare tool did NOT fire this turn — a real confirmation always
+    has the tool call and skips the check entirely. When a claim-guard regex
+    needs a third patch for a third phrasing, generalize the pattern instead
+    of adding a fourth literal.
 
 ## Operational notes
 

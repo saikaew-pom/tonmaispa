@@ -108,7 +108,12 @@ export async function POST(req) {
   // cards from real tool results, so a claimed-but-unprepared card is a
   // visible dead end. Detected server-side and corrected with one extra
   // round, because prompt rules alone have been observed to fail here.
-  const CARD_CLAIM_RE = /(summary card|review card|booking card|confirm booking button|reschedule card|the card (below|above|here))/i
+  // Kept broadening this list phrase-by-phrase as new wording slipped through
+  // ("the secure card that just opened", now "press Confirm reschedule
+  // request... that button" with no literal "card" at all) — switched the
+  // last alternative to a general "press/tap/click near confirm" pattern so
+  // new phrasings of the same claim don't need their own new literal.
+  const CARD_CLAIM_RE = /(summary card|review card|booking card|confirm booking button|reschedule card|reschedule summary|the card (below|above|here)|\b(press|tap|click)\b[^.]{0,25}\bconfirm\b)/i
 
   // The model must never describe an existing booking (ref, treatment, date,
   // time) it has not fetched. Observed live: asked to reschedule TMS-024, it
