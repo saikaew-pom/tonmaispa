@@ -116,6 +116,16 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           booking: null,
         }))
       }
+      if (session.metadata?.booking_lookup_pending) {
+        // Guest asked to find/change a booking, saw the verify card, then the
+        // page reloaded (or a backgrounded mobile tab was reclaimed) before
+        // they finished — the chat text survives but the card doesn't unless
+        // we rebuild it here from the server-persisted flag.
+        setToolResults(prev => ({
+          ...prev,
+          bookingLookup: { ok: true, lookup_ready: true, message: 'Secure booking lookup is ready. Enter your phone and email to verify.' },
+        }))
+      }
 
       // Personalise greeting based on time since last visit
       const lastActive = new Date(session.last_active)

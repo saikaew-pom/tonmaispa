@@ -448,9 +448,28 @@ async function executeToolCall(toolName, input, { admin, sessionId, bookingEngin
         .select('metadata').eq('session_id', sessionId).maybeSingle()
       const access = session?.metadata?.booking_access
       if (access?.customer_id && access.expires_at && Date.parse(access.expires_at) > Date.now()) {
+        // Already verified — nothing to re-show on restore, so clear any
+        // stale pending flag from an earlier, unfinished lookup attempt.
+        if (session?.metadata?.booking_lookup_pending) {
+          const nextMetadata = { ...session.metadata }
+          delete nextMetadata.booking_lookup_pending
+          await admin.from('chat_sessions').update({ metadata: nextMetadata }).eq('session_id', sessionId)
+        }
         const existing = await listSessionBookings(admin, sessionId)
         return { ok: true, lookup_ready: true, already_verified: true, bookings: existing.bookings ?? [] }
       }
+      // Unlike prepare_booking/prepare_reschedule, this card has no token or
+      // capacity binding — but it's exactly as ephemeral client-side, and the
+      // client never restored it on reload (only booking_draft/reschedule_draft
+      // were). A page reload or a mobile browser reclaiming a backgrounded tab
+      // wiped the card while the "please verify" text stayed in history —
+      // observed live, guest saw the prompt with no card to act on. Persist a
+      // pending flag, mirroring the draft pattern, so ChatWidget can restore it.
+      await admin.from('chat_sessions').upsert({
+        session_id: sessionId,
+        metadata: { ...(session?.metadata ?? {}), booking_lookup_pending: { started_at: new Date().toISOString() } },
+        last_active: new Date().toISOString(),
+      }, { onConflict: 'session_id' })
       return {
         ok: true,
         lookup_ready: true,

@@ -140,6 +140,9 @@ export async function POST(req) {
   }
 
   delete metadata.booking_lookup_verification
+  // Verification succeeded — the pending "please verify" card no longer
+  // applies; clear it so a later reload doesn't reopen an obsolete prompt.
+  delete metadata.booking_lookup_pending
   metadata.booking_access = {
     customer_id: verification.customer_id,
     verified_at: new Date().toISOString(),
