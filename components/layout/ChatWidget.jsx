@@ -9,7 +9,7 @@
 import { useState, useEffect, useRef } from 'react'
 
 const STORAGE_KEY = 'tms_chat_id'
-const WELCOME_NEW = "Sawasdee kha 🙏 Welcome to Ton Mai Spa. How can I help you today?"
+const WELCOME_NEW = "Sawasdee kha 🙏 I'm Maysa, your host here at Ton Mai Spa. How can I help you today?"
 const WELCOME_BACK_TODAY = (name) =>
   `Welcome back${name ? `, ${name}` : ''}! How can I help you?`
 const WELCOME_BACK_DAYS = (name, topic) =>
@@ -617,7 +617,10 @@ export default function ChatWidget({ chatbotEnabled = true }) {
 // ── Smart quick replies based on conversation state ───────────
 function getQuickReplies(messages) {
   if (messages.length <= 1) {
-    return ['What treatments do you have?', 'How much is the sauna?', 'How do I book?']
+    // First-time openers: lead with the common booking tasks (each label is
+    // sent verbatim as the message, so it also reads as a natural request
+    // that routes to the right flow), then a general browse option.
+    return ['Check availability', 'Find my booking', 'Change a booking', 'What treatments do you have?']
   }
   const lastBot = [...messages].reverse().find(m => m.role === 'assistant')?.content ?? ''
   if (lastBot.toLowerCase().includes('massage')) {
