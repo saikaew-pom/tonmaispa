@@ -6,6 +6,7 @@
 // ============================================================
 
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { listSessionBookings } from '@/lib/chat-booking'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,26 @@ export async function GET(req) {
     .eq('session_id', sessionId)
     .single()
 
-  return Response.json({ session: data ?? null })
+  // Rebuild the booking-lookup card on restore. Two states, sibling to the
+  // booking_draft/reschedule_draft restore already handled client-side:
+  //  - verified and still within the access window → fetch bookings FRESH
+  //    (never trust a stale snapshot from a much earlier turn) and hand back
+  //    an already_verified card, same shape find_my_bookings/start_booking_lookup
+  //    return live.
+  //  - not verified but a lookup was started → hand back the empty
+  //    "please verify" card. (A page reload — or a mobile tab discarded and
+  //    reloaded by the OS — otherwise wipes this ephemeral UI state while the
+  //    bot's own "please verify"/"you're verified" text stays in history.)
+  let bookingLookup = null
+  const access = data?.metadata?.booking_access
+  if (access?.customer_id && access.expires_at && Date.parse(access.expires_at) > Date.now()) {
+    const existing = await listSessionBookings(admin, sessionId)
+    bookingLookup = { ok: true, lookup_ready: true, already_verified: true, bookings: existing.bookings ?? [] }
+  } else if (data?.metadata?.booking_lookup_pending) {
+    bookingLookup = { ok: true, lookup_ready: true, message: 'Secure booking lookup is ready. Enter your phone and email to verify.' }
+  }
+
+  return Response.json({ session: data ?? null, bookingLookup })
 }
 
 export async function DELETE(req) {

@@ -80,10 +80,12 @@ export default function ChatWidget({ chatbotEnabled = true }) {
 
     // Fetch prior conversation via server route (admin client — no direct table access from browser)
     let session = null
+    let restoredBookingLookup = null
     try {
       const res = await fetch(`/api/chat/session?sessionId=${encodeURIComponent(sid)}`)
       const data = await res.json()
       session = data.session
+      restoredBookingLookup = data.bookingLookup ?? null
     } catch {}
 
     if (session?.messages?.length > 0) {
@@ -116,15 +118,15 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           booking: null,
         }))
       }
-      if (session.metadata?.booking_lookup_pending) {
-        // Guest asked to find/change a booking, saw the verify card, then the
-        // page reloaded (or a backgrounded mobile tab was reclaimed) before
-        // they finished — the chat text survives but the card doesn't unless
-        // we rebuild it here from the server-persisted flag.
-        setToolResults(prev => ({
-          ...prev,
-          bookingLookup: { ok: true, lookup_ready: true, message: 'Secure booking lookup is ready. Enter your phone and email to verify.' },
-        }))
+      if (restoredBookingLookup) {
+        // Guest asked to find/change a booking (or already verified and was
+        // viewing their bookings), then the page reloaded — or a backgrounded
+        // mobile tab was reclaimed — before they were done. The chat text
+        // survives but the card doesn't unless rebuilt here. The server
+        // computes this fresh (re-fetching bookings when already verified,
+        // rather than trusting a stale snapshot), covering BOTH the
+        // not-yet-verified card and the already-verified bookings list.
+        setToolResults(prev => ({ ...prev, bookingLookup: restoredBookingLookup }))
       }
 
       // Personalise greeting based on time since last visit
