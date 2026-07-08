@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef } from 'react'
 
 const STORAGE_KEY = 'tms_chat_id'
+const TEASER_SEEN_KEY = 'tms_chat_teaser_seen'
 const WELCOME_NEW = "Sawasdee kha 🙏 I'm Maysa, your host here at Ton Mai Spa. How can I help you today?"
 const WELCOME_BACK_TODAY = (name) =>
   `Welcome back${name ? `, ${name}` : ''}! How can I help you?`
@@ -25,6 +26,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
   const [unread,      setUnread]      = useState(0)
   const [toolResults, setToolResults] = useState({}) // {messageIndex: toolResult}
   const [clearStickyBar, setClearStickyBar] = useState(false)
+  const [showTeaser, setShowTeaser] = useState(false)
   // Carries phone/email forward from the last confirmed booking so a
   // booker preparing a second booking for a companion doesn't have to
   // retype the same contact details — the name field always starts blank.
@@ -39,6 +41,27 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     if (!chatbotEnabled) return
     initSession()
   }, [chatbotEnabled]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── "Chat with Maysa" teaser bubble — once per browser, never nagging ──
+  // Shown a few seconds after a genuinely first-time page load; skipped
+  // entirely for anyone who has already seen it or already opened the chat,
+  // and auto-dismisses on its own so it never lingers or reappears.
+  useEffect(() => {
+    if (!chatbotEnabled) return
+    if (localStorage.getItem(TEASER_SEEN_KEY)) return
+
+    const showTimer = setTimeout(() => {
+      setShowTeaser(true)
+      localStorage.setItem(TEASER_SEEN_KEY, '1')
+    }, 6000)
+    return () => clearTimeout(showTimer)
+  }, [chatbotEnabled])
+
+  useEffect(() => {
+    if (!showTeaser) return
+    const hideTimer = setTimeout(() => setShowTeaser(false), 8000)
+    return () => clearTimeout(hideTimer)
+  }, [showTeaser])
 
   // ── Shift up above the mobile sticky booking bar once it appears ──
   useEffect(() => {
@@ -313,6 +336,7 @@ export default function ChatWidget({ chatbotEnabled = true }) {
     setIsOpen(true)
     setIsMinimised(false)
     setUnread(0)
+    setShowTeaser(false)
     if (window.gtag) window.gtag('event', 'chat_open')
   }
 
@@ -358,6 +382,48 @@ export default function ChatWidget({ chatbotEnabled = true }) {
   // ── RENDER ─────────────────────────────────────────────────
   return (
     <>
+      {/* "Chat with Maysa" teaser — once per browser, auto-dismisses, never
+          reappears once shown or once the guest opens the chat. */}
+      {!isOpen && showTeaser && (
+        <div
+          onClick={handleOpen}
+          role="button"
+          tabIndex={0}
+          style={{
+            position: 'fixed', bottom: clearStickyBar ? '156px' : '88px', right: '24px', zIndex: 999,
+            background: '#FAF6F0', color: '#1C1917',
+            borderRadius: '12px', padding: '10px 12px 10px 10px',
+            boxShadow: '0 8px 30px rgba(28,25,23,0.18)',
+            border: '1px solid #E0D9D0',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            maxWidth: '210px', cursor: 'pointer',
+            animation: 'tms-teaser-in 240ms ease-out',
+          }}
+        >
+          <span style={{
+            width: '26px', height: '26px', borderRadius: '9999px', overflow: 'hidden',
+            flexShrink: 0, background: '#3B5249',
+          }}>
+            <img src="/maysa-avatar.jpg" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', fontSize: 0, color: 'transparent' }} onError={(e) => { e.target.style.visibility = 'hidden' }} />
+          </span>
+          <span style={{ font: '600 13px Inter, sans-serif' }}>Chat with Maysa</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowTeaser(false) }}
+            aria-label="Dismiss"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: '#9B9390',
+              fontSize: '15px', lineHeight: 1, padding: '2px', marginLeft: '2px', flexShrink: 0,
+            }}
+          >×</button>
+          <style>{`
+            @keyframes tms-teaser-in {
+              from { opacity: 0; transform: translateY(6px) }
+              to   { opacity: 1; transform: translateY(0) }
+            }
+          `}</style>
+        </div>
+      )}
+
       {/* Floating trigger button */}
       {!isOpen && (
         <button
@@ -366,15 +432,13 @@ export default function ChatWidget({ chatbotEnabled = true }) {
           style={{
             position: 'fixed', bottom: clearStickyBar ? '92px' : '24px', right: '24px', zIndex: 999,
             width: '56px', height: '56px', borderRadius: '9999px',
-            background: '#3B5249', border: 'none', cursor: 'pointer',
+            background: '#3B5249', border: 'none', cursor: 'pointer', overflow: 'hidden',
             boxShadow: '0 4px 20px rgba(28,25,23,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'background 150ms ease-out, bottom 200ms ease-out',
           }}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="#FAF6F0"/>
-          </svg>
+          <img src="/maysa-avatar.jpg" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', fontSize: 0, color: 'transparent' }} onError={(e) => { e.target.style.visibility = 'hidden' }} />
           {unread > 0 && (
             <span style={{
               position: 'absolute', top: '-4px', right: '-4px',
@@ -412,11 +476,10 @@ export default function ChatWidget({ chatbotEnabled = true }) {
             flexShrink: 0,
           }}>
             <div style={{
-              width: '32px', height: '32px', borderRadius: '9999px',
-              background: '#FAF6F0', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
+              width: '32px', height: '32px', borderRadius: '9999px', overflow: 'hidden',
+              background: '#FAF6F0', flexShrink: 0,
             }}>
-              <span style={{ fontSize: '16px' }}>🌳</span>
+              <img src="/maysa-avatar.jpg" alt="Maysa" style={{ width: '100%', height: '100%', objectFit: 'cover', fontSize: 0, color: 'transparent' }} onError={(e) => { e.target.style.visibility = 'hidden' }} />
             </div>
             <div style={{ flex: 1 }}>
               <div id="chat-title" style={{ fontSize: '13px', fontWeight: '600', color: '#FAF6F0' }}>Ton Mai Spa</div>
