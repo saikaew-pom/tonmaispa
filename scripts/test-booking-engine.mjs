@@ -41,6 +41,8 @@ const D_MAIN  = '2027-03-10' // Wednesday — main roster day
 const D_CLOSED = '2027-03-11' // whole-spa closure
 const D_BLOCK  = '2027-03-12' // per-therapist block
 const D_TODAY  = '2027-03-13' // "today" past-slot filter (timezone) test
+const D_RACE   = '2027-03-17' // Wednesday (D_MAIN + 7d, same weekday/room config) — N-way race simulation
+const D_RACE2  = '2027-03-24' // Wednesday (D_MAIN + 14d) — couples N-way race simulation
 
 // Real treatments (read-only)
 const { data: single } = await admin.from('spa_treatments')
@@ -50,8 +52,9 @@ const { data: couples } = await admin.from('spa_treatments')
 console.log(`Fixtures: single="${single?.name}" (req ${single?.therapists_required}), couples="${couples?.name}" (req ${couples?.therapists_required})`)
 
 // Sanity: no real bookings/shifts on fixture dates
-const { data: preExisting } = await admin.from('bookings').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY])
-const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY])
+const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2]
+const { data: preExisting } = await admin.from('bookings').select('id').in('date', FIXTURE_DATES)
+const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', FIXTURE_DATES)
 if (preExisting?.length || preShifts?.length) {
   console.error('ABORT: fixture dates are not clean —', preExisting?.length, 'bookings,', preShifts?.length, 'shifts already exist there')
   process.exit(1)
@@ -371,6 +374,125 @@ check('J4 future slot 16:00 available', jAt('16:00')?.available === true, JSON.s
 const firstOpen = jSlots.find(s => s.available)?.time
 check(`J5 first available slot is exactly 14:30 (TZ-independent cutoff), got ${firstOpen}`, firstOpen === '14:30')
 
+// ══ K. Aggressive N-way overbooking simulation ═══════════════════
+// Section I proves the atomic trigger holds for a 2-way race. That's the
+// minimum bar, not the real one — production traffic can burst well beyond
+// 2 simultaneous requests for the same popular slot. This section fires
+// genuinely concurrent (Promise.all, not sequential-await) N-way races at
+// every resource type the engine protects: a single therapist, the shared
+// room pool, a reschedule collision between two DIFFERENT existing bookings,
+// and the 2-resource atomicity a couples treatment requires. Every race
+// asserts the DB ends up with EXACTLY the correct number of winners — not
+// "at least one rejected", which could hide a double-book if 2 of 8 both
+// slipped through.
+console.log('\n═ K. Aggressive N-way overbooking simulation')
+
+async function raceBookTherapist(date, startTime, endTime, guestName) {
+  const capRes = await checkSlotCapacity(admin, { treatmentId: single.id, date, startTime, endTime })
+  if (!capRes.ok) return { ok: false, stage: 'precheck', reason: capRes.reason }
+  const { data, error } = await admin.from('bookings').insert({
+    guest_name: guestName, guest_phone: '+66900000009', treatment_id: single.id,
+    therapist_id: capRes.therapistIds[0], date, time_slot: startTime, duration: 60,
+    status: 'pending', source: 'online',
+  }).select('id').single()
+  if (data?.id) cleanup.bookings.push(data.id)
+  return { ok: !error, id: data?.id, error, stage: 'insert' }
+}
+// Direct insert, deliberately bypassing checkSlotCapacity — isolates the DB
+// trigger's room-count serialization from the JS pre-check and from any
+// therapist logic (therapist_id: null), matching I5's bypass pattern.
+async function raceBookRoomOnly(date, startTime, guestName) {
+  const { data, error } = await admin.from('bookings').insert({
+    guest_name: guestName, guest_phone: '+66900000009', treatment_id: single.id,
+    therapist_id: null, date, time_slot: startTime, duration: 60,
+    status: 'pending', source: 'online',
+  }).select('id').single()
+  if (data?.id) cleanup.bookings.push(data.id)
+  return { ok: !error, id: data?.id, error }
+}
+async function raceBookCouples(date, startTime, endTime, guestName) {
+  const capRes = await checkSlotCapacity(admin, { treatmentId: couples.id, date, startTime, endTime })
+  if (!capRes.ok) return { ok: false, stage: 'precheck', reason: capRes.reason }
+  const { data, error } = await admin.from('bookings').insert({
+    guest_name: guestName, guest_phone: '+66900000009', treatment_id: couples.id,
+    therapist_id: capRes.therapistIds[0], secondary_therapist_id: capRes.therapistIds[1] ?? null,
+    date, time_slot: startTime, duration: 60, status: 'pending', source: 'online',
+  }).select('id').single()
+  if (data?.id) cleanup.bookings.push(data.id)
+  return { ok: !error, id: data?.id, error }
+}
+
+// K1: 8-way race for a window only ONE therapist (T1) is qualified+free for.
+await makeShift(T1, D_RACE, '10:00', '20:00') // T1 solo on D_RACE — therapist capacity = 1
+const k1Results = await Promise.all(
+  Array.from({ length: 8 }, (_, i) => raceBookTherapist(D_RACE, '10:00', '11:00', `ZZTEST K1-${i}`))
+)
+const k1Winners = k1Results.filter(r => r.ok)
+check('K1 8-way concurrent race for 1-therapist slot: EXACTLY 1 winner (not 0, not 2+)',
+  k1Winners.length === 1, `winners=${k1Winners.length} of 8`)
+check('K1 all 7 losers rejected for therapist capacity (precheck no_therapist OR DB THERAPIST_DOUBLE_BOOKED)',
+  k1Results.filter(r => !r.ok).every(r => r.reason === 'no_therapist' || capacityErrorFromDb(r.error)?.reason === 'no_therapist'),
+  JSON.stringify(k1Results.map(r => r.ok ? 'WIN' : (r.reason ?? capacityErrorFromDb(r.error)?.reason ?? 'UNEXPLAINED'))))
+
+// K2: (roomCount + 3)-way DIRECT race on physical room capacity alone —
+// proves the advisory-lock serialization generalizes beyond 2-way (I5 only
+// ever tested "fill sequentially, then try 1 more").
+const k2N = roomCount + 3
+const k2Results = await Promise.all(
+  Array.from({ length: k2N }, (_, i) => raceBookRoomOnly(D_RACE, '15:00', `ZZTEST K2-${i}`))
+)
+const k2Winners = k2Results.filter(r => r.ok)
+check(`K2 ${k2N}-way concurrent direct race on ${roomCount} physical rooms: EXACTLY ${roomCount} winners`,
+  k2Winners.length === roomCount, `winners=${k2Winners.length} of ${k2N}`)
+check('K2 every loser rejected specifically with ROOM_CAPACITY_FULL (not some other/silent failure)',
+  k2Results.filter(r => !r.ok).every(r => capacityErrorFromDb(r.error)?.reason === 'no_room'),
+  JSON.stringify(k2Results.filter(r => !r.ok).map(r => r.error?.message)))
+
+// K3: two DIFFERENT existing bookings (different guests/sessions) both try to
+// reschedule into the SAME open slot at the same instant. Unlike I1/I2 (two
+// fresh bookings racing), this exercises the UPDATE path end-to-end through
+// the real chat-booking reschedule flow (prepare → confirm) for two distinct
+// rows — the class of race a busy popular reschedule slot would see live.
+const S_RACE_A = randomUUID(); cleanup.sessions.push(S_RACE_A)
+const S_RACE_B = randomUUID(); cleanup.sessions.push(S_RACE_B)
+const raceOrigA = await makeBooking({ therapist_id: T1, date: D_RACE, time_slot: '12:00', chat_session_id: S_RACE_A })
+const raceOrigB = await makeBooking({ therapist_id: T1, date: D_RACE, time_slot: '13:00', chat_session_id: S_RACE_B })
+const draftA = await prepareRescheduleDraft(admin, S_RACE_A, { booking_id: raceOrigA, date: D_RACE, time_slot: '17:00' })
+const draftB = await prepareRescheduleDraft(admin, S_RACE_B, { booking_id: raceOrigB, date: D_RACE, time_slot: '17:00' })
+check('K3 setup: both reschedule drafts prepared ok (target slot open before either commits)',
+  draftA.ok === true && draftB.ok === true, JSON.stringify({ draftA: draftA.ok, draftB: draftB.ok }))
+const [confA, confB] = await Promise.all([
+  confirmRescheduleDraft(admin, { sessionId: S_RACE_A, token: draftA.token, settings: {} }),
+  confirmRescheduleDraft(admin, { sessionId: S_RACE_B, token: draftB.token, settings: {} }),
+])
+const k3Winners = [confA, confB].filter(r => r.ok)
+check('K3 two concurrent reschedules into the same target slot: EXACTLY 1 succeeds',
+  k3Winners.length === 1, JSON.stringify({ confA: confA.ok, confB: confB.ok, errA: confA.error, errB: confB.error }))
+// Confirm the DB actually agrees with which one "won" — no split-brain where
+// both rows silently claim they're at 17:00 (the failure mode a status-code
+// check alone would miss).
+const { data: raceFinal } = await admin.from('bookings').select('id, date, time_slot')
+  .in('id', [raceOrigA, raceOrigB]).eq('date', D_RACE).eq('time_slot', '17:00:00')
+check('K3 exactly one booking row actually landed at the target slot in the DB', raceFinal?.length === 1, JSON.stringify(raceFinal))
+
+// K4: couples treatment needs 2 therapists AT ONCE — the hardest atomicity
+// case, since the trigger must serialize a claim on 2 resources together,
+// not 1. Only T1+T2 on shift on D_RACE2 (exactly one qualified pair exists),
+// T3 deliberately left off shift. 3-way concurrent race for that one pair.
+await makeShift(T1, D_RACE2, '10:00', '20:00')
+await makeShift(T2, D_RACE2, '10:00', '20:00')
+const k4Results = await Promise.all(
+  Array.from({ length: 3 }, (_, i) => raceBookCouples(D_RACE2, '10:00', '11:00', `ZZTEST K4-${i}`))
+)
+const k4Winners = k4Results.filter(r => r.ok)
+check('K4 3-way concurrent race for the one T1+T2 couples pair: EXACTLY 1 winner',
+  k4Winners.length === 1, `winners=${k4Winners.length} of 3`)
+if (k4Winners.length === 1) {
+  const { data: k4Row } = await admin.from('bookings').select('therapist_id, secondary_therapist_id').eq('id', k4Winners[0].id).maybeSingle()
+  const gotBoth = [k4Row?.therapist_id, k4Row?.secondary_therapist_id].sort().join(',') === [T1, T2].sort().join(',')
+  check('K4 the single winner atomically holds BOTH T1 and T2 (no half-claimed pair)', gotBoth, JSON.stringify(k4Row))
+}
+
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')
 const del = async (label, fn) => { const { error } = await fn(); console.log(`  ${error ? '✗' : '✓'} ${label}${error ? ' — ' + error.message : ''}`) }
@@ -393,7 +515,7 @@ await del('therapist_treatments', () => admin.from('therapist_treatments').delet
 await del('therapists', () => admin.from('therapists').delete().in('id', cleanup.therapists))
 
 // Verify nothing remains on fixture dates
-const { data: leftover } = await admin.from('bookings').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY])
+const { data: leftover } = await admin.from('bookings').select('id').in('date', FIXTURE_DATES)
 console.log(`  leftover rows on fixture dates: ${leftover?.length ?? 0}`)
 
 console.log(`\n════ RESULT: ${pass} passed, ${fail} failed ════`)

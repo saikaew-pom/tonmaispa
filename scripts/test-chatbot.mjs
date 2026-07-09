@@ -16,7 +16,13 @@ function check(name, cond, detail = '') {
 async function chat(sessionId, messages) {
   const res = await fetch(`${BASE}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // Vary the IP so repeated runs (or runs alongside test-hallucination.mjs)
+      // don't share one rate-limit bucket and get silently 429'd — the /api/chat
+      // route allows 30 req/10min per IP, and this suite alone fires ~13/run.
+      'X-Forwarded-For': `10.13.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+    },
     body: JSON.stringify({ sessionId, messages }),
   })
   if (!res.ok) return { text: '', tools: [], httpError: res.status }
