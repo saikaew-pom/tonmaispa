@@ -19,6 +19,7 @@ import {
   prepareRescheduleDraft,
 } from '@/lib/chat-booking'
 import { recordWebExchange } from '@/lib/conversations'
+import { getDictionary } from '@/lib/i18n/get-dictionary'
 
 export const maxDuration = 60
 
@@ -46,13 +47,21 @@ export async function POST(req) {
   const admin = createSupabaseAdminClient()
 
   // ── 2. Load live spa data for system prompt ─────────────────
-  const [treatmentsRes, settingsRes, blogRes] = await Promise.all([
+  const [treatmentsRes, settingsRes, blogRes, dict] = await Promise.all([
     admin.from('spa_treatments').select('*').eq('is_active', true).order('sort_order'),
     admin.from('site_content').select('key, value_text').eq('page', 'settings'),
     // Published blog guides — lets the bot answer "what should I eat before a
     // massage?"-type questions with a grounded pointer to the real article
     // instead of only a summary, and gives it exact URLs it may share.
     admin.from('blog_posts').select('title, slug').eq('is_published', true).order('publish_date', { ascending: false }).limit(30),
+    // The real booking-page FAQ (cancellation policy, deposit, what to bring,
+    // etc.) — always loaded in English as the single source of truth; the
+    // model already translates every other fact into the guest's language on
+    // its own, same as treatments/settings. Without this the bot could
+    // neither invent nor state the real cancellation policy — it just went
+    // silent on a question with a real, verified answer (found via knowledge
+    // test, 2026-07-09).
+    getDictionary('en'),
   ])
 
   const settings = Object.fromEntries(
@@ -72,6 +81,7 @@ export async function POST(req) {
     settings,
     bookingEngineEnabled: chatbotFullMode,
     blogPosts: blogRes.data ?? [],
+    faq: dict.book?.faq ?? [],
   })
 
   const tools = chatbotFullMode ? TOOLS_FULL : TOOLS_SIMPLE
