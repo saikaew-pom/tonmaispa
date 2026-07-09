@@ -173,6 +173,36 @@ export async function POST(req) {
     for (const ref of text.match(BOOKING_REF_RE) ?? []) knownRefs.add(ref.toUpperCase())
   }
 
+  // P3 — generalize the deterministic pre-fetch beyond "show my bookings".
+  // When a guest asks about a SPECIFIC booking (a TMS-### ref, or reschedule/
+  // change/cancel/"my booking" intent), the model could recite its details
+  // from memory instead of fresh data — the same class as the listing bug.
+  // We ground it the same way: run the real fetch first. But ONLY when the
+  // session is already VERIFIED — an unverified session has no accessible
+  // booking data, so pre-fetching there would inject an empty list and could
+  // short-circuit the (working, audited 3/3) "open the secure lookup card"
+  // flow. Verified → strictly more grounding; unverified → untouched.
+  let sessionVerified = false
+  if (chatbotFullMode) {
+    try {
+      const { data: s } = await admin.from('chat_sessions')
+        .select('metadata').eq('session_id', sessionId).maybeSingle()
+      const access = s?.metadata?.booking_access
+      sessionVerified = Boolean(access?.customer_id && access.expires_at && Date.parse(access.expires_at) > Date.now())
+    } catch { /* treat as unverified on any read error */ }
+  }
+  const BOOKING_DETAIL_RE = /\b(reschedule|re-schedule|change|move|cancel|my booking|my appointment|my reservation|when is|what time)\b/i
+  const bookingDetailIntent = BOOKING_REF_RE.test(lastUserText) || BOOKING_DETAIL_RE.test(lastUserText)
+  BOOKING_REF_RE.lastIndex = 0 // reset: /g regex is stateful across .test()
+  const shouldPrefetchBookings = chatbotFullMode &&
+    (listingIntentDetected || (sessionVerified && bookingDetailIntent))
+
+  // P5 — observability: emit a structured line whenever a guard/pre-fetch
+  // fires, so production logs show how often the model tries to hallucinate
+  // and which guard caught it (→ tells you which surface to harden next).
+  const logGuard = (guard, extra = '') =>
+    console.error(`[chat-guard] ${guard} session=${sessionId}${extra ? ' ' + extra : ''}`)
+
   const readable = new ReadableStream({
     async start(controller) {
       let fullText = ''
@@ -187,11 +217,13 @@ export async function POST(req) {
 
       // Deterministic pre-fetch: run the REAL find_my_bookings call now and
       // hand the model its result as if it had already called the tool this
-      // turn, rather than trusting the model to choose to call it. See the
-      // LISTING_INTENT_RE note above for why this exists.
-      if (chatbotFullMode && listingIntentDetected) {
+      // turn, rather than trusting the model to choose to call it. Fires for
+      // "show my bookings" intent (any session) and for specific booking-detail
+      // intent when verified (P3, see shouldPrefetchBookings above).
+      if (shouldPrefetchBookings) {
         try {
           const listingResult = await listSessionBookings(admin, sessionId)
+          logGuard('prefetch-bookings', `verified=${sessionVerified}`)
           controller.enqueue(encoder.encode(
             JSON.stringify({ type: 'tool_result', tool: 'find_my_bookings', result: listingResult }) + '\n'
           ))
@@ -286,6 +318,7 @@ export async function POST(req) {
             // the tool or walks the claim back. (Observed live in testing.)
             if (!draftToolRan && !cardCorrectionUsed && CARD_CLAIM_RE.test(roundText)) {
               cardCorrectionUsed = true
+              logGuard('card-claim')
               conversationMessages.push({
                 role: 'user',
                 content: '[SYSTEM CHECK — not the guest speaking] You told the guest a review/booking card is shown, but you did not call prepare_booking or prepare_reschedule this turn, so NO card is visible to them. Fix this now: if you have the treatment, date, time and duration agreed, call the appropriate prepare tool immediately. Otherwise, briefly tell the guest what detail you still need. Do not apologise at length.',
@@ -300,6 +333,7 @@ export async function POST(req) {
             // were passed to the team, but no enquiry-creating tool ran.
             if (!enquiryToolRan && !sentCorrectionUsed && SENT_CLAIM_RE.test(roundText)) {
               sentCorrectionUsed = true
+              logGuard('sent-claim')
               conversationMessages.push({
                 role: 'user',
                 content: '[SYSTEM CHECK — not the guest speaking] You told the guest their details/request were sent to the team, but you did not call capture_booking_intent this turn, so nothing was recorded. Fix this now: if you have their name and phone, call capture_booking_intent immediately. Otherwise ask for the missing detail. Never claim something was sent unless the tool ran. Keep the reply short.',
@@ -310,6 +344,7 @@ export async function POST(req) {
             const unknownRef = mentionedRefs.find(r => !knownRefs.has(r))
             if (!lookupToolRan && !refCorrectionUsed && unknownRef) {
               refCorrectionUsed = true
+              logGuard('ref-claim', unknownRef)
               conversationMessages.push({
                 role: 'user',
                 content: `[SYSTEM CHECK — not the guest speaking] You mentioned booking ${unknownRef}, but you have not retrieved it with any tool, so any treatment/date/time you stated for it is INVENTED and may be wrong. Fix this now: call find_my_bookings if this chat is already verified, otherwise call start_booking_lookup and ask the guest to verify on the secure card first. Never restate details for a booking a tool has not returned. Keep the reply short.`,
@@ -324,6 +359,7 @@ export async function POST(req) {
             // individual refs are grounded, not that a list is exhaustive).
             if (!lookupToolRan && !listingCorrectionUsed && LISTING_CLAIM_RE.test(roundText)) {
               listingCorrectionUsed = true
+              logGuard('listing-claim')
               conversationMessages.push({
                 role: 'user',
                 content: '[SYSTEM CHECK — not the guest speaking] You presented a list of bookings as complete, but you did not call find_my_bookings this turn — refs you recall from earlier in this chat may not be the guest\'s FULL current list. Fix this now: call find_my_bookings and answer only from its fresh result. Keep the reply short.',
