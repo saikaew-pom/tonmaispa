@@ -24,3 +24,6 @@ npm-debug.log*
 
 # raw source photo library — not a build asset, huge, never commit
 /site-main-photos
+
+# Local fallback for blog image generation (only used when Cloudinary is down)
+blog-images/

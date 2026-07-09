@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:booking": "node --import ./scripts/register-alias.mjs scripts/test-booking-engine.mjs",
-    "test:chatbot": "node scripts/test-chatbot.mjs"
+    "test:chatbot": "node scripts/test-chatbot.mjs",
+    "blog:image": "node --env-file=.env.local scripts/gen-blog-image.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
