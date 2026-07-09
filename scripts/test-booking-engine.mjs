@@ -40,6 +40,7 @@ const cleanup = { bookings: [], therapists: [], shifts: [], quals: [], blocks: [
 const D_MAIN  = '2027-03-10' // Wednesday — main roster day
 const D_CLOSED = '2027-03-11' // whole-spa closure
 const D_BLOCK  = '2027-03-12' // per-therapist block
+const D_TODAY  = '2027-03-13' // "today" past-slot filter (timezone) test
 
 // Real treatments (read-only)
 const { data: single } = await admin.from('spa_treatments')
@@ -49,8 +50,8 @@ const { data: couples } = await admin.from('spa_treatments')
 console.log(`Fixtures: single="${single?.name}" (req ${single?.therapists_required}), couples="${couples?.name}" (req ${couples?.therapists_required})`)
 
 // Sanity: no real bookings/shifts on fixture dates
-const { data: preExisting } = await admin.from('bookings').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK])
-const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK])
+const { data: preExisting } = await admin.from('bookings').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY])
+const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY])
 if (preExisting?.length || preShifts?.length) {
   console.error('ABORT: fixture dates are not clean —', preExisting?.length, 'bookings,', preShifts?.length, 'shifts already exist there')
   process.exit(1)
@@ -345,6 +346,31 @@ const { error: reactErr } = await admin.from('bookings')
 check('I6 cancelled→confirmed reactivation into a conflicting slot rejected (UPDATE path)',
   capacityErrorFromDb(reactErr)?.reason === 'no_therapist', String(reactErr?.message))
 
+// ══ J. "Today" past-slot filter is timezone-correct ══════════════
+// Regression guard for the UTC-vs-Bangkok bug: getAvailableSlots must hide
+// slots that have already passed in the spa's timezone (Asia/Bangkok), and
+// the result must be identical no matter what TZ the Node process runs in.
+// `asOf` injects a fixed instant so the test is deterministic; we assert the
+// same date under a wall clock of 14:00 Bangkok. D_TODAY (2027-03-13) gets a
+// single all-day therapist shift and no bookings, so the ONLY thing that can
+// make an early slot unavailable is the past-time filter.
+console.log('\n═ J. "Today" past-slot filter (timezone correctness)')
+await makeShift(T1, D_TODAY, '09:00', '22:00')
+// 14:00 Bangkok = 07:00 UTC (Bangkok is UTC+7, no DST).
+const asOf1400 = new Date('2027-03-13T07:00:00Z')
+const jSlots = (await getAvailableSlots(admin, { date: D_TODAY, treatmentId: single.id, duration: 60, asOf: asOf1400 })).slots
+const jAt = (t) => jSlots.find(s => s.time === t)
+// Past slots are removed from the grid entirely (not returned as unavailable).
+check('J1 past slot 10:00 absent from grid when "now" is 14:00 Bangkok', jAt('10:00') === undefined, JSON.stringify(jAt('10:00')))
+check('J2 past slot 14:00 absent (before the +30m lead cutoff of 14:30)', jAt('14:00') === undefined, JSON.stringify(jAt('14:00')))
+check('J3 future slot 14:30 available (T1 on shift, rooms free)', jAt('14:30')?.available === true, JSON.stringify(jAt('14:30')))
+check('J4 future slot 16:00 available', jAt('16:00')?.available === true, JSON.stringify(jAt('16:00')))
+// Independence from server TZ: nowInSpaTz derives the wall clock via Intl, so
+// process.env.TZ cannot change the cutoff. Prove the boundary lands on 14:30
+// regardless — the first available slot must be exactly 14:30.
+const firstOpen = jSlots.find(s => s.available)?.time
+check(`J5 first available slot is exactly 14:30 (TZ-independent cutoff), got ${firstOpen}`, firstOpen === '14:30')
+
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')
 const del = async (label, fn) => { const { error } = await fn(); console.log(`  ${error ? '✗' : '✓'} ${label}${error ? ' — ' + error.message : ''}`) }
@@ -367,7 +393,7 @@ await del('therapist_treatments', () => admin.from('therapist_treatments').delet
 await del('therapists', () => admin.from('therapists').delete().in('id', cleanup.therapists))
 
 // Verify nothing remains on fixture dates
-const { data: leftover } = await admin.from('bookings').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK])
+const { data: leftover } = await admin.from('bookings').select('id').in('date', [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY])
 console.log(`  leftover rows on fixture dates: ${leftover?.length ?? 0}`)
 
 console.log(`\n════ RESULT: ${pass} passed, ${fail} failed ════`)

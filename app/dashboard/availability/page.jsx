@@ -1,11 +1,14 @@
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { nowInSpaTz } from '@/lib/scheduling'
 import AvailabilityClient from './AvailabilityClient'
 
 export const dynamic = 'force-dynamic'
 
 async function getData() {
   const admin = createSupabaseAdminClient()
-  const today = new Date().toISOString().slice(0, 10)
+  // Spa-timezone "today" (Vercel runs UTC) so upcoming closures aren't filtered
+  // against yesterday/tomorrow near the UTC date boundary.
+  const today = nowInSpaTz().date
 
   const [rulesRes, blocksRes, treatmentsRes, therapistsRes, settingRes, roomsRes] = await Promise.all([
     admin.from('slot_settings').select('*'),

@@ -35,9 +35,12 @@ const buttonSt = {
   cursor: 'pointer',
 }
 
+// "Today" at the spa (Asia/Bangkok), not in the visitor's browser timezone.
+// A foreign guest whose phone is still on their home time would otherwise get a
+// min/default date off by a day — blocking same-day booking or defaulting to a
+// date already past in Thailand. en-CA yields YYYY-MM-DD.
 function todayYmd() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date())
 }
 
 function normalizePhone(value) {
