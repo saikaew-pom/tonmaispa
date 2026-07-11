@@ -197,6 +197,44 @@ export async function POST(req) {
   const shouldPrefetchBookings = chatbotFullMode &&
     (listingIntentDetected || (sessionVerified && bookingDetailIntent))
 
+  // Deterministic duration-fact guard. When the guest names a specific
+  // treatment AND a duration that treatment does not offer ("a 60-minute head
+  // & shoulder"), inject the treatment's REAL durations as a fact before the
+  // model composes its reply — so it can't verbally accept or price a
+  // non-existent length. prepareBookingDraft already blocks BOOKING such a
+  // duration, but the bot could still misquote it in chat (~1 in 5 on blunt
+  // phrasing); prompt rules alone don't hold, so we ground it like the booking
+  // pre-fetch. Conservative on purpose: fires only on a clear treatment-name
+  // match + a real unit, so it can't inject the wrong fact.
+  const normalizeForMatch = (s) => s.toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9฀-๿一-鿿]+/g, ' ')
+    .replace(/\s+/g, ' ').trim()
+  let durationFact = null
+  let durationFactInfo = ''
+  if (chatbotFullMode) {
+    const normMsg = normalizeForMatch(lastUserText)
+    const minMatch = normMsg.match(/\b(\d{2,3})\s*(min|mins|minute|minutes|นาที|分钟|минут|мин)\b/)
+    const hrMatch  = normMsg.match(/\b(\d{1,2})\s*(hour|hours|hr|hrs|ชั่วโมง|小时|час|часа|часов)\b/)
+    const reqDuration = minMatch ? Number(minMatch[1]) : (hrMatch ? Number(hrMatch[1]) * 60 : null)
+    if (reqDuration && reqDuration >= 15 && reqDuration <= 600) {
+      // Longest core-name match wins (most specific treatment).
+      let best = null
+      for (const t of treatmentsRes.data ?? []) {
+        const core = normalizeForMatch(t.name).replace(/\b(massage|treatment|therapy)\b/g, '').replace(/\s+/g, ' ').trim()
+        if (core.length >= 4 && normMsg.includes(core)) {
+          if (!best || core.length > best.core.length) best = { t, core }
+        }
+      }
+      const opts = best?.t.duration_options ?? []
+      if (best && opts.length && !opts.includes(reqDuration)) {
+        const priceStr = opts.map(d => `${d} min (${best.t.prices?.[String(d)] ?? '?'} THB)`).join(', ')
+        durationFact = `[SYSTEM FACT — not the guest speaking] "${best.t.name}" is only offered in these durations: ${priceStr}. It has NO ${reqDuration}-minute option. Do not state, accept, confirm, or price a ${reqDuration}-minute "${best.t.name}" — that would be false. Tell the guest the real durations plainly, and if they want about ${reqDuration} minutes, offer the nearest real duration of this treatment, a different treatment whose real duration fits, or a listed add-on to reach that length. Never invent a duration or a price.`
+        durationFactInfo = `${best.t.name} req=${reqDuration}`
+      }
+    }
+  }
+
   // P5 — observability: emit a structured line whenever a guard/pre-fetch
   // fires, so production logs show how often the model tries to hallucinate
   // and which guard caught it (→ tells you which surface to harden next).
@@ -240,6 +278,13 @@ export async function POST(req) {
         } catch (err) {
           console.error('[chat] listing pre-fetch failed:', err)
         }
+      }
+
+      // Ground the model with the real durations BEFORE its first reply when
+      // the guest asked for a length a named treatment doesn't offer.
+      if (durationFact) {
+        logGuard('duration-fact', durationFactInfo)
+        conversationMessages.push({ role: 'user', content: durationFact })
       }
 
       try {
