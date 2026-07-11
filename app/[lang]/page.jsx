@@ -118,7 +118,7 @@ export default async function HomePage({ params }) {
 
   const schema = spaSchema({
     name:        'Ton Mai Spa',
-    url:         'https://www.tonmaispa.com',
+    url:         SITE_URL,
     phone:       '+66631175211',
     rating:      settings['settings.google_rating']       ?? '4.8',
     ratingCount: settings['settings.google_review_count'] ?? '369',

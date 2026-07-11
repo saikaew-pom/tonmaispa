@@ -26,7 +26,8 @@ export async function POST(req, { params }) {
 
   const email = authUser.user.email
   const hasSignedIn = !!authUser.user.last_sign_in_at
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   const { data: linkData, error: linkError } = await auth.admin.auth.admin.generateLink(
     hasSignedIn

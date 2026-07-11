@@ -51,7 +51,8 @@ export async function POST(req) {
     return Response.json({ error: `You are not allowed to create a "${role}" account` }, { status: 403 })
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
   const { data, error } = await auth.admin.auth.admin.generateLink({
     type: 'invite',
     email,

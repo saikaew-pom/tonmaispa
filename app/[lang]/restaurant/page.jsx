@@ -103,7 +103,7 @@ export default async function RestaurantPage({ params }) {
     '@context':     'https://schema.org',
     '@type':        'Restaurant',
     name:           'Ton Mai Spa Garden Restaurant',
-    url:            'https://www.tonmaispa.com/restaurant',
+    url:            `${SITE_URL}/restaurant`,
     telephone:      '+66631175211',
     address: {
       '@type':          'PostalAddress',
@@ -116,8 +116,8 @@ export default async function RestaurantPage({ params }) {
     servesCuisine:  ['Thai', 'International', 'Healthy'],
     openingHours:   'Mo-Su 09:00-23:00',
     priceRange:     '฿฿',
-    hasMenu:        'https://www.tonmaispa.com/restaurant',
-    image:          'https://www.tonmaispa.com/og-image.jpg',
+    hasMenu:        `${SITE_URL}/restaurant`,
+    image:          `${SITE_URL}/og-image.jpg`,
   })
 
   return (
