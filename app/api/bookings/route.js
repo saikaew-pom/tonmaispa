@@ -6,7 +6,7 @@ import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
 import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
-import { checkSlotCapacity, capacityErrorFromDb } from '@/lib/scheduling'
+import { checkSlotCapacity, capacityErrorFromDb, isPastSlotInSpaTz } from '@/lib/scheduling'
 import { upsertCustomer } from '@/lib/customers'
 
 function addMinutes(time, mins) {
@@ -32,6 +32,26 @@ export async function POST(req) {
 
   const admin = createSupabaseAdminClient()
 
+  // The date picker and slot grid already prevent these client-side, but a
+  // crafted POST bypasses the UI entirely — Zod only checks FORMAT of
+  // date/time/duration, so without these two server-side rules a request
+  // could book a slot in the past, or a duration the treatment doesn't
+  // offer (which would silently insert with price = NULL).
+  if (isPastSlotInSpaTz(d.date, d.time_slot)) {
+    return Response.json({ error: 'That time has already passed. Please choose an upcoming slot.' }, { status: 400 })
+  }
+  const { data: treatment } = await admin
+    .from('spa_treatments')
+    .select('name, prices, duration_options, is_active')
+    .eq('id', d.treatment_id)
+    .maybeSingle()
+  if (!treatment || treatment.is_active === false) {
+    return Response.json({ error: 'This treatment is not available for online booking.' }, { status: 400 })
+  }
+  if (!(treatment.duration_options ?? []).includes(d.duration)) {
+    return Response.json({ error: 'That duration is not offered for this treatment.' }, { status: 400 })
+  }
+
   // Re-check slot availability (prevents race condition from optimistic UI):
   // enough qualified, free therapists for this exact window — some treatments
   // (e.g. a couple's massage) need 2 working simultaneously — AND a free
@@ -45,14 +65,7 @@ export async function POST(req) {
   }
   const therapistIds = capacity.therapistIds
 
-  // Resolve treatment name + price
-  const { data: treatment } = await admin
-    .from('spa_treatments')
-    .select('name, prices')
-    .eq('id', d.treatment_id)
-    .maybeSingle()
-
-  const price = treatment?.prices?.[String(d.duration)] ?? null
+  const price = treatment.prices?.[String(d.duration)] ?? null
 
   const customerId = await upsertCustomer(admin, { name: d.guest_name, phone: d.guest_phone, email: d.guest_email })
 

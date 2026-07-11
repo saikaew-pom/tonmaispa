@@ -21,6 +21,7 @@ for (const line of envText.split('\n')) {
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const {
   getFreeTherapistIds, checkSlotCapacity, getAvailableSlots, getBookableTreatmentsAt, capacityErrorFromDb,
+  isPastSlotInSpaTz,
 } = await import('../lib/scheduling.js')
 const {
   prepareBookingDraft, confirmBookingDraft,
@@ -492,6 +493,37 @@ if (k4Winners.length === 1) {
   const gotBoth = [k4Row?.therapist_id, k4Row?.secondary_therapist_id].sort().join(',') === [T1, T2].sort().join(',')
   check('K4 the single winner atomically holds BOTH T1 and T2 (no half-claimed pair)', gotBoth, JSON.stringify(k4Row))
 }
+
+// ══ L. Guest-facing past-slot & input validation ═════════════════
+// Regression guard for the edge-case audit: the availability DISPLAY hides
+// past slots, but display filtering is not enforcement — before this guard,
+// a crafted POST or an AI-resolved past date could insert a booking for
+// yesterday, and the public route accepted durations the treatment doesn't
+// offer (inserting price = NULL). All checks below are lib-level (the public
+// route shares the same helper; Turnstile blocks driving it via raw HTTP).
+console.log('\n═ L. Guest-facing past-slot & input validation')
+
+// Pure helper, deterministic via `at` injection: 14:00 Bangkok = 07:00 UTC.
+const lNow = new Date('2027-03-13T07:00:00Z') // "now" = 2027-03-13 14:00 BKK
+check('L1 yesterday is past', isPastSlotInSpaTz('2027-03-12', '10:00', lNow) === true)
+check('L2 today at a passed time (13:00) is past', isPastSlotInSpaTz('2027-03-13', '13:00', lNow) === true)
+check('L3 today at a future time (15:00) is not past', isPastSlotInSpaTz('2027-03-13', '15:00', lNow) === false)
+check('L4 tomorrow is not past', isPastSlotInSpaTz('2027-03-14', '09:00', lNow) === false)
+check('L5 date-only check: past date without a time is past', isPastSlotInSpaTz('2027-03-12', undefined, lNow) === true)
+
+// Chat booking: preparing a draft for a REAL past date must refuse before
+// any capacity math (T1 had a real shift on D_MAIN, but D_MAIN-relative
+// dates are future fixtures — use a genuinely past calendar date).
+const S_PAST = randomUUID(); cleanup.sessions.push(S_PAST)
+const pastDraft = await prepareBookingDraft(admin, S_PAST, {
+  guest_name: 'ZZTEST Past Guest', treatment_id: single.id, date: '2024-01-10', time_slot: '14:00', duration: 60,
+})
+check('L6 chat prepare_booking refuses a past date', pastDraft.ok === false && /passed/i.test(pastDraft.error ?? ''), JSON.stringify(pastDraft).slice(0, 140))
+
+// Chat reschedule: moving an existing (future) booking INTO the past must refuse.
+const lBooking = await makeBooking({ therapist_id: T1, time_slot: '19:00', chat_session_id: S_PAST })
+const pastRes = await prepareRescheduleDraft(admin, S_PAST, { booking_id: lBooking, date: '2024-01-10', time_slot: '14:00' })
+check('L7 chat reschedule refuses moving a booking into the past', pastRes.ok === false && /passed/i.test(pastRes.error ?? ''), JSON.stringify(pastRes).slice(0, 140))
 
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')

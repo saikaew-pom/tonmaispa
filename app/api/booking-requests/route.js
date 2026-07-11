@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { checkSlotCapacity } from '@/lib/scheduling'
+import { checkSlotCapacity, capacityErrorFromDb, isPastSlotInSpaTz } from '@/lib/scheduling'
 import { upsertCustomer } from '@/lib/customers'
 import { appendConversationMessage } from '@/lib/conversations'
 import { sendWhatsAppMessage } from '@/lib/twilio'
@@ -45,6 +45,12 @@ export async function POST(req) {
 
   const token = verifyWhatsAppBookingRequestToken(parsed.data.token)
   if (!token.ok) return Response.json({ error: token.error }, { status: 400 })
+
+  // The form's date picker prevents past dates client-side, but a crafted
+  // POST bypasses the UI — same rule as the public booking route.
+  if (isPastSlotInSpaTz(parsed.data.date, parsed.data.time_slot)) {
+    return Response.json({ error: 'That time has already passed. Please choose an upcoming slot.' }, { status: 400 })
+  }
 
   const admin = createSupabaseAdminClient()
   const { data: thread, error: threadError } = await admin
@@ -116,6 +122,13 @@ export async function POST(req) {
     .single()
 
   if (bookingError) {
+    // DB capacity trigger backstop — the slot was taken in the race window
+    // between checkSlotCapacity above and this insert. Graceful 409, exactly
+    // like the pre-check failing (this was the one write path returning a
+    // raw 500 here; the other five already handled it).
+    if (capacityErrorFromDb(bookingError)) {
+      return Response.json({ error: 'That time is no longer available. Please choose another time.' }, { status: 409 })
+    }
     console.error('[booking request] insert error:', bookingError)
     return Response.json({ error: 'Could not save the booking request. Please message us on WhatsApp.' }, { status: 500 })
   }
