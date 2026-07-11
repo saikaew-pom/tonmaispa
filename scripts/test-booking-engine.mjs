@@ -21,7 +21,7 @@ for (const line of envText.split('\n')) {
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const {
   getFreeTherapistIds, checkSlotCapacity, getAvailableSlots, getBookableTreatmentsAt, capacityErrorFromDb,
-  isPastSlotInSpaTz,
+  isPastSlotInSpaTz, getAvailableRoomCount, getTurnaroundMin,
 } = await import('../lib/scheduling.js')
 const {
   prepareBookingDraft, confirmBookingDraft,
@@ -44,6 +44,7 @@ const D_BLOCK  = '2027-03-12' // per-therapist block
 const D_TODAY  = '2027-03-13' // "today" past-slot filter (timezone) test
 const D_RACE   = '2027-03-17' // Wednesday (D_MAIN + 7d, same weekday/room config) — N-way race simulation
 const D_RACE2  = '2027-03-24' // Wednesday (D_MAIN + 14d) — couples N-way race simulation
+const D_BUFFER = '2027-03-31' // Wednesday (D_MAIN + 21d) — turnaround-buffer math
 
 // Real treatments (read-only)
 const { data: single } = await admin.from('spa_treatments')
@@ -53,7 +54,7 @@ const { data: couples } = await admin.from('spa_treatments')
 console.log(`Fixtures: single="${single?.name}" (req ${single?.therapists_required}), couples="${couples?.name}" (req ${couples?.therapists_required})`)
 
 // Sanity: no real bookings/shifts on fixture dates
-const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2]
+const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2, D_BUFFER]
 const { data: preExisting } = await admin.from('bookings').select('id').in('date', FIXTURE_DATES)
 const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', FIXTURE_DATES)
 if (preExisting?.length || preShifts?.length) {
@@ -539,6 +540,39 @@ check('L6 chat prepare_booking refuses a past date', pastDraft.ok === false && /
 const lBooking = await makeBooking({ therapist_id: T1, time_slot: '19:00', chat_session_id: S_PAST })
 const pastRes = await prepareRescheduleDraft(admin, S_PAST, { booking_id: lBooking, date: '2024-01-10', time_slot: '14:00' })
 check('L7 chat reschedule refuses moving a booking into the past', pastRes.ok === false && /passed/i.test(pastRes.error ?? ''), JSON.stringify(pastRes).slice(0, 140))
+
+// ══ M. Turnaround buffer between sessions ════════════════════════
+// A therapist (and room) needs a gap between guests for cleanup/reset/rest.
+// bufferMin=0 is the historical back-to-back behaviour; a positive buffer
+// keeps any two of a resource's sessions ≥ bufferMin apart. Tested at the
+// helper level with an explicit bufferMin (the live value is a DB setting,
+// default 0, threaded in by checkSlotCapacity/getAvailableSlots).
+console.log('\n═ M. Turnaround buffer between sessions')
+
+// Default policy must be 0 (no live change until staff opt in).
+check('M0 turnaround defaults to 0 (back-to-back unchanged until staff set it)',
+  (await getTurnaroundMin(admin)) === 0)
+
+await makeShift(T1, D_BUFFER, '10:00', '20:00')
+await makeBooking({ therapist_id: T1, date: D_BUFFER, time_slot: '14:00', duration: 60 }) // T1 busy 14:00–15:00
+
+const freeAt = (startTime, endTime, bufferMin) =>
+  getFreeTherapistIds(admin, { therapistIds: [T1], date: D_BUFFER, startTime, endTime, bufferMin })
+
+check('M1 buffer=0: T1 free immediately after (15:00 back-to-back)', (await freeAt('15:00', '16:00', 0)).length === 1)
+check('M2 buffer=15: T1 NOT free back-to-back at 15:00 (only 0-min gap)', (await freeAt('15:00', '16:00', 15)).length === 0)
+check('M3 buffer=15: T1 free at 15:15 (exactly 15-min gap allowed)', (await freeAt('15:15', '16:15', 15)).length === 1)
+check('M4 buffer=15: T1 NOT free at 15:10 (10-min gap < buffer)', (await freeAt('15:10', '16:10', 15)).length === 0)
+check('M5 buffer=15: also blocks the lead-in side (13:15 ending 14:00-buffer)', (await freeAt('13:15', '14:00', 15)).length === 0)
+check('M6 buffer=15: 13:00 ending 13:45 leaves 15-min before 14:00 → free', (await freeAt('13:00', '13:45', 15)).length === 1)
+
+// Room-level buffer: the one 14:00–15:00 booking on D_BUFFER holds a room
+// through its turnaround too.
+const roomsAt = (startTime, endTime, bufferMin) =>
+  getAvailableRoomCount(admin, { date: D_BUFFER, startTime, endTime, bufferMin })
+const roomBase = await roomsAt('15:00', '16:00', 0)
+check('M7 buffer=0: room free back-to-back at 15:00', roomBase >= 1)
+check('M8 buffer=15: room still in turnaround at 15:00 → one fewer room', (await roomsAt('15:00', '16:00', 15)) === roomBase - 1)
 
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')
