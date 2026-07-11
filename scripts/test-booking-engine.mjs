@@ -174,7 +174,7 @@ check('C2 couples booking rejected when only 1 free (T2 off after 14:00)', c.ok 
 console.log('\n═ D. Concurrency caps (rooms + max_concurrent)')
 const { data: capRow } = await admin.from('room_capacity').select('room_count').eq('day_of_week', 3).maybeSingle() // Wed
 const roomCount = capRow?.room_count ?? 0
-const { data: globalCfg } = await admin.from('slot_settings').select('max_concurrent').is('treatment_id', null).eq('is_active', true).maybeSingle()
+const { data: globalCfg } = await admin.from('slot_settings').select('max_concurrent, last_slot').is('treatment_id', null).eq('is_active', true).maybeSingle()
 const maxConcurrent = globalCfg?.max_concurrent ?? null
 const effectiveCap = maxConcurrent ? Math.min(roomCount, maxConcurrent) : roomCount
 console.log(`  (rooms=${roomCount}, max_concurrent=${maxConcurrent} → effective cap=${effectiveCap})`)
@@ -218,7 +218,16 @@ check('F4 11:00 unavailable (rooms exhausted)', at('11:00')?.available === false
 check('F5 12:00 spotsLeft=1 (T1 on break, T2 free)', at('12:00')?.spotsLeft === 1, JSON.stringify(at('12:00')))
 check('F6 14:00 unavailable (T1 booked, T2 off-shift)', at('14:00')?.available === false)
 check('F7 19:00 available via T1 (ends at shift end)', at('19:00')?.available === true && at('19:00')?.spotsLeft === 1)
-check('F8 last candidate respects last_slot − duration (21:00 exists, 21:30 does not)', !!at('21:00') && !at('21:30'))
+// Config-derived (staff edit last_slot live on the dashboard): for a 60-min
+// session the last candidate start is last_slot − 60, and nothing later.
+{
+  const [lh, lm] = (globalCfg?.last_slot ?? '22:00').slice(0, 5).split(':').map(Number)
+  const lastStartMin = lh * 60 + lm - 60
+  const fmt = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  const lastStart = fmt(lastStartMin)
+  const beyond = fmt(lastStartMin + 30)
+  check(`F8 last candidate respects last_slot − duration (${lastStart} exists, ${beyond} does not)`, !!at(lastStart) && !at(beyond))
+}
 
 // ══ G. AI chat layer — draft / confirm ═══════════════════════════
 console.log('\n═ G. AI chat draft → confirm')
@@ -309,8 +318,14 @@ const winners = [raceA, raceB].filter(r => r.ok)
 const loser = [raceA, raceB].find(r => !r.ok)
 check('I1 race: exactly ONE of two simultaneous bookings wins the last slot', winners.length === 1,
   `winners=${winners.length}`)
-check('I2 race loser rejected by trigger with THERAPIST_DOUBLE_BOOKED',
-  capacityErrorFromDb(loser?.error)?.reason === 'no_therapist', String(loser?.error?.message ?? loser?.stage))
+// Which layer catches the loser is timing-dependent: if both requests pass
+// the JS pre-check the DB trigger rejects one (THERAPIST_DOUBLE_BOOKED); if
+// one request is slower, the pre-check itself sees the slot taken. Both are
+// correct rejections — I3 below proves the trigger layer deterministically.
+// (Same dual-layer acceptance as the K-section races.)
+check('I2 race loser rejected for therapist capacity (pre-check OR DB trigger)',
+  loser?.stage === 'precheck' || capacityErrorFromDb(loser?.error)?.reason === 'no_therapist',
+  String(loser?.error?.message ?? loser?.stage))
 
 // Direct sequential double-book attempt (bypassing pre-check entirely).
 const { error: dblErr } = await admin.from('bookings').insert({
