@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { annotateBookingCoverage, COVERAGE_REASON_LABELS } from '@/lib/scheduling'
 import BookingsClient from './BookingsClient'
 
 export const dynamic = 'force-dynamic'
@@ -33,11 +34,20 @@ async function getData() {
       .order('sort_order'),
     admin.from('site_content').select('value_text').eq('key', 'settings.twilio_whatsapp_enabled').maybeSingle(),
   ])
+  const bookings = bookingsRes.data ?? []
+  // Flag upcoming bookings whose assigned therapist no longer covers the slot
+  // (shift cut, break/block added, deactivated) — the sick-day gap. id → label.
+  const coverageMap = await annotateBookingCoverage(admin, bookings)
+  const coverageIssues = {}
+  for (const [id, reason] of coverageMap) {
+    coverageIssues[id] = { reason, label: COVERAGE_REASON_LABELS[reason] ?? reason }
+  }
   return {
-    bookings:   bookingsRes.data ?? [],
+    bookings,
     treatments: treatmentsRes.data ?? [],
     therapists: therapistsRes.data ?? [],
     twilioEnabled: settingEnabled(settingsRes.data?.value_text) && isTwilioConfigured(),
+    coverageIssues,
   }
 }
 
@@ -48,7 +58,7 @@ function stringParam(params, key) {
 
 export default async function BookingsPage({ searchParams }) {
   const params = await searchParams
-  const { bookings, treatments, therapists, twilioEnabled } = await getData()
+  const { bookings, treatments, therapists, twilioEnabled, coverageIssues } = await getData()
   const prefill = {
     fromConversation: stringParam(params, 'fromConversation') === '1',
     conversationId: stringParam(params, 'conversationId') || '',
@@ -61,7 +71,7 @@ export default async function BookingsPage({ searchParams }) {
   return (
     <div>
       <h1 style={{ font: '400 32px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 24px' }}>Bookings</h1>
-      <BookingsClient initialBookings={bookings} treatments={treatments} therapists={therapists} twilioEnabled={twilioEnabled} prefill={prefill} />
+      <BookingsClient initialBookings={bookings} treatments={treatments} therapists={therapists} twilioEnabled={twilioEnabled} prefill={prefill} coverageIssues={coverageIssues} />
     </div>
   )
 }

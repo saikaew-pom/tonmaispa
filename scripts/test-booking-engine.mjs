@@ -21,7 +21,7 @@ for (const line of envText.split('\n')) {
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const {
   getFreeTherapistIds, checkSlotCapacity, getAvailableSlots, getBookableTreatmentsAt, capacityErrorFromDb,
-  isPastSlotInSpaTz, getAvailableRoomCount, getTurnaroundMin,
+  isPastSlotInSpaTz, getAvailableRoomCount, getTurnaroundMin, annotateBookingCoverage,
 } = await import('../lib/scheduling.js')
 const {
   prepareBookingDraft, confirmBookingDraft,
@@ -45,6 +45,7 @@ const D_TODAY  = '2027-03-13' // "today" past-slot filter (timezone) test
 const D_RACE   = '2027-03-17' // Wednesday (D_MAIN + 7d, same weekday/room config) — N-way race simulation
 const D_RACE2  = '2027-03-24' // Wednesday (D_MAIN + 14d) — couples N-way race simulation
 const D_BUFFER = '2027-03-31' // Wednesday (D_MAIN + 21d) — turnaround-buffer math
+const D_COVER  = '2027-04-14' // Wednesday — orphaned-booking (lost cover) detection
 
 // Real treatments (read-only)
 const { data: single } = await admin.from('spa_treatments')
@@ -54,13 +55,37 @@ const { data: couples } = await admin.from('spa_treatments')
 console.log(`Fixtures: single="${single?.name}" (req ${single?.therapists_required}), couples="${couples?.name}" (req ${couples?.therapists_required})`)
 
 // Sanity: no real bookings/shifts on fixture dates
-const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2, D_BUFFER]
+const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2, D_BUFFER, D_COVER]
 const { data: preExisting } = await admin.from('bookings').select('id').in('date', FIXTURE_DATES)
 const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', FIXTURE_DATES)
 if (preExisting?.length || preShifts?.length) {
   console.error('ABORT: fixture dates are not clean —', preExisting?.length, 'bookings,', preShifts?.length, 'shifts already exist there')
   process.exit(1)
 }
+
+// Neutralise the live turnaround buffer for the duration of these deterministic
+// tests. Sections A–L/N assume back-to-back bookings (buffer = 0); the buffer
+// itself is tested explicitly in section M via the bufferMin param. If staff
+// have turned the buffer on in production (turnaround_min > 0), a shared 30-min
+// grid would otherwise make adjacent fixture slots conflict and fail spuriously.
+// Saved and restored (crash-safely, in the finally below) so the live policy is
+// untouched after the run.
+const { data: turnRow } = await admin.from('slot_settings').select('*')
+  .is('treatment_id', null).eq('is_active', true).maybeSingle()
+const hasTurnaroundCol = turnRow && Object.prototype.hasOwnProperty.call(turnRow, 'turnaround_min')
+const origTurnaround = hasTurnaroundCol ? turnRow.turnaround_min : null
+async function restoreTurnaround() {
+  if (hasTurnaroundCol && origTurnaround !== 0) {
+    await admin.from('slot_settings').update({ turnaround_min: origTurnaround }).eq('id', turnRow.id)
+    console.log(`  restored live turnaround_min = ${origTurnaround}`)
+  }
+}
+if (hasTurnaroundCol && origTurnaround !== 0) {
+  await admin.from('slot_settings').update({ turnaround_min: 0 }).eq('id', turnRow.id)
+  console.log(`(neutralised live turnaround_min ${origTurnaround} → 0 for this run; will restore)`)
+}
+
+try {
 
 // ── Build fixtures ───────────────────────────────────────────────
 async function makeTherapist(name) {
@@ -574,6 +599,48 @@ const roomBase = await roomsAt('15:00', '16:00', 0)
 check('M7 buffer=0: room free back-to-back at 15:00', roomBase >= 1)
 check('M8 buffer=15: room still in turnaround at 15:00 → one fewer room', (await roomsAt('15:00', '16:00', 15)) === roomBase - 1)
 
+// ══ N. Orphaned-booking (lost therapist cover) detection ═════════
+// Sick-day class: a booking's therapist is no longer working its slot because
+// a shift was cut/deleted, a break/block was added, or the therapist was
+// deactivated — and nothing surfaced it. annotateBookingCoverage flags exactly
+// these upcoming pending/confirmed bookings. Bookings are passed as plain
+// objects (the detector reads shifts/blocks/therapists from the DB, not the
+// booking rows) so no inserts are needed. asOf pins "today" before the far-
+// future fixtures so they all count as upcoming.
+console.log('\n═ N. Orphaned-booking (lost cover) detection')
+await makeShift(T1, D_COVER, '10:00', '18:00', '13:00', '14:00') // T1 on shift, break 13–14
+const Tinact = await makeTherapist('ZZTEST Inactive')
+await admin.from('therapists').update({ is_active: false }).eq('id', Tinact)
+
+const asOfN = '2027-01-01T00:00:00Z' // "today" well before every fixture date
+const cov = await annotateBookingCoverage(admin, [
+  { id: 'n1', date: D_COVER, time_slot: '10:00', duration: 60, status: 'confirmed', therapist_id: T1 },        // covered
+  { id: 'n2', date: D_COVER, time_slot: '09:00', duration: 60, status: 'confirmed', therapist_id: T1 },        // before shift
+  { id: 'n3', date: D_COVER, time_slot: '17:30', duration: 60, status: 'confirmed', therapist_id: T1 },        // spills past shift end
+  { id: 'n4', date: D_COVER, time_slot: '13:00', duration: 60, status: 'confirmed', therapist_id: T1 },        // over break
+  { id: 'n5', date: D_COVER, time_slot: '11:00', duration: 60, status: 'confirmed', therapist_id: T2 },        // T2 not rostered D_COVER
+  { id: 'n6', date: D_COVER, time_slot: '11:00', duration: 60, status: 'confirmed', therapist_id: null },      // unassigned
+  { id: 'n7', date: D_BLOCK,  time_slot: '11:00', duration: 60, status: 'confirmed', therapist_id: T1 },       // T1 personally blocked D_BLOCK
+  { id: 'n8', date: D_CLOSED, time_slot: '11:00', duration: 60, status: 'confirmed', therapist_id: T1 },       // whole spa closed
+  { id: 'n9', date: D_COVER, time_slot: '11:00', duration: 60, status: 'confirmed', therapist_id: Tinact },    // deactivated therapist
+  { id: 'n10', date: D_COVER, time_slot: '09:00', duration: 60, status: 'cancelled', therapist_id: T1 },       // cancelled → ignored
+  { id: 'n11', date: '2024-01-01', time_slot: '09:00', duration: 60, status: 'confirmed', therapist_id: T1 },  // past → ignored
+  { id: 'n12', date: D_COVER, time_slot: '10:00', duration: 60, status: 'confirmed', therapist_id: T1, secondary_therapist_id: T2 }, // couples: secondary uncovered
+], { asOf: asOfN })
+
+check('N1 covered booking is NOT flagged', !cov.has('n1'))
+check('N2 before-shift booking → outside_shift', cov.get('n2') === 'outside_shift')
+check('N3 spills-past-shift-end → outside_shift', cov.get('n3') === 'outside_shift')
+check('N4 over-break booking → on_break', cov.get('n4') === 'on_break')
+check('N5 therapist not rostered → no_shift', cov.get('n5') === 'no_shift')
+check('N6 unassigned booking → unassigned', cov.get('n6') === 'unassigned')
+check('N7 personally-blocked therapist → blocked', cov.get('n7') === 'blocked')
+check('N8 whole-spa closure → spa_closed', cov.get('n8') === 'spa_closed')
+check('N9 deactivated therapist → inactive', cov.get('n9') === 'inactive')
+check('N10 cancelled booking ignored', !cov.has('n10'))
+check('N11 past-date booking ignored', !cov.has('n11'))
+check('N12 couples booking flagged when secondary uncovered', cov.get('n12') === 'no_shift')
+
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')
 const del = async (label, fn) => { const { error } = await fn(); console.log(`  ${error ? '✗' : '✓'} ${label}${error ? ' — ' + error.message : ''}`) }
@@ -601,4 +668,9 @@ console.log(`  leftover rows on fixture dates: ${leftover?.length ?? 0}`)
 
 console.log(`\n════ RESULT: ${pass} passed, ${fail} failed ════`)
 if (failures.length) console.log('Failed:', failures.join(' | '))
+
+} finally {
+  // Always put the live buffer back, even if a section threw or the run failed.
+  await restoreTurnaround()
+}
 process.exit(fail > 0 ? 1 : 0)

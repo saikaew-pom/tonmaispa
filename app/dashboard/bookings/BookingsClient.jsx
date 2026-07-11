@@ -108,7 +108,7 @@ function missingConfirmationFields({ guestName, guestPhone, guestEmail }) {
   return missing
 }
 
-export default function BookingsClient({ initialBookings, treatments, therapists, twilioEnabled = false, prefill = {} }) {
+export default function BookingsClient({ initialBookings, treatments, therapists, twilioEnabled = false, prefill = {}, coverageIssues = {} }) {
   const [bookings, setBookings]     = useState(initialBookings)
   const [view, setView]             = useState('calendar') // 'calendar' | 'table'
   const [statusFilter, setStatusFilter]     = useState('all')
@@ -141,8 +141,21 @@ export default function BookingsClient({ initialBookings, treatments, therapists
   // Pending therapist assignment awaiting the reconfirm popup:
   // { booking, therapistId, checking, check } — check = availability verdict.
   const [assignRequest, setAssignRequest] = useState(null)
+  // Lost-cover flags (server snapshot at load). Cleared for a booking as soon
+  // as staff change its therapist or status, so a fixed row stops warning
+  // without needing a refresh.
+  const [coverage, setCoverage] = useState(coverageIssues)
 
-  const patchBooking = (id, fields) => setBookings(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b))
+  const patchBooking = (id, fields) => {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b))
+    if ('therapist_id' in fields || 'status' in fields) {
+      setCoverage(prev => {
+        if (!prev[id]) return prev
+        const next = { ...prev }; delete next[id]; return next
+      })
+    }
+  }
+  const coverageList = bookings.filter(b => coverage[b.id])
 
   const updateStatus = async (id, status) => {
     setSavingId(id)
@@ -410,6 +423,18 @@ export default function BookingsClient({ initialBookings, treatments, therapists
 
       <FilterBar />
 
+      {coverageList.length > 0 && (
+        <div style={{ background: '#FBEAEA', border: '1px solid #E0B4B4', color: '#C0392B', borderRadius: 6, padding: '10px 14px', font: '500 12px/1.6 Inter,sans-serif', marginBottom: 12 }}>
+          <strong>⚠ {coverageList.length} upcoming booking{coverageList.length > 1 ? 's have' : ' has'} lost therapist cover</strong> — reassign so no guest is left without a therapist:
+          <div style={{ marginTop: 4, color: '#8A3A30' }}>
+            {coverageList.slice(0, 8).map(b => (
+              <span key={b.id}>{b.ref_code} ({b.date} {b.time_slot?.slice(0, 5)}) — {coverage[b.id].label}{'; '}</span>
+            ))}
+            {coverageList.length > 8 && <span>…and {coverageList.length - 8} more.</span>}
+          </div>
+        </div>
+      )}
+
       {notifyError && (
         <div style={{ background: '#FBEAEA', border: '1px solid #E0B4B4', color: '#C0392B', borderRadius: 6, padding: '10px 14px', font: '500 12px Inter,sans-serif', marginBottom: 12 }}>
           {notifyError}
@@ -667,7 +692,12 @@ function TableView({ visible, savingId, onStatusChange, onEdit, sortKey, sortDir
         <tbody>
           {visible.map(b => (
             <tr key={b.id} onClick={() => onEdit(b)} style={{ borderTop: '1px solid #F0ECE6', cursor: 'pointer' }}>
-              <td style={{ padding: '12px 14px', font: '600 12px Inter,sans-serif', color: '#3B5249' }}>{b.ref_code}</td>
+              <td style={{ padding: '12px 14px', font: '600 12px Inter,sans-serif', color: '#3B5249' }}>
+                {b.ref_code}
+                {coverage[b.id] && (
+                  <span title={coverage[b.id].label} style={{ display: 'block', marginTop: 3, font: '700 10px Inter,sans-serif', color: '#C0392B' }}>⚠ No cover</span>
+                )}
+              </td>
               <td style={{ padding: '12px 14px', font: '400 13px Inter,sans-serif' }} onClick={e => b.customer_id && e.stopPropagation()}>
                 {b.customer_id ? (
                   <Link href={`/dashboard/customers?id=${b.customer_id}`} style={{ fontWeight: 600, color: '#3B5249', textDecoration: 'none' }}>{b.guest_name}</Link>
