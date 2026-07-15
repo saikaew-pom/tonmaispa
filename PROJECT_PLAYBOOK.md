@@ -26,6 +26,8 @@ automatically on push to `main`.
 |---|---|
 | Supabase clients (browser / server / admin) | `lib/supabase.js`, `lib/supabase-server.js`, `lib/supabase-admin.js` |
 | Auth guards (staff/owner/super_admin) | `lib/require-admin.js`, `middleware.js` |
+| Staff invites (durable 5-day links) | `lib/staff-invite.js` (HMAC token — Supabase's own link is capped at 24h), `app/invite/page.jsx` (public landing: verifies token, then mints a fresh Supabase link at click time), `app/api/admin/users/route.js` (POST), `app/api/admin/users/[id]/resend/route.js`. Revoke = set `profiles.invite_expires_at = NULL`. Gate test `npm run test:invites` |
+| Invite reminders (daily) | `lib/staff-invite-reminders.js` + `app/api/admin/users/send-invite-reminders/route.js`. Driven from the send-followups cron (Vercel Hobby = 2 cron slots, both taken) — error-isolated so a WhatsApp-off 503 can't starve it |
 | Availability + capacity truth | `lib/scheduling.js` (`checkSlotCapacity`, `getAvailableSlots`, `excludeBookingId` for edits) |
 | Public booking widget | `components/ui/BookingEngine.jsx` (+ `BookingCTA.jsx` toggle) |
 | Booking APIs | `app/api/bookings/*` (public), `app/api/admin/bookings/*` (staff, incl. `[id]/notify`, `[id]/whatsapp`, `[id]/logs`, `[id]/therapist-check`) |

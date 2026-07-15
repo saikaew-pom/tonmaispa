@@ -1,5 +1,11 @@
 import { requireOwnerOrAbove } from '@/lib/require-admin'
 import { sendEmail, inviteEmailHtml, passwordResetEmailHtml } from '@/lib/brevo'
+import {
+  createStaffInviteUrl,
+  getInviteExpiry,
+  formatInviteExpiry,
+  INVITE_LIFETIME_DAYS,
+} from '@/lib/staff-invite'
 
 // POST /api/admin/users/[id]/resend
 // If the account has never signed in, regenerates a fresh invite link (the
@@ -29,22 +35,60 @@ export async function POST(req, { params }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
-  const { data: linkData, error: linkError } = await auth.admin.auth.admin.generateLink(
-    hasSignedIn
-      ? { type: 'recovery', email, options: { redirectTo: `${siteUrl}/reset-password` } }
-      : { type: 'invite', email, options: { data: { full_name: target.full_name }, redirectTo: `${siteUrl}/reset-password` } }
-  )
-  if (linkError) return Response.json({ error: linkError.message }, { status: 400 })
+  // Already activated → this is a password reset, which legitimately uses
+  // Supabase's own short-lived link. Only pending invites get the 5-day token.
+  if (hasSignedIn) {
+    const { data: linkData, error: linkError } = await auth.admin.auth.admin.generateLink({
+      type: 'recovery', email, options: { redirectTo: `${siteUrl}/reset-password` },
+    })
+    if (linkError) return Response.json({ error: linkError.message }, { status: 400 })
+
+    const emailResult = await sendEmail({
+      to: email,
+      subject: 'Reset your Ton Mai Spa password',
+      html: passwordResetEmailHtml({ fullName: target.full_name, actionLink: linkData.properties.action_link }),
+      ignoreTestTo: true,
+    })
+    if (!emailResult.ok) return Response.json({ error: 'Could not send email' }, { status: 502 })
+
+    return Response.json({ ok: true, type: 'password_reset' })
+  }
+
+  // Pending invite → issue a fresh 5-day window and restart the reminder clock,
+  // so "Resend" gives the invitee a full 5 days again.
+  const inviteExpiresAt = getInviteExpiry()
+  let actionLink
+  try {
+    actionLink = createStaffInviteUrl({ userId: id, email, expiresAt: inviteExpiresAt })
+  } catch (err) {
+    console.error('[invite] could not sign invite link:', err.message)
+    return Response.json({ error: 'Invite link could not be signed. Set STAFF_INVITE_SECRET (or CRON_SECRET) on the server.' }, { status: 503 })
+  }
+
+  const { error: updateError } = await auth.admin
+    .from('profiles')
+    .update({
+      invited_at: new Date().toISOString(),
+      invite_expires_at: inviteExpiresAt,
+      invite_reminder_sent_at: null,
+      invite_reminder_count: 0,
+    })
+    .eq('id', id)
+  if (updateError) return Response.json({ error: updateError.message }, { status: 400 })
 
   const emailResult = await sendEmail({
     to: email,
-    subject: hasSignedIn ? 'Reset your Ton Mai Spa password' : "You're invited to the Ton Mai Spa dashboard",
-    html: hasSignedIn
-      ? passwordResetEmailHtml({ fullName: target.full_name, actionLink: linkData.properties.action_link })
-      : inviteEmailHtml({ fullName: target.full_name, role: target.role, actionLink: linkData.properties.action_link }),
+    subject: "You're invited to the Ton Mai Spa dashboard",
+    html: inviteEmailHtml({
+      fullName: target.full_name,
+      role: target.role,
+      actionLink,
+      expiresInDays: INVITE_LIFETIME_DAYS,
+      expiresAtLabel: formatInviteExpiry(inviteExpiresAt),
+    }),
     ignoreTestTo: true,
   })
   if (!emailResult.ok) return Response.json({ error: 'Could not send email' }, { status: 502 })
 
-  return Response.json({ ok: true, type: hasSignedIn ? 'password_reset' : 'invite' })
+  return Response.json({ ok: true, type: 'invite', inviteExpiresAt })
 }

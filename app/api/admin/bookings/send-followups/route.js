@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/require-admin'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { runInviteReminderSend } from '@/lib/staff-invite-reminders'
 import { sendWhatsAppMessage } from '@/lib/twilio'
 import { appendConversationMessage, getOrCreateWhatsAppThread } from '@/lib/conversations'
 import { logBookingAction } from '@/lib/booking-logs'
@@ -164,14 +165,31 @@ export async function GET(req) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // This cron slot runs TWO independent daily jobs, because the Vercel account
+  // is on the Hobby plan (max 2 cron jobs, both already spoken for by the
+  // booking jobs). They are isolated from each other on purpose: follow-ups
+  // throw 503 whenever WhatsApp is switched off, and that must never stop the
+  // invite reminders, which only need email. If the account moves to Pro, give
+  // /api/admin/users/send-invite-reminders its own entry in vercel.json and
+  // delete the inviteReminders block below.
+  const admin = createSupabaseAdminClient()
+  const out = {}
+
   try {
-    const result = await runFollowupSend({
-      admin: createSupabaseAdminClient(),
+    out.followups = await runFollowupSend({
+      admin,
       actorEmail: 'system:vercel-cron',
       actorId: null,
     })
-    return Response.json(result)
   } catch (error) {
-    return Response.json({ error: error.message || 'Could not send follow-ups.' }, { status: error.status || 500 })
+    out.followups = { error: error.message || 'Could not send follow-ups.', status: error.status || 500 }
   }
+
+  try {
+    out.inviteReminders = await runInviteReminderSend({ admin })
+  } catch (error) {
+    out.inviteReminders = { error: error.message || 'Could not send invite reminders.', status: error.status || 500 }
+  }
+
+  return Response.json(out)
 }
