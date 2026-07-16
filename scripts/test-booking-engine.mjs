@@ -22,7 +22,7 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUP
 const {
   getFreeTherapistIds, checkSlotCapacity, getAvailableSlots, getBookableTreatmentsAt, capacityErrorFromDb,
   isPastSlotInSpaTz, getAvailableRoomCount, getTurnaroundMin, annotateBookingCoverage,
-  occupiedMinutes, timeToMin,
+  occupiedMinutes, timeToMin, getRoomTypeCapacity, getRoomRequirement,
 } = await import('../lib/scheduling.js')
 const { resolveAddons } = await import('../lib/booking-addons.js')
 const {
@@ -46,6 +46,7 @@ const D_BLOCK  = '2027-03-12' // per-therapist block
 const D_TODAY  = '2027-03-13' // "today" past-slot filter (timezone) test
 const D_RACE   = '2027-03-17' // Wednesday (D_MAIN + 7d, same weekday/room config) — N-way race simulation
 const D_RACE2  = '2027-03-24' // Wednesday (D_MAIN + 14d) — couples N-way race simulation
+const D_ROOMS  = '2027-04-21' // Wednesday — room-typing (wet/couples) math
 const D_ADDON  = '2027-04-07' // Wednesday (D_MAIN + 28d) — add-on occupancy math
 const D_BUFFER = '2027-03-31' // Wednesday (D_MAIN + 21d) — turnaround-buffer math
 const D_COVER  = '2027-04-14' // Wednesday — orphaned-booking (lost cover) detection
@@ -55,10 +56,17 @@ const { data: single } = await admin.from('spa_treatments')
   .select('id, name, duration_options, therapists_required').eq('id', '2058b911-5063-44b5-a9ed-e766fb7750d9').maybeSingle()
 const { data: couples } = await admin.from('spa_treatments')
   .select('id, name, duration_options, therapists_required').eq('therapists_required', 2).limit(1).maybeSingle()
+const { data: wetTrt } = await admin.from('spa_treatments')
+  .select('id, name, room_requirement, duration_options').eq('slug', 'lemongrass-body-scrub').maybeSingle()
+const { data: couplesTrt } = await admin.from('spa_treatments')
+  .select('id, name, room_requirement, duration_options').eq('slug', 'couples-bliss-package').maybeSingle()
+const { data: reflexTrt } = await admin.from('spa_treatments')
+  .select('id, name, room_requirement, duration_options').eq('slug', 'foot-reflexology').maybeSingle()
 console.log(`Fixtures: single="${single?.name}" (req ${single?.therapists_required}), couples="${couples?.name}" (req ${couples?.therapists_required})`)
+console.log(`Room fixtures: wet="${wetTrt?.name}"(${wetTrt?.room_requirement}) couples="${couplesTrt?.name}"(${couplesTrt?.room_requirement}) reflex="${reflexTrt?.name}"(${reflexTrt?.room_requirement})`)
 
 // Sanity: no real bookings/shifts on fixture dates
-const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2, D_BUFFER, D_COVER, D_ADDON]
+const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2, D_BUFFER, D_COVER, D_ADDON, D_ROOMS]
 const { data: preExisting } = await admin.from('bookings').select('id').in('date', FIXTURE_DATES)
 const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', FIXTURE_DATES)
 if (preExisting?.length || preShifts?.length) {
@@ -108,6 +116,19 @@ for (const tid of [T1, T2, T3]) {
     cleanup.quals.push({ therapist_id: tid, treatment_id: trt })
   }
 }
+
+// Room-typing fixtures: qualify the test therapists for the wet-room, couples
+// and reflexology treatments so section P can staff them, then roster T1+T2 on
+// D_ROOMS. (These treatments really exist in the live menu; we only add the
+// qualifications/shifts, which are cleaned up.)
+for (const tid of [T1, T2]) {
+  for (const trt of [wetTrt?.id, couplesTrt?.id, reflexTrt?.id].filter(Boolean)) {
+    const { error } = await admin.from('therapist_treatments').insert({ therapist_id: tid, treatment_id: trt })
+    if (!error) cleanup.quals.push({ therapist_id: tid, treatment_id: trt })
+  }
+}
+await makeShift(T1, D_ROOMS, '10:00', '20:00')
+await makeShift(T2, D_ROOMS, '10:00', '20:00')
 
 async function makeShift(tid, date, start, end, breakStart = null, breakEnd = null) {
   const { data, error } = await admin.from('therapist_shifts')
@@ -768,6 +789,137 @@ if (scalp) {
     `00000000-0000-4000-8000-00000000000${i}`))
   check('O19 more than 5 extras is rejected outright', flood.ok === false)
 }
+
+
+// ══ P. Room typing (wet / couples / none) ════════════════════════
+// 5 rooms = 1 wet + 1 couple's + 3 standard. A treatment declares the room it
+// REQUIRES; rooms aren't hard-partitioned. Only the scarce specialised types
+// (wet=1, couples=1) get their own check; 'none' (reflexology chairs, thermal
+// passes) consumes no room and is never refused for one. (migration 033)
+console.log('\n═ P. Room typing')
+
+if (!wetTrt?.room_requirement) {
+  console.log('  (skipped — migration 033 not applied: spa_treatments.room_requirement missing)')
+} else {
+
+check('P0 menu is classified: scrub=wet, package=couples, reflexology=none',
+  wetTrt?.room_requirement === 'wet' && couplesTrt?.room_requirement === 'couples' && reflexTrt?.room_requirement === 'none',
+  `wet=${wetTrt?.room_requirement} couples=${couplesTrt?.room_requirement} reflex=${reflexTrt?.room_requirement}`)
+
+const roomsFor = (req, startTime, endTime) =>
+  getAvailableRoomCount(admin, { date: D_ROOMS, startTime, endTime, roomRequirement: req })
+
+// Baseline: nothing booked yet.
+check('P1 wet room available when none booked', (await roomsFor('wet', '14:00', '15:00')) >= 1)
+check('P2 couples room available when none booked', (await roomsFor('couples', '14:00', '15:00')) >= 1)
+check('P3 a no-room treatment is never blocked for a room (huge count)',
+  (await roomsFor('none', '14:00', '15:00')) > 1000)
+
+// Book ONE wet-room treatment 14:00–14:45.
+const wetBooking = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST Wet', guest_phone: '+66900000001',
+  treatment_id: wetTrt.id, therapist_id: T1,
+  date: D_ROOMS, time_slot: '14:00', duration: 45, status: 'confirmed',
+}).select('id, room_requirement').maybeSingle()
+if (wetBooking.data?.id) cleanup.bookings.push(wetBooking.data.id)
+check('P4 trigger stamped room_requirement=wet from the treatment (no path set it)',
+  wetBooking.data?.room_requirement === 'wet', `got ${wetBooking.data?.room_requirement}`)
+
+check('P5 the ONE wet room is now full for an overlapping wet booking',
+  (await roomsFor('wet', '14:15', '15:00')) === 0)
+check('P6 a couples booking is UNAFFECTED by the wet booking (different room)',
+  (await roomsFor('couples', '14:15', '15:00')) >= 1)
+check('P7 a standard booking still has rooms (wet booking only consumed one of five)',
+  (await roomsFor('any', '14:15', '15:00')) >= 1)
+check('P8 the wet room frees up after 14:45 (+turnaround aside)',
+  (await roomsFor('wet', '15:00', '16:00')) >= 1)
+
+// Second overlapping wet booking must be refused by the DB trigger itself.
+const wetClash = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST Wet2', guest_phone: '+66900000002',
+  treatment_id: wetTrt.id, therapist_id: T2,
+  date: D_ROOMS, time_slot: '14:15', duration: 45, status: 'pending',
+}).select('id').maybeSingle()
+if (wetClash.data?.id) cleanup.bookings.push(wetClash.data.id)
+check('P9 DB trigger blocks a 2nd overlapping WET booking (ROOM_TYPE_FULL_wet)',
+  !!wetClash.error && /ROOM_TYPE_FULL_wet/.test(wetClash.error.message || ''),
+  wetClash.error?.message ?? 'insert unexpectedly succeeded')
+
+// capacityErrorFromDb must translate it to a graceful no_room.
+check('P10 capacityErrorFromDb maps ROOM_TYPE_FULL_* to no_room',
+  capacityErrorFromDb({ message: 'ROOM_TYPE_FULL_wet' })?.reason === 'no_room')
+
+// Reflexology (none) never consumes a room: fill ALL 5 standard rooms, a
+// reflexology booking must still be bookable (it's in a chair).
+// Book 5 overlapping standard treatments at 16:00 to exhaust room_capacity.
+const roomFillers = []
+for (let i = 0; i < 5; i++) {
+  const r = await admin.from('bookings').insert({
+    guest_name: `ZZTEST Fill${i}`, guest_phone: '+66900000009',
+    treatment_id: single.id, date: D_ROOMS, time_slot: '16:00', duration: 60,
+    status: 'confirmed', overbooked: true, // bypass therapist check; we only care about room accounting
+  }).select('id').maybeSingle()
+  if (r.data?.id) { cleanup.bookings.push(r.data.id); roomFillers.push(r.data.id) }
+}
+check('P11 all 5 standard rooms filled at 16:00', (await roomsFor('any', '16:00', '17:00')) === 0)
+check('P12 reflexology (none) still bookable with every room full',
+  (await roomsFor('none', '16:00', '17:00')) > 1000)
+check('P13 checkSlotCapacity offers reflexology when all rooms full (chairs, not rooms)',
+  (await checkSlotCapacity(admin, { treatmentId: reflexTrt.id, date: D_ROOMS, startTime: '16:00', endTime: '17:00' })).ok === true)
+check('P14 checkSlotCapacity refuses a standard treatment when all rooms full',
+  (await checkSlotCapacity(admin, { treatmentId: single.id, date: D_ROOMS, startTime: '16:00', endTime: '17:00' })).reason === 'no_room')
+
+// The couple's room deserves the same proof as the wet room.
+const coupA = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST CoupA', guest_phone: '+66900000001',
+  treatment_id: couplesTrt.id, therapist_id: T1, secondary_therapist_id: T2,
+  date: D_ROOMS, time_slot: '10:00', duration: 60, status: 'confirmed',
+}).select('id, room_requirement').maybeSingle()
+if (coupA.data?.id) cleanup.bookings.push(coupA.data.id)
+check('P15 couples booking stamped room_requirement=couples',
+  coupA.data?.room_requirement === 'couples', `got ${coupA.data?.room_requirement}`)
+
+const coupB = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST CoupB', guest_phone: '+66900000002',
+  treatment_id: couplesTrt.id, date: D_ROOMS, time_slot: '10:30', duration: 60,
+  status: 'pending', overbooked: false,
+}).select('id').maybeSingle()
+if (coupB.data?.id) cleanup.bookings.push(coupB.data.id)
+check('P16 DB trigger blocks a 2nd overlapping COUPLES booking (ROOM_TYPE_FULL_couples)',
+  !!coupB.error && /ROOM_TYPE_FULL_couples/.test(coupB.error.message || ''),
+  coupB.error?.message ?? 'insert unexpectedly succeeded')
+
+// Trigger level (not just JS): a no-room treatment slips past a full house.
+const reflexWhenFull = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST Reflex', guest_phone: '+66900000009',
+  treatment_id: reflexTrt.id, date: D_ROOMS, time_slot: '16:00', duration: 45,
+  status: 'confirmed',
+}).select('id, room_requirement').maybeSingle()
+if (reflexWhenFull.data?.id) cleanup.bookings.push(reflexWhenFull.data.id)
+check('P17 DB trigger lets reflexology book while all 5 rooms are full (chairs)',
+  !reflexWhenFull.error && reflexWhenFull.data?.room_requirement === 'none',
+  reflexWhenFull.error?.message ?? `req=${reflexWhenFull.data?.room_requirement}`)
+
+// And that reflexology booking must not itself consume a room for others.
+check('P18 the reflexology booking did NOT consume a room',
+  (await roomsFor('any', '16:00', '17:00')) === 0, 'still exactly 0 (the 5 fillers), not -1')
+
+// Changing a booking's treatment must re-stamp the type AND re-check capacity.
+const morph = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST Morph', guest_phone: '+66900000001',
+  treatment_id: single.id, therapist_id: T1,
+  date: D_ROOMS, time_slot: '18:00', duration: 60, status: 'confirmed',
+}).select('id, room_requirement').maybeSingle()
+if (morph.data?.id) cleanup.bookings.push(morph.data.id)
+check('P19 a plain booking starts as room_requirement=any', morph.data?.room_requirement === 'any')
+
+const morphed = await admin.from('bookings')
+  .update({ treatment_id: wetTrt.id, duration: 45 })
+  .eq('id', morph.data.id).select('room_requirement').maybeSingle()
+check('P20 UPDATE to a wet treatment re-stamps room_requirement=wet',
+  morphed.data?.room_requirement === 'wet', `got ${morphed.data?.room_requirement}`)
+
+} // end section P guard
 
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')
