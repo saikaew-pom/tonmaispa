@@ -10,6 +10,7 @@ import ChatWidget         from '@/components/layout/ChatWidget'
 import GoogleAnalytics    from '@/components/layout/GoogleAnalytics'
 import CookieConsentBanner from '@/components/layout/CookieConsentBanner'
 import BannerPopup        from '@/components/layout/BannerPopup'
+import { maintenanceOn }  from '@/lib/maintenance'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.tonmaispa.com'
@@ -36,15 +37,20 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   // Load chatbot toggle — fail silently so layout never crashes if a query hiccups.
+  // Maintenance mode also silences the bot: the holding page promises WhatsApp
+  // and nothing else, so a chat bubble floating over it would be a second
+  // channel we haven't promised to answer.
   let chatbotEnabled = true
   try {
     const admin = createSupabaseAdminClient()
     const { data } = await admin
       .from('site_content')
-      .select('value_text')
-      .eq('key', 'settings.chatbot_enabled')
-      .single()
-    chatbotEnabled = data?.value_text !== 'false'
+      .select('key, value_text')
+      .in('key', ['settings.chatbot_enabled', 'settings.maintenance_mode'])
+    const settings = Object.fromEntries((data ?? []).map(r => [r.key, r.value_text]))
+    chatbotEnabled =
+      settings['settings.chatbot_enabled'] !== 'false' &&
+      !maintenanceOn(settings['settings.maintenance_mode'])
   } catch {}
 
   return (

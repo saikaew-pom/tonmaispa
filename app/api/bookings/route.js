@@ -2,6 +2,7 @@
 // Rate limit → Turnstile → Zod → availability check → insert → emails
 
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { isMaintenanceMode, maintenanceResponse } from '@/lib/maintenance'
 import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
@@ -32,6 +33,11 @@ export async function POST(req) {
   const d = parsed.data
 
   const admin = createSupabaseAdminClient()
+
+  // Refuse to take work behind a "we're closed" page. The forms aren't
+  // reachable during maintenance, but a crafted POST still is — and a booking
+  // accepted while the site says closed is a promise the spa never made.
+  if (await isMaintenanceMode(admin)) return maintenanceResponse()
 
   // The date picker and slot grid already prevent these client-side, but a
   // crafted POST bypasses the UI entirely — Zod only checks FORMAT of
