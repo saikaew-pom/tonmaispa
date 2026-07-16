@@ -7,6 +7,7 @@
 
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAvailableSlots } from '@/lib/scheduling'
+import { resolveAddons } from '@/lib/booking-addons'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,10 @@ export async function GET(req) {
   const date        = searchParams.get('date')         // YYYY-MM-DD
   const treatmentId = searchParams.get('treatment_id') // uuid | ''
   const duration    = parseInt(searchParams.get('duration') ?? '60', 10)
+  // Optional CSV of add-on ids: they extend the window the guest occupies, so
+  // the grid must be computed against the FULL span — otherwise we offer a
+  // slot that the booking POST then rejects.
+  const addonIds    = (searchParams.get('addon_ids') ?? '').split(',').filter(Boolean)
 
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return Response.json({ error: 'Invalid date' }, { status: 400 })
@@ -24,6 +29,11 @@ export async function GET(req) {
   }
 
   const admin = createSupabaseAdminClient()
-  const { slots } = await getAvailableSlots(admin, { date, treatmentId, duration })
-  return Response.json({ slots })
+  const addons = await resolveAddons(admin, addonIds)
+  if (!addons.ok) return Response.json({ error: addons.error }, { status: 400 })
+
+  const { slots } = await getAvailableSlots(admin, {
+    date, treatmentId, duration, addonMinutes: addons.minutes,
+  })
+  return Response.json({ slots, addonMinutes: addons.minutes })
 }

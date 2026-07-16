@@ -22,7 +22,9 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUP
 const {
   getFreeTherapistIds, checkSlotCapacity, getAvailableSlots, getBookableTreatmentsAt, capacityErrorFromDb,
   isPastSlotInSpaTz, getAvailableRoomCount, getTurnaroundMin, annotateBookingCoverage,
+  occupiedMinutes, timeToMin,
 } = await import('../lib/scheduling.js')
+const { resolveAddons } = await import('../lib/booking-addons.js')
 const {
   prepareBookingDraft, confirmBookingDraft,
   getRescheduleAvailability, prepareRescheduleDraft, confirmRescheduleDraft,
@@ -44,6 +46,7 @@ const D_BLOCK  = '2027-03-12' // per-therapist block
 const D_TODAY  = '2027-03-13' // "today" past-slot filter (timezone) test
 const D_RACE   = '2027-03-17' // Wednesday (D_MAIN + 7d, same weekday/room config) — N-way race simulation
 const D_RACE2  = '2027-03-24' // Wednesday (D_MAIN + 14d) — couples N-way race simulation
+const D_ADDON  = '2027-04-07' // Wednesday (D_MAIN + 28d) — add-on occupancy math
 const D_BUFFER = '2027-03-31' // Wednesday (D_MAIN + 21d) — turnaround-buffer math
 const D_COVER  = '2027-04-14' // Wednesday — orphaned-booking (lost cover) detection
 
@@ -55,7 +58,7 @@ const { data: couples } = await admin.from('spa_treatments')
 console.log(`Fixtures: single="${single?.name}" (req ${single?.therapists_required}), couples="${couples?.name}" (req ${couples?.therapists_required})`)
 
 // Sanity: no real bookings/shifts on fixture dates
-const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2, D_BUFFER, D_COVER]
+const FIXTURE_DATES = [D_MAIN, D_CLOSED, D_BLOCK, D_TODAY, D_RACE, D_RACE2, D_BUFFER, D_COVER, D_ADDON]
 const { data: preExisting } = await admin.from('bookings').select('id').in('date', FIXTURE_DATES)
 const { data: preShifts } = await admin.from('therapist_shifts').select('id').in('date', FIXTURE_DATES)
 if (preExisting?.length || preShifts?.length) {
@@ -640,6 +643,131 @@ check('N9 deactivated therapist → inactive', cov.get('n9') === 'inactive')
 check('N10 cancelled booking ignored', !cov.has('n10'))
 check('N11 past-date booking ignored', !cov.has('n11'))
 check('N12 couples booking flagged when secondary uncovered', cov.get('n12') === 'no_shift')
+
+
+// ══ O. Add-on occupancy ══════════════════════════════════════════
+// An add-on (Scalp Oil +15, Eye Mask +0) buys real therapist/room minutes that
+// were never part of the treatment's billed duration. bookings.duration stays
+// the BILLED key into prices/duration_options; addon_minutes carries the extra
+// occupancy. Everything that reserves time must span duration + addon_minutes,
+// or the next guest gets booked into a room that is still busy. (migration 032)
+console.log('\n═ O. Add-on occupancy')
+
+check('O0 occupiedMinutes sums duration + addon_minutes',
+  occupiedMinutes({ duration: 60, addon_minutes: 15 }) === 75)
+check('O1 occupiedMinutes tolerates a legacy row with no addon_minutes',
+  occupiedMinutes({ duration: 60 }) === 60)
+check('O2 occupiedMinutes treats a 0-min add-on (Eye Mask) as no extra time',
+  occupiedMinutes({ duration: 60, addon_minutes: 0 }) === 60)
+
+await makeShift(T1, D_ADDON, '10:00', '20:00')
+// T1: 60-min treatment + a 15-min add-on at 14:00 → really busy 14:00–15:15.
+await makeBooking({ therapist_id: T1, date: D_ADDON, time_slot: '14:00', duration: 60, addon_minutes: 15 })
+
+const addonFree = (startTime, endTime) =>
+  getFreeTherapistIds(admin, { therapistIds: [T1], date: D_ADDON, startTime, endTime })
+
+check('O3 therapist NOT free at 15:00 — the add-on tail still runs to 15:15',
+  (await addonFree('15:00', '16:00')).length === 0)
+check('O4 therapist free at 15:15, exactly when the add-on ends',
+  (await addonFree('15:15', '16:15')).length === 1)
+check('O5 the lead-in side is unaffected (13:00–14:00 still free)',
+  (await addonFree('13:00', '14:00')).length === 1)
+
+// Rooms are held for the add-on tail too.
+const addonRooms = (startTime, endTime) =>
+  getAvailableRoomCount(admin, { date: D_ADDON, startTime, endTime })
+const roomsAt1515 = await addonRooms('15:15', '16:15')
+check('O6 room still occupied at 15:00 by the add-on tail',
+  (await addonRooms('15:00', '16:00')) === roomsAt1515 - 1)
+
+// The DB trigger is the atomic backstop — it must honour addon_minutes too,
+// independently of the JS pre-check above.
+const overlapAddon = await admin.from('bookings').insert({
+  guest_name: 'ZZTEST Addon Trigger', guest_phone: '+66900000001',
+  treatment_id: single.id, therapist_id: T1,
+  date: D_ADDON, time_slot: '15:00', duration: 60, status: 'pending',
+}).select('id').maybeSingle()
+if (overlapAddon.data?.id) cleanup.bookings.push(overlapAddon.data.id)
+check('O7 DB trigger blocks a 15:00 booking that collides with the add-on tail',
+  !!overlapAddon.error && /THERAPIST_DOUBLE_BOOKED/.test(overlapAddon.error.message || ''),
+  overlapAddon.error?.message ?? 'insert unexpectedly succeeded')
+
+// The slot grid must not offer a time whose add-on tail cannot fit.
+const gridPlain = await getAvailableSlots(admin, { date: D_ADDON, treatmentId: single.id, duration: 60 })
+const gridAddon = await getAvailableSlots(admin, { date: D_ADDON, treatmentId: single.id, duration: 60, addonMinutes: 15 })
+const lastPlain = gridPlain.slots.at(-1)?.time
+const lastAddon = gridAddon.slots.at(-1)?.time
+// Slots sit on a 30-min grid, so the ceiling moves by a grid step, not by the
+// exact add-on length: with last_slot 22:30, a 60-min booking can still start
+// 21:30, but 60+15 would end 22:45 — so the last offered start drops to 21:00.
+check('O8 add-on shortens the bookable day (last offered start is earlier)',
+  !!lastPlain && !!lastAddon && timeToMin(lastAddon) < timeToMin(lastPlain),
+  `plain=${lastPlain} addon=${lastAddon}`)
+check('O9 every slot offered WITH the add-on still fits the full 75-min span',
+  gridAddon.slots.every(s => timeToMin(s.time) + 75 <= timeToMin(lastPlain) + 60),
+  `last addon slot=${lastAddon}`)
+
+const openAt = (grid, t) => grid.slots.find(s => s.time === t)?.available
+check('O10 the last plain-fitting slot is withdrawn once the add-on tail cannot fit',
+  openAt(gridPlain, lastPlain) !== undefined && openAt(gridAddon, lastPlain) !== true,
+  `lastPlain=${lastPlain} offeredWithAddon=${openAt(gridAddon, lastPlain)}`)
+
+// resolveAddons must never trust the client: it re-reads minutes/price and
+// rejects anything that is not a live add-on.
+const realAddons = await admin.from('spa_treatments')
+  .select('id, name, duration_options, prices').eq('category', 'add_on').eq('is_active', true)
+const scalp = (realAddons.data ?? []).find(a => (a.duration_options ?? [])[0] > 0)
+if (scalp) {
+  const r = await resolveAddons(admin, [scalp.id])
+  check('O11 resolveAddons reads real minutes from the catalog',
+    r.ok && r.minutes === scalp.duration_options[0], JSON.stringify({ ok: r.ok, minutes: r.minutes }))
+  check('O12 resolveAddons snapshots a line item with name + price',
+    r.ok && r.items.length === 1 && r.items[0].name === scalp.name)
+}
+const notAnAddon = await resolveAddons(admin, [single.id])
+check('O13 resolveAddons rejects a normal treatment posing as an add-on', notAnAddon.ok === false)
+const ghostAddon = await resolveAddons(admin, ['00000000-0000-4000-8000-00000000dead'])
+check('O14 resolveAddons rejects an unknown id (never silently drops it)', ghostAddon.ok === false)
+const noAddons = await resolveAddons(admin, [])
+check('O15 no add-ons → zero minutes, zero price', noAddons.ok && noAddons.minutes === 0 && noAddons.price === 0)
+
+// The chat reschedule draft is written by prepareRescheduleDraft and re-parsed
+// by confirmRescheduleDraft. z.object() STRIPS undeclared keys, so if
+// addon_minutes is not in the schema the confirm step silently re-checks (and
+// assigns a therapist for) the BILLED window only — reserving 60 min for a
+// guest who is really there 75. The DB trigger still blocks a hard collision,
+// but it does not enforce shift bounds or the turnaround buffer, so a booking
+// could be moved to a slot whose tail spills past its therapist's shift end.
+const { rescheduleDraftSchema } = await import('../lib/chat-booking.js')
+const draftRoundTrip = rescheduleDraftSchema.safeParse({
+  token: '11111111-1111-4111-8111-111111111111',
+  expires_at: new Date().toISOString(),
+  booking_id: '22222222-2222-4222-8222-222222222222',
+  ref_code: 'ZZTEST-1',
+  treatment_id: '33333333-3333-4333-8333-333333333333',
+  treatment_name: 'Traditional Thai Massage',
+  old_date: '2027-03-10', old_time_slot: '10:00',
+  new_date: '2027-03-11', new_time_slot: '10:00',
+  duration: 60, addon_minutes: 15, price: 1200,
+})
+check('O16 the reschedule draft schema preserves addon_minutes through the parse',
+  draftRoundTrip.success && draftRoundTrip.data.addon_minutes === 15,
+  `parsed addon_minutes=${draftRoundTrip.data?.addon_minutes}`)
+check('O17 a rescheduled booking with add-ons re-checks the FULL occupancy',
+  draftRoundTrip.success &&
+  draftRoundTrip.data.duration + (draftRoundTrip.data.addon_minutes ?? 0) === 75,
+  `confirm span=${draftRoundTrip.data ? draftRoundTrip.data.duration + (draftRoundTrip.data.addon_minutes ?? 0) : '?'}`)
+
+// The client only ever sends ids — minutes and price are re-read server-side.
+if (scalp) {
+  const dup = await resolveAddons(admin, [scalp.id, scalp.id])
+  check('O18 a duplicated add-on id cannot double the reserved minutes',
+    dup.ok && dup.minutes === scalp.duration_options[0], `minutes=${dup.minutes}`)
+  const flood = await resolveAddons(admin, Array.from({ length: 6 }, (_, i) =>
+    `00000000-0000-4000-8000-00000000000${i}`))
+  check('O19 more than 5 extras is rejected outright', flood.ok === false)
+}
 
 // ══ Cleanup ══════════════════════════════════════════════════════
 console.log('\n═ Cleanup')

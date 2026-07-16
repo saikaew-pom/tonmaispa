@@ -23,13 +23,17 @@ export async function GET(req, { params }) {
 
   const { data: booking } = await auth.admin
     .from('bookings')
-    .select('treatment_id, date, time_slot, duration')
+    .select('treatment_id, date, time_slot, duration, addon_minutes')
     .eq('id', id)
     .maybeSingle()
   if (!booking) return Response.json({ error: 'Booking not found' }, { status: 404 })
 
   const startTime = booking.time_slot.slice(0, 5)
-  const endTime = addMinutes(startTime, booking.duration)
+  // Add-ons occupy real therapist minutes past the billed duration, so the
+  // verdict staff see here must span them — otherwise this popup says
+  // "available" for a therapist the PATCH route (and the DB trigger) will
+  // then refuse.
+  const endTime = addMinutes(startTime, booking.duration + (booking.addon_minutes ?? 0))
 
   const qualifiedIds = await getQualifiedTherapistIds(auth.admin, booking.treatment_id)
   if (!qualifiedIds.includes(therapistId)) {

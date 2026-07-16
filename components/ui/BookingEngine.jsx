@@ -203,7 +203,10 @@ export default function BookingEngine({ presetSlug }) {
     setSlotsLoading(true)
     setSelSlot('')
     try {
-      const res  = await fetch(`/api/bookings/availability?date=${date}&treatment_id=${treatment.id}&duration=${duration}`)
+      // Add-ons lengthen the visit, so the slot grid must be asked for the
+      // full span — otherwise we'd show a time that the booking POST rejects.
+      const addonParam = selectedAddonIds.length ? `&addon_ids=${selectedAddonIds.join(',')}` : ''
+      const res  = await fetch(`/api/bookings/availability?date=${date}&treatment_id=${treatment.id}&duration=${duration}${addonParam}`)
       const json = await res.json()
       if (requestId !== slotsRequestId.current) return // a newer request has since superseded this one
       setSlots(json.slots ?? [])
@@ -212,7 +215,7 @@ export default function BookingEngine({ presetSlug }) {
     } finally {
       if (requestId === slotsRequestId.current) setSlotsLoading(false)
     }
-  }, [treatment, duration])
+  }, [treatment, duration, selectedAddonIds])
 
   const handleDateSelect = async (date) => {
     setSelDate(date)
@@ -220,12 +223,12 @@ export default function BookingEngine({ presetSlug }) {
   }
 
   // If the guest already picked a date, then goes back and changes the
-  // treatment or duration, the previously-fetched slots are for the wrong
-  // window and must never be shown as if they still applied — refetch.
+  // treatment, duration or add-ons, the previously-fetched slots are for the
+  // wrong window and must never be shown as if they still applied — refetch.
   useEffect(() => {
     if (selDate) fetchSlots(selDate)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [treatment?.id, duration])
+  }, [treatment?.id, duration, selectedAddonIds.join(',')])
 
   const prevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
@@ -237,20 +240,22 @@ export default function BookingEngine({ presetSlug }) {
   }
 
   const selectedAddons = addOns.filter(a => selectedAddonIds.includes(a.id))
+  // Mirror of the server's sum (lib/booking-addons.js). The server stays the
+  // source of truth for what is charged; this only has to agree with it, so
+  // the guest is never shown a total that the booking doesn't contain.
+  const addonMinutesTotal = selectedAddons.reduce((sum, a) => sum + (a.duration_options?.[0] ?? 0), 0)
+  const addonPriceTotal   = selectedAddons.reduce((sum, a) => sum + (a.prices?.[String(a.duration_options?.[0])] ?? 0), 0)
+  const basePrice         = treatment?.prices?.[String(duration)] ?? null
+  const totalPrice        = basePrice == null ? null : basePrice + addonPriceTotal
+  const totalMinutes      = duration + addonMinutesTotal
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
     setErrMsg('')
     try {
-      // Add-ons aren't a separate line item in the booking schema yet — fold
-      // them into notes so staff see the request, and note the estimated
-      // extra cost since it isn't reflected in the stored booking price.
-      const addonNote = selectedAddons.length
-        ? `Add-ons requested: ${selectedAddons.map(a => `${a.name} (฿${a.prices?.[String(a.duration_options?.[0])] ?? '—'})`).join(', ')}`
-        : ''
-      const combinedNotes = [notes, addonNote].filter(Boolean).join('\n\n')
-
+      // Add-ons are real line items now: send ids only and let the server
+      // re-read their minutes and price from the catalog (lib/booking-addons).
       const res  = await fetch('/api/bookings', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,7 +267,8 @@ export default function BookingEngine({ presetSlug }) {
           date:           selDate,
           time_slot:      selSlot,
           duration,
-          notes:          combinedNotes,
+          addon_ids:      selectedAddonIds,
+          notes:          notes || undefined,
           turnstileToken: token || 'dev-bypass',
         }),
       })
@@ -270,7 +276,8 @@ export default function BookingEngine({ presetSlug }) {
       if (!res.ok) throw new Error(json.error || 'Something went wrong')
       setRefCode(json.refCode)
       setStep(4)
-      if (window.gtag) window.gtag('event', 'booking_complete', { treatment: treatment.name, duration, value: treatment.prices?.[String(duration)] ?? 0 })
+      // Report the real basket value, add-ons included.
+      if (window.gtag) window.gtag('event', 'booking_complete', { treatment: treatment.name, duration: totalMinutes, value: totalPrice ?? 0 })
     } catch (err) {
       setErrMsg(err.message)
     } finally {
@@ -474,8 +481,13 @@ export default function BookingEngine({ presetSlug }) {
       <StepBar />
       <h3 style={{ font: '400 26px Cormorant Garamond,serif', color: '#1C1917', margin: '0 0 6px' }}>Your details</h3>
       <div style={{ font: '400 13px Inter,sans-serif', color: '#9B9390', marginBottom: 20 }}>
-        {treatment?.name} · {duration} min · {formatDate(selDate)} at {selSlot}
-        {selectedAddons.length > 0 && <><br />+ {selectedAddons.map(a => a.name).join(', ')}</>}
+        {treatment?.name} · {totalMinutes} min · {formatDate(selDate)} at {selSlot}
+        {selectedAddons.length > 0 && (
+          <>
+            <br />+ {selectedAddons.map(a => a.name).join(', ')}
+            {totalPrice != null && <> · total ฿{totalPrice.toLocaleString()}</>}
+          </>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -13,7 +13,7 @@ const EDITABLE_FIELDS = [
 // site and chatbot already follow, so editing a booking can never silently
 // create a double-booking. `excludeBookingId` treats this booking's own
 // current slot as free rather than counting it against itself.
-const CAPACITY_FIELDS = ['treatment_id', 'date', 'time_slot', 'duration']
+const CAPACITY_FIELDS = ['treatment_id', 'date', 'time_slot', 'duration', 'addon_minutes']
 
 function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
@@ -88,7 +88,7 @@ export async function PATCH(req, { params }) {
       treatmentId: merged.treatment_id,
       date: merged.date,
       startTime: merged.time_slot.slice(0, 5),
-      endTime: addMinutes(merged.time_slot.slice(0, 5), merged.duration),
+      endTime: addMinutes(merged.time_slot.slice(0, 5), merged.duration + (merged.addon_minutes ?? 0)),
       excludeBookingId: id,
     })
     if (!capacity.ok) {
@@ -112,7 +112,12 @@ export async function PATCH(req, { params }) {
   if (therapistChanged && !body.force_therapist) {
     const merged = { ...before, ...updates }
     const startTime = merged.time_slot.slice(0, 5)
-    const endTime = addMinutes(startTime, merged.duration)
+    // Same full occupancy the capacity re-check above uses: an add-on tail
+    // really does tie this therapist up past the billed duration, and the DB
+    // trigger will reject the write on that basis anyway — checking the
+    // shorter window here would only trade this precise message for a
+    // confusing "slot just filled up".
+    const endTime = addMinutes(startTime, merged.duration + (merged.addon_minutes ?? 0))
     const qualifiedIds = await getQualifiedTherapistIds(auth.admin, merged.treatment_id)
     const notQualified = !qualifiedIds.includes(updates.therapist_id)
     const freeIds = notQualified ? [] : await getFreeTherapistIds(auth.admin, {

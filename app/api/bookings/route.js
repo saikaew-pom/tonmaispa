@@ -8,6 +8,7 @@ import { bookingSchema }    from '@/lib/schemas'
 import { sendEmail, bookingGuestHtml, bookingOwnerHtml } from '@/lib/brevo'
 import { checkSlotCapacity, capacityErrorFromDb, isPastSlotInSpaTz } from '@/lib/scheduling'
 import { upsertCustomer } from '@/lib/customers'
+import { resolveAddons, saveBookingAddons, describeAddons } from '@/lib/booking-addons'
 
 function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
@@ -52,11 +53,17 @@ export async function POST(req) {
     return Response.json({ error: 'That duration is not offered for this treatment.' }, { status: 400 })
   }
 
+  // Add-ons are resolved server-side from ids only: they buy real therapist
+  // and room minutes, so the client never gets to state their length or price.
+  const addons = await resolveAddons(admin, d.addon_ids)
+  if (!addons.ok) return Response.json({ error: addons.error }, { status: 400 })
+
   // Re-check slot availability (prevents race condition from optimistic UI):
   // enough qualified, free therapists for this exact window — some treatments
   // (e.g. a couple's massage) need 2 working simultaneously — AND a free
   // treatment room. A slot isn't real availability unless both hold.
-  const endTime = addMinutes(d.time_slot, d.duration)
+  // The window spans the add-ons too, or we'd reserve less than the guest stays.
+  const endTime = addMinutes(d.time_slot, d.duration + addons.minutes)
   const capacity = await checkSlotCapacity(admin, {
     treatmentId: d.treatment_id, date: d.date, startTime: d.time_slot, endTime,
   })
@@ -65,7 +72,9 @@ export async function POST(req) {
   }
   const therapistIds = capacity.therapistIds
 
-  const price = treatment.prices?.[String(d.duration)] ?? null
+  // duration stays the BILLED key into prices; add-on money is added on top.
+  const basePrice = treatment.prices?.[String(d.duration)] ?? null
+  const price = basePrice == null ? null : basePrice + addons.price
 
   const customerId = await upsertCustomer(admin, { name: d.guest_name, phone: d.guest_phone, email: d.guest_email })
 
@@ -80,14 +89,15 @@ export async function POST(req) {
       treatment_id: d.treatment_id,
       therapist_id: therapistIds[0],
       secondary_therapist_id: therapistIds[1] ?? null,
-      date:         d.date,
-      time_slot:    d.time_slot,
-      duration:     d.duration,
+      date:          d.date,
+      time_slot:     d.time_slot,
+      duration:      d.duration,
+      addon_minutes: addons.minutes,
       price,
-      source:       'online',
-      notes:        d.notes || null,
+      source:        'online',
+      notes:         d.notes || null,
     })
-    .select('ref_code, date, time_slot, duration')
+    .select('id, ref_code, date, time_slot, duration, addon_minutes')
     .single()
 
   if (error) {
@@ -101,6 +111,13 @@ export async function POST(req) {
     return Response.json({ error: 'Could not save booking. Please contact us via WhatsApp.' }, { status: 500 })
   }
 
+  // Line items for staff/reporting. Never throws — the booking is already
+  // committed and its minutes/price are on the row regardless.
+  await saveBookingAddons(admin, booking.id, addons.items)
+
+  // Add-ons no longer ride inside `notes`, so surface them to staff explicitly.
+  const addonSummary = describeAddons(addons.items)
+  const notesForOwner = [d.notes, addonSummary && `Add-ons: ${addonSummary}`].filter(Boolean).join('\n')
   const treatmentName = treatment?.name ?? 'Spa Treatment'
   const ownerEmail    = process.env.INQUIRY_EMAIL
   const whatsapp      = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '66822866058'
@@ -128,7 +145,7 @@ export async function POST(req) {
         date:      booking.date,
         time:      booking.time_slot,
         treatment: treatmentName,
-        notes:     d.notes,
+        notes:     notesForOwner || null,
       }),
     }),
   ])
