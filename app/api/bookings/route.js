@@ -2,6 +2,7 @@
 // Rate limit → Turnstile → Zod → availability check → insert → emails
 
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { isMaintenanceMode, maintenanceResponse } from '@/lib/maintenance'
 import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { bookingSchema }    from '@/lib/schemas'
@@ -32,6 +33,11 @@ export async function POST(req) {
   const d = parsed.data
 
   const admin = createSupabaseAdminClient()
+
+  // Refuse work behind a "we're closed" page — a crafted POST bypasses the
+  // hidden forms, and a booking taken during maintenance is a promise the spa
+  // never made. (Read is fresh per request — this route is dynamic, not ISR.)
+  if (await isMaintenanceMode(admin)) return maintenanceResponse()
 
   // The date picker and slot grid already prevent these client-side, but a
   // crafted POST bypasses the UI entirely — Zod only checks FORMAT of

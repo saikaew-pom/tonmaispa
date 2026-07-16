@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { isMaintenanceMode, maintenanceResponse } from '@/lib/maintenance'
 import { checkSlotCapacity, capacityErrorFromDb, isPastSlotInSpaTz } from '@/lib/scheduling'
 import { upsertCustomer } from '@/lib/customers'
 import { appendConversationMessage } from '@/lib/conversations'
@@ -53,6 +54,11 @@ export async function POST(req) {
   }
 
   const admin = createSupabaseAdminClient()
+
+  // Refuse work behind a "we're closed" page — a crafted POST bypasses the
+  // hidden forms, and a booking taken during maintenance is a promise the spa
+  // never made. (Read is fresh per request — this route is dynamic, not ISR.)
+  if (await isMaintenanceMode(admin)) return maintenanceResponse()
   const { data: thread, error: threadError } = await admin
     .from('conversation_threads')
     .select('id, whatsapp_address, customer_id')

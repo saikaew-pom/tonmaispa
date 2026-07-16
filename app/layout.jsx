@@ -35,16 +35,24 @@ export const metadata = {
 }
 
 export default async function RootLayout({ children }) {
-  // Load chatbot toggle — fail silently so layout never crashes if a query hiccups.
+  // Load chatbot toggle — fail silently so layout never crashes if a query
+  // hiccups. Maintenance mode also silences the bot: the holding page promises
+  // WhatsApp and nothing else, so a chat bubble over it would be a second
+  // channel we haven't promised to answer. The MIDDLEWARE is the real
+  // maintenance gate (lib/maintenance.js) — this read only decides the widget,
+  // so its staleness on an ISR page is cosmetic, never a black-out. On the
+  // /maintenance route (force-dynamic) this read is fresh, so the bubble is
+  // reliably hidden exactly where it matters.
   let chatbotEnabled = true
   try {
     const admin = createSupabaseAdminClient()
     const { data } = await admin
       .from('site_content')
-      .select('value_text')
-      .eq('key', 'settings.chatbot_enabled')
-      .single()
-    chatbotEnabled = data?.value_text !== 'false'
+      .select('key, value_text')
+      .in('key', ['settings.chatbot_enabled', 'settings.maintenance_mode'])
+    const map = Object.fromEntries((data ?? []).map(r => [r.key, r.value_text]))
+    const maintenance = String(map['settings.maintenance_mode'] ?? '').trim().toLowerCase() === 'true'
+    chatbotEnabled = map['settings.chatbot_enabled'] !== 'false' && !maintenance
   } catch {}
 
   return (
