@@ -2,7 +2,6 @@
 // Rate limit → Turnstile → Zod → Supabase → email notifications
 
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { isMaintenanceMode, maintenanceResponse } from '@/lib/maintenance'
 import { checkRateLimit, tooManyRequestsResponse } from '@/lib/ratelimit'
 import { verifyTurnstile }  from '@/lib/verify-turnstile'
 import { enquirySchema }    from '@/lib/schemas'
@@ -30,11 +29,6 @@ export async function POST(req) {
 
   const { name, email, phone, message } = parsed.data
   const admin = createSupabaseAdminClient()
-
-  // Refuse to take work behind a "we're closed" page. The forms aren't
-  // reachable during maintenance, but a crafted POST still is — and a booking
-  // accepted while the site says closed is a promise the spa never made.
-  if (await isMaintenanceMode(admin)) return maintenanceResponse()
 
   // 4. Save to Supabase
   const { data: enquiry, error } = await admin.from('enquiries').insert({

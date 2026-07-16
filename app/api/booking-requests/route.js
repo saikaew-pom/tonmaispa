@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { isMaintenanceMode, maintenanceResponse } from '@/lib/maintenance'
 import { checkSlotCapacity, capacityErrorFromDb, isPastSlotInSpaTz } from '@/lib/scheduling'
 import { upsertCustomer } from '@/lib/customers'
 import { appendConversationMessage } from '@/lib/conversations'
@@ -54,11 +53,6 @@ export async function POST(req) {
   }
 
   const admin = createSupabaseAdminClient()
-
-  // Refuse to take work behind a "we're closed" page. The forms aren't
-  // reachable during maintenance, but a crafted POST still is — and a booking
-  // accepted while the site says closed is a promise the spa never made.
-  if (await isMaintenanceMode(admin)) return maintenanceResponse()
   const { data: thread, error: threadError } = await admin
     .from('conversation_threads')
     .select('id, whatsapp_address, customer_id')
